@@ -1,0 +1,38 @@
+stages:
+  - build
+  - test
+  - benchmark
+
+pray:build:
+  stage: build
+  only:
+    - master
+  script:
+    - if [[ -f ~/pdmkp_testing/env ]]; then . ~/pdmkp_testing/env; fi
+    - make
+    - LD_LIBRARY_PATH=out/ ~/pdmkp_testing/utils/run_tests.sh ~/pdmkp_testing/tests
+  artifacts:
+    name: pray
+    paths:
+      - out/pray
+    expire_in: 1 day
+
+pray:test:
+  stage: build
+  tags:
+    - benchmark
+  script:
+    - if [[ -f ~/pdmkp_testing/env ]]; then . ~/pdmkp_testing/env; fi
+    - ~/pdmkp_testing/utils/run_tests.sh ~/pdmkp_testing/tests
+  only:
+    - master
+
+pray:benchmark:
+  stage: benchmark
+  only:
+    - master
+  script:
+    - if [[ -f ~/pdmkp_testing/env ]]; then . ~/pdmkp_testing/env; fi
+    - ~/pdmkp_testing/utils/run_benchmarks.sh
+  tags:
+    - benchmark

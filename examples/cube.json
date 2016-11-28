@@ -1,0 +1,13 @@
+{
+	"obj_file": "cube.obj",
+	"resolution_x": 1920,
+	"resolution_y": 1080,
+	"camera_position": [2.0, 2.0, 5.0],
+	"camera_look": [0.0, 0.0, 1.0],
+	"fov": 90,
+	"lights" : [
+		{"position": [0.0, 0.0, 0.0], "color": [1.0, 1.0, 1.0]},
+		{"position": [0.0, 0.0, 10.0], "color": [1.0, 1.0, 1.0]}
+	],
+	"background": [0.0, 0.0, 0.0]
+}
