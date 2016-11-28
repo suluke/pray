@@ -18,7 +18,7 @@ pray:build:
     expire_in: 1 day
 
 pray:test:
-  stage: build
+  stage: test
   tags:
     - benchmark
   script:
