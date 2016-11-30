@@ -7,7 +7,7 @@ SOURCES+=src/pray.cc
 # Build options: Include directories, extra compile flags, lib directories and
 # extra libs
 INCLUDES+=include/ ext/
-EXTRA_CFLAGS+=-O3 -std=c++14 -fPIC
+EXTRA_CFLAGS+=-O3 -std=c++14 -fPIC -Werror=vla -Werror
 LIBDIRS+=
 LIBS+=
 
