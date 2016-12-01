@@ -55,6 +55,12 @@ struct Color
 
 	Color() {}
 	Color(float _r, float _g, float _b) : r(_r), g(_g), b(_b) {}
+
+	Color operator+(const Color &a) const { return Color(r+a.r, g+a.g, b+a.b); }
+	Color operator*(const Color &a) const { return Color(r*a.r, g*a.g, b*a.b); }
+	Color operator*(float a) const { return Color(r*a, g*a, b*a); }
+
+	Color &operator+=(const Color &a) { return *this = *this + a; }
 };
 
 struct IntDimension2

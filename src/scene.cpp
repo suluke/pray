@@ -1,6 +1,6 @@
 #include "scene.hpp"
 
-Color Scene::trace(const Ray &ray)
+Color Scene::trace(const Ray &ray) const
 {
 	TriangleIndex intersected_triangle = TriangleIndex_Invalid;
 	float minimum_distance = std::numeric_limits<float>::max();
@@ -21,14 +21,27 @@ Color Scene::trace(const Ray &ray)
 		}
 	}
 
-	if(intersected_triangle != TriangleIndex_Invalid)
+	if(intersected_triangle == TriangleIndex_Invalid) return background_color;
+
+	const Vector3 P = ray.origin + ray.direction * minimum_distance;
+	const Vector3 _N = triangles[intersected_triangle].calculateNormal();
+	//TODO: hack intersection with back-face
+	const Vector3 N = _N.dot(ray.direction) < 0.f ? _N : -_N;
+
+	const MaterialIndex material_index = triangles[intersected_triangle].material_index;
+	ASSERT(material_index != MaterialIndex_Invalid);
+
+	Color result_color(0.f, 0.f, 0.f);
+
+	for(auto &light : lights)
 	{
-		const MaterialIndex material_index = triangles[intersected_triangle].material_index;
-		ASSERT(material_index != MaterialIndex_Invalid);
-		return materials[material_index].color;
+		const Vector3 L = (light.position - P).normalize();
+
+		//TODO: shadow ray
+
+		const Color shading_color = materials[material_index].color * light.color * std::max(L.dot(N), 0.f);
+		result_color += shading_color;
 	}
-	else
-	{
-		return background_color;
-	}
+
+	return result_color;
 }

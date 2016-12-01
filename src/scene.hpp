@@ -28,6 +28,11 @@ struct Triangle
 	MaterialIndex material_index;
 
 	Triangle(const std::array<Vector3, 3> &_vertices, MaterialIndex _material_index) : vertices(_vertices), material_index(_material_index) {}
+
+	Vector3 calculateNormal() const
+	{
+		return (vertices[1] - vertices[0]).cross(vertices[2] - vertices[0]).normalize();
+	}
 };
 
 struct Material
@@ -41,6 +46,8 @@ struct Light
 {
 	Vector3 position;
 	Color color;
+
+	Light(const Vector3 &_position, const Color &_color) : position(_position), color(_color) {}
 };
 
 struct Camera
@@ -101,7 +108,7 @@ struct Scene
 		lights.push_back(light);
 	}
 
-	Color trace(const Ray &ray);
+	Color trace(const Ray &ray) const;
 
 	private:
 	bool loadObj(const std::string &filename);

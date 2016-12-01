@@ -23,9 +23,9 @@ int main(int argc, char *argv[])
 	Vector3 left, right, bottom, top;
 	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
+	#pragma omp parallel for
 	for(uint32_t y = 0; y < image_resolution.h; ++y)
 	{
-		//#pragma omp parallel for
 		for(uint32_t x = 0; x < image_resolution.w; ++x)
 		{
 			const float i_x = (float)x / (image_resolution.w-1);

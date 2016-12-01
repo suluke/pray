@@ -7,9 +7,9 @@ SOURCES+=$(wildcard src/*.cpp)
 # Build options: Include directories, extra compile flags, lib directories and
 # extra libs
 INCLUDES+=include/ ext/
-EXTRA_CFLAGS+=-O3 -std=c++14 -fPIC -Wall -Werror=vla -Werror
+EXTRA_CFLAGS+=-O3 -std=c++14 -fPIC -Wall -Werror=vla -Werror -fopenmp
 LIBDIRS+=
-LIBS+=-lstdc++fs
+LIBS+=-lstdc++fs -fopenmp
 
 ########################################################
 # You shouldn't need to modify anything beyond this point
