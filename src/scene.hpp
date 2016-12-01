@@ -112,4 +112,6 @@ struct Scene
 
 	private:
 	bool loadObj(const std::string &filename);
+
+	TriangleIndex intersectTriangle(const Ray &ray, float *out_distance) const;
 };
