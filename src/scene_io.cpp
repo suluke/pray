@@ -73,8 +73,7 @@ bool Scene::loadObj(const std::string &filename)
 
 			//TODO: this is shit, improve please!
 			const Color diffuse_color = Color(materials[s.mesh.material_ids[f]].diffuse[0], materials[s.mesh.material_ids[f]].diffuse[1], materials[s.mesh.material_ids[f]].diffuse[2]);
-			Material new_material(diffuse_color);
-			const MaterialIndex material_index = insertMaterial(new_material);
+			const MaterialIndex material_index = insertMaterial(diffuse_color);
 
 			std::array<Vector3, 3> vertices;
 			for (size_t v = 0; v < fv; v++) {
@@ -82,8 +81,7 @@ bool Scene::loadObj(const std::string &filename)
 				vertices[v] = Vector3(attrib.vertices[3 * idx.vertex_index + 0], attrib.vertices[3 * idx.vertex_index + 1], attrib.vertices[3 * idx.vertex_index + 2]);
 			}
 
-			Triangle new_triangle(vertices, material_index);
-			insertTriangle(new_triangle);
+			insertTriangle(vertices, material_index);
 
 			index_offset += fv;
 		}

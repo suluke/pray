@@ -91,15 +91,17 @@ struct Scene
 
 	bool load(const std::string &filename, IntDimension2 *out_image_resolution = nullptr);
 
-	TriangleIndex insertTriangle(const Triangle &triangle)
+	template<class... Args>
+	TriangleIndex insertTriangle(Args&&... args)
 	{
-		triangles.push_back(triangle);
+		triangles.emplace_back(std::forward<Args>(args)...);
 		return index_cast<TriangleIndex>(triangles.size() - 1u);
 	}
 
-	MaterialIndex insertMaterial(const Material &material)
+	template<class... Args>
+	MaterialIndex insertMaterial(Args&&... args)
 	{
-		materials.push_back(material);
+		materials.emplace_back(std::forward<Args>(args)...);
 		return index_cast<MaterialIndex>(materials.size() - 1u);
 	}
 
