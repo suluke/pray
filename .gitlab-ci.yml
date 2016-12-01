@@ -10,7 +10,6 @@ pray:build:
   script:
     - if [[ -f ~/pdmkp_testing/env ]]; then . ~/pdmkp_testing/env; fi
     - make
-    - LD_LIBRARY_PATH=out/ ~/pdmkp_testing/utils/run_tests.sh ~/pdmkp_testing/tests
   artifacts:
     name: pray
     paths:
@@ -23,7 +22,7 @@ pray:test:
     - benchmark
   script:
     - if [[ -f ~/pdmkp_testing/env ]]; then . ~/pdmkp_testing/env; fi
-    - ~/pdmkp_testing/utils/run_tests.sh ~/pdmkp_testing/tests
+    - ~/pdmkp_testing/utils/run_tests.sh out/pray
   only:
     - master
 
@@ -33,6 +32,6 @@ pray:benchmark:
     - master
   script:
     - if [[ -f ~/pdmkp_testing/env ]]; then . ~/pdmkp_testing/env; fi
-    - ~/pdmkp_testing/utils/run_benchmarks.sh
+    - ~/pdmkp_testing/utils/run_benchmarks.sh out/pray
   tags:
     - benchmark
