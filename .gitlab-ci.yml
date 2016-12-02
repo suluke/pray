@@ -1,8 +1,8 @@
 stages:
   - test
 
-pray:build:
-  stage: build
+pray:test:
+  stage: test
   tags:
     - benchmark
   only:
