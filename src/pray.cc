@@ -3,10 +3,13 @@
 #include "pray.h"
 
 #include <cassert>
+#include <experimental/filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
+
+namespace fs = std::experimental::filesystem;
 
 int main(int argc, char *argv[]) {
   using std::uint64_t;
@@ -17,8 +20,9 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  std::string inputFileName(argv[1]);
-  std::string outputFileName(argv[2]);
+  fs::path inputFileName(argv[1]);
+  fs::path outputFileName(argv[2]);
+  auto basePath = inputFileName.parent_path();
 
   std::ifstream fin(inputFileName);
   if (!fin.good()) {
@@ -32,16 +36,21 @@ int main(int argc, char *argv[]) {
   tinyobj::attrib_t attrib;
   std::vector<tinyobj::shape_t> shapes;
   std::vector<tinyobj::material_t> materials;
-  bool obj_succ =
-      tinyobj::LoadObj(&attrib, &shapes, &materials, &error,
-                       json_input["obj_file"].get<std::string>().c_str());
+
+  // get full path to the obj file
+  auto objFileName = basePath / json_input["obj_file"].get<std::string>();
+  // base path of the mtl files
+  auto mtlDir = basePath.string() + fs::path::preferred_separator;
+
+  bool obj_succ = tinyobj::LoadObj(
+      &attrib, &shapes, &materials, &error, objFileName.c_str(),
+      (basePath.empty() ? nullptr : mtlDir.c_str()));
 
   // Warnings might be present even on success
   if (!error.empty())
     std::cerr << error << "\n";
   if (!obj_succ) {
-    std::cerr << "Error loading file: "
-              << json_input["obj_file"] << "\n";
+    std::cerr << "Error loading file: " << json_input["obj_file"] << "\n";
     return 1;
   }
 

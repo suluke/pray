@@ -9,7 +9,7 @@ SOURCES+=src/pray.cc
 INCLUDES+=include/ ext/
 EXTRA_CFLAGS+=-O3 -std=c++14 -fPIC -Werror=vla -Werror
 LIBDIRS+=
-LIBS+=
+LIBS+=-lstdc++fs
 
 ########################################################
 # You shouldn't need to modify anything beyond this point
@@ -39,4 +39,4 @@ $(BUILD_DIR)/%.o: %.cc $(OBJ_DIRS) Makefile
 	$(CXX) $(CFLAGS) -c -o $@ -MMD -MT $(@:.o=.d) $(filter %.cc, $^) > $(@:.o=.d)
 
 $(OUT)/$(NAME): $(OBJS)  $(OUT) Makefile
-	$(CXX) $(LDFLAGS) $(LIBS) -o $@ $(filter %.o,$^)
+	$(CXX) -o $@ $(filter %.o,$^) $(LDFLAGS) $(LIBS)
