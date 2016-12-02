@@ -26,7 +26,19 @@ bool Scene::load(const std::string &filename, IntDimension2 *out_image_resolutio
 		*out_image_resolution = IntDimension2(json_input["resolution_x"], json_input["resolution_y"]);
 	}
 
-	if(!loadObj(json_input["obj_file"].get<std::string>())) return false;
+	//TODO: check if json_input["obj_file is already an absolute path"]
+
+	//Get directory part of filename
+	std::string dir = filename.substr(0, filename.find_last_of("\\/"));
+	if (filename == dir) dir = "./";
+#ifdef _WIN32
+	else dir += "\\"; //TODO change for windows
+#else
+	else dir += "/";
+#endif
+	dir += json_input["obj_file"].get<std::string>();
+
+	if(!loadObj(dir)) return false;
 
 	for (auto &l : json_input["lights"])
 	{
@@ -51,7 +63,17 @@ bool Scene::loadObj(const std::string &filename)
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
 
-	bool success = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, filename.c_str());
+	//Get directory part of filename
+	std::string dir = filename.substr(0, filename.find_last_of("\\/"));
+	if (filename == dir) dir = "./";
+#ifdef _WIN32
+	else dir += "\\"; //TODO change for windows
+#else
+	else dir += "/";
+#endif
+
+	bool success = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, filename.c_str(),dir.c_str());
+
 
 	if(!error.empty())
 	{
