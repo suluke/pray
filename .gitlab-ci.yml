@@ -1,37 +1,14 @@
 stages:
-  - build
   - test
-  - benchmark
 
 pray:build:
   stage: build
+  tags:
+    - benchmark
   only:
     - master
   script:
     - if [[ -f ~/pdmkp_testing/env ]]; then . ~/pdmkp_testing/env; fi
     - make
-  artifacts:
-    name: pray
-    paths:
-      - out/pray
-    expire_in: 1 day
-
-pray:test:
-  stage: test
-  tags:
-    - benchmark
-  script:
-    - if [[ -f ~/pdmkp_testing/env ]]; then . ~/pdmkp_testing/env; fi
     - ~/pdmkp_testing/utils/run_tests.sh out/pray
-  only:
-    - master
-
-pray:benchmark:
-  stage: benchmark
-  only:
-    - master
-  script:
-    - if [[ -f ~/pdmkp_testing/env ]]; then . ~/pdmkp_testing/env; fi
     - ~/pdmkp_testing/utils/run_benchmarks.sh out/pray
-  tags:
-    - benchmark
