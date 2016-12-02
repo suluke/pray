@@ -23,8 +23,13 @@ int main(int argc, char *argv[])
 	Vector3 left, right, bottom, top;
 	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
+#ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
+	#pragma omp parallel for
+	for(intmax_t y = 0; y < image_resolution.h; ++y)
+#else
 	#pragma omp parallel for
 	for(uint32_t y = 0; y < image_resolution.h; ++y)
+#endif
 	{
 		for(uint32_t x = 0; x < image_resolution.w; ++x)
 		{

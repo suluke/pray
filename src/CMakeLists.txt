@@ -1,9 +1,10 @@
 add_executable(pray
+  debug.hpp
   ext.cpp
+  ext.hpp
   main.cpp
+  math.hpp
   scene.cpp
+  scene.hpp
   scene_io.cpp
   )
-
-target_compile_options(pray PUBLIC ${OpenMP_CXX_FLAGS})
-target_link_libraries(pray ${OpenMP_CXX_FLAGS})
