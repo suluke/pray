@@ -33,7 +33,8 @@ Color Scene::trace(const Ray &ray) const
 
 	const Vector3 P = ray.origin + ray.direction * intersection_distance;
 	const Vector3 _N = triangles[intersected_triangle].calculateNormal();
-	//TODO: hack intersection with back-face
+
+	//TODO: Hack intersection with back-face. Remove this, we only need front-face lighting!
 	const Vector3 N = _N.dot(ray.direction) < 0.f ? _N : -_N;
 
 	const MaterialIndex material_index = triangles[intersected_triangle].material_index;

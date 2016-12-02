@@ -31,7 +31,7 @@ struct Triangle
 
 	Vector3 calculateNormal() const
 	{
-		return (vertices[1] - vertices[0]).cross(vertices[2] - vertices[0]).normalize();
+		return (vertices[2] - vertices[0]).cross(vertices[1] - vertices[0]).normalize();
 	}
 };
 
@@ -59,8 +59,8 @@ struct Camera
 	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top)
 	{
 		const Vector3 global_up(0.f, 1.f, 0.f);
-		const Vector3 local_right = direction.cross(global_up).normalize();
-		const Vector3 local_up = local_right.cross(direction).normalize();
+		const Vector3 local_right = global_up.cross(direction).normalize();
+		const Vector3 local_up = direction.cross(local_right).normalize();
 
 		*left = direction + -local_right * tan(fov/2.f);
 		*right = direction + local_right * tan(fov/2.f);
