@@ -111,9 +111,5 @@ struct Scene
 	{
 		lights.push_back(light);
 	}
-
-	Color trace(const Ray &ray) const;
-
-	TriangleIndex intersectTriangle(const Ray &ray, float *out_distance) const;
 };
 #endif

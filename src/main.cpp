@@ -1,6 +1,7 @@
 #include "scene.hpp"
 
 #include "ext.hpp"
+#include "naive_tracer.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -23,6 +24,8 @@ int main(int argc, char *argv[])
 	Vector3 left, right, bottom, top;
 	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
+	NaiveTracer tracer(scene);
+
 #ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
 	#pragma omp parallel for
 	for(intmax_t y = 0; y < image_resolution.h; ++y)
@@ -38,7 +41,7 @@ int main(int argc, char *argv[])
 
 			Ray ray(scene.camera.position, (left * (1.f - i_x) + right * i_x + top * (1.f - i_y) + bottom * i_y).normalize());
 
-			Color c = scene.trace(ray);
+			Color c = tracer.trace(ray);
 			image[3 * (y * image_resolution.w + x) + 0] = c.r * 255;
 			image[3 * (y * image_resolution.w + x) + 1] = c.g * 255;
 			image[3 * (y * image_resolution.w + x) + 2] = c.b * 255;

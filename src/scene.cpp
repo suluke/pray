@@ -1,62 +1,104 @@
 #include "scene.hpp"
 
-TriangleIndex Scene::intersectTriangle(const Ray &ray, float *out_distance) const
+#include "ext.hpp"
+
+#include <fstream>
+#include <experimental/filesystem>
+
+using namespace std;
+namespace fs = std::experimental::filesystem;
+
+static bool loadObj(Scene &scene, const fs::path &file)
 {
-	TriangleIndex intersected_triangle = TriangleIndex_Invalid;
-	float minimum_distance = std::numeric_limits<float>::max();
+	string error;
+	tinyobj::attrib_t attrib;
+	vector<tinyobj::shape_t> shapes;
+	vector<tinyobj::material_t> materials;
 
-	for(TriangleIndex triangle_index = 0u; triangle_index < index_cast<TriangleIndex>(triangles.size()); ++triangle_index)
+	//Get directory part of filename
+	fs::path dir = file.parent_path();
+	dir += fs::path::preferred_separator;
+
+	bool success = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, file.c_str(), dir.c_str());
+
+	if(!error.empty())
 	{
-		const Triangle &triangle = triangles[triangle_index];
+		cerr << "error loading obj file: " << error << "\n";
+	}
 
-		float distance;
-		if(intersectRayTriangle(ray.origin, ray.direction, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], &distance))
+	if(!success) return false;
+
+	for(auto &s : shapes)
+	{
+		size_t index_offset = 0;
+
+		for(size_t f = 0; f < s.mesh.num_face_vertices.size(); ++f)
 		{
-			if(distance < minimum_distance)
-			{
-				intersected_triangle = triangle_index;
-				minimum_distance = distance;
+			auto fv = s.mesh.num_face_vertices[f];
+
+			// only triangles are supported
+			ASSERT(fv == 3);
+
+			//TODO: this is shit, improve please!
+			const Color diffuse_color = Color(materials[s.mesh.material_ids[f]].diffuse[0], materials[s.mesh.material_ids[f]].diffuse[1], materials[s.mesh.material_ids[f]].diffuse[2]);
+			const MaterialIndex material_index = scene.insertMaterial(diffuse_color);
+
+			array<Vector3, 3> vertices;
+			for (size_t v = 0; v < fv; v++) {
+				auto idx = s.mesh.indices[index_offset + v];
+				vertices[v] = Vector3(attrib.vertices[3 * idx.vertex_index + 0], attrib.vertices[3 * idx.vertex_index + 1], attrib.vertices[3 * idx.vertex_index + 2]);
 			}
+
+			scene.insertTriangle(vertices, material_index);
+
+			index_offset += fv;
 		}
 	}
 
-	*out_distance = minimum_distance;
-	return intersected_triangle;
+	return true;
 }
 
-Color Scene::trace(const Ray &ray) const
+bool Scene::load(const string &filename, IntDimension2 *out_image_resolution)
 {
-	float intersection_distance;
-	const TriangleIndex intersected_triangle = intersectTriangle(ray, &intersection_distance);
+	clear();
 
-	if(intersected_triangle == TriangleIndex_Invalid) return background_color;
+	json json_input;
 
-	const Vector3 N = triangles[intersected_triangle].calculateNormal();
-
-	// optimization: back faces are never lit
-	if(ray.direction.dot(N) >= 0.f) return Color(0.f, 0.f, 0.f);
-
-	const Vector3 P = ray.origin + ray.direction * intersection_distance;
-
-	const MaterialIndex material_index = triangles[intersected_triangle].material_index;
-	ASSERT(material_index != MaterialIndex_Invalid);
-
-	Color result_color(0.f, 0.f, 0.f);
-
-	for(auto &light : lights)
 	{
-		const Vector3 light_vector = light.position - P;
-		const float light_distance = light_vector.length();
-		const Vector3 L = light_vector / light_distance;
-
-		const Ray shadow_ray(P + L * 0.001f, L);
-		if(intersectTriangle(shadow_ray, &intersection_distance) == TriangleIndex_Invalid || intersection_distance > light_distance)
+		ifstream in(filename);
+		if(!in.good())
 		{
-			// don't use intersection_distance here, use light_distance instead!
-			const Color shading_color = materials[material_index].color * light.color * (std::max(L.dot(N), 0.f) / sqrt(light_distance));
-			result_color += shading_color;
+			cerr << "could not open input file " << filename << "\n";
+			return false;
 		}
+
+		json_input = json::parse(in);
 	}
 
-	return result_color;
+	if(out_image_resolution)
+	{
+		*out_image_resolution = IntDimension2(json_input["resolution_x"], json_input["resolution_y"]);
+	}
+
+	fs::path file(filename);
+	fs::path obj(json_input["obj_file"].get<string>());
+	if (obj.is_relative()) {
+		obj = file.parent_path() / obj;
+	}
+	if(!loadObj(*this, obj)) return false;
+
+	for (auto &l : json_input["lights"])
+	{
+		const auto light_position = Vector3(l["position"][0], l["position"][1], l["position"][2]);
+		const auto light_color = Color(l["color"][0], l["color"][1], l["color"][2]);
+		lights.emplace_back(light_position, light_color);
+	}
+
+	camera.position = Vector3(json_input["camera_position"][0], json_input["camera_position"][1], json_input["camera_position"][2]);
+	camera.direction = Vector3(json_input["camera_look"][0], json_input["camera_look"][1], json_input["camera_look"][2]);
+	camera.fov = json_input["fov"].get<float>() * 3.14159265f / 180.f;// convert to radians
+
+	background_color = Color(json_input["background"][0], json_input["background"][1], json_input["background"][2]);
+
+	return true;
 }
