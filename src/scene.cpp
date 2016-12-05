@@ -31,11 +31,12 @@ Color Scene::trace(const Ray &ray) const
 
 	if(intersected_triangle == TriangleIndex_Invalid) return background_color;
 
-	const Vector3 P = ray.origin + ray.direction * intersection_distance;
-	const Vector3 _N = triangles[intersected_triangle].calculateNormal();
+	const Vector3 N = triangles[intersected_triangle].calculateNormal();
 
-	//TODO: Hack intersection with back-face. Remove this, we only need front-face lighting!
-	const Vector3 N = _N.dot(ray.direction) < 0.f ? _N : -_N;
+	// optimization: back faces are never lit
+	if(ray.direction.dot(N) >= 0.f) return Color(0.f, 0.f, 0.f);
+
+	const Vector3 P = ray.origin + ray.direction * intersection_distance;
 
 	const MaterialIndex material_index = triangles[intersected_triangle].material_index;
 	ASSERT(material_index != MaterialIndex_Invalid);
