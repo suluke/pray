@@ -2,5 +2,7 @@
 #define PRAY_CONFIG_H
 #pragma once
 
+#cmakedefine WITH_OMP
+#cmakedefine WITH_CUDA
 
 #endif
