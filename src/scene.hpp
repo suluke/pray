@@ -112,8 +112,5 @@ struct Scene
 
 	Color trace(const Ray &ray) const;
 
-	private:
-	bool loadObj(const std::string &filename);
-
 	TriangleIndex intersectTriangle(const Ray &ray, float *out_distance) const;
 };
