@@ -1,3 +1,5 @@
+#ifndef PRAY_MATH_H
+#define PRAY_MATH_H
 #pragma once
 
 #include <cmath>
@@ -100,3 +102,5 @@ inline bool intersectRayTriangle(const Vector3 &r_o, const Vector3 &r_d, const V
 
 	return false;
 }
+
+#endif

@@ -1,3 +1,5 @@
+#ifndef PRAY_SCENE_H
+#define PRAY_SCENE_H
 #pragma once
 
 #include "debug.hpp"
@@ -114,3 +116,4 @@ struct Scene
 
 	TriangleIndex intersectTriangle(const Ray &ray, float *out_distance) const;
 };
+#endif

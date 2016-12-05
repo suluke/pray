@@ -1,3 +1,5 @@
+#ifndef PRAY_EXT_H
+#define PRAY_EXT_H
 #pragma once
 
 /* Dependency: image writing to disk: PNG, TGA, BMP
@@ -15,3 +17,5 @@ using json = nlohmann::json;
 *  https://github.com/syoyo/tinyobjloader
 */
 #include "tiny_obj_loader.h"
+
+#endif
