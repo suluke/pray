@@ -107,9 +107,10 @@ struct Scene
 		return index_cast<MaterialIndex>(materials.size() - 1u);
 	}
 
-	void insertLight(const Light &light)
+	template<class... Args>
+	void insertLight(Args&&... args)
 	{
-		lights.push_back(light);
+		lights.emplace_back(std::forward<Args>(args)...);
 	}
 };
 #endif

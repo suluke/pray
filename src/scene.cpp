@@ -91,7 +91,7 @@ bool Scene::load(const string &filename, IntDimension2 *out_image_resolution)
 	{
 		const auto light_position = Vector3(l["position"][0], l["position"][1], l["position"][2]);
 		const auto light_color = Color(l["color"][0], l["color"][1], l["color"][2]);
-		lights.emplace_back(light_position, light_color);
+		insertLight(light_position, light_color);
 	}
 
 	camera.position = Vector3(json_input["camera_position"][0], json_input["camera_position"][1], json_input["camera_position"][2]);
