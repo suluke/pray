@@ -3,12 +3,13 @@
 #pragma once
 
 #include "scene.hpp"
+#include "image.hpp"
 
 class NaiveTracer {
   const Scene &scene;
 public:
   NaiveTracer(const Scene &scene) : scene(scene) {}
-  Color trace(const Ray &ray) const;
+  void render(Image &image) const;
 };
 
 #endif

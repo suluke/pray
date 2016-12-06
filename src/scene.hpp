@@ -58,7 +58,7 @@ struct Camera
 	Vector3 direction = Vector3(0.f, 0.f, -1.f);
 	float fov = 90.f;
 
-	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top)
+	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
 	{
 		const Vector3 global_up(0.f, 1.f, 0.f);
 		const Vector3 local_right = global_up.cross(direction).normalize();

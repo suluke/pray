@@ -24,7 +24,7 @@ static TriangleIndex intersectTriangle(const Scene &scene, const Ray &ray, float
 	return intersected_triangle;
 }
 
-Color NaiveTracer::trace(const Ray &ray) const
+static Color trace(const Scene &scene, const Ray &ray)
 {
 	float intersection_distance;
 	const TriangleIndex intersected_triangle = intersectTriangle(scene, ray, &intersection_distance);
@@ -59,4 +59,33 @@ Color NaiveTracer::trace(const Ray &ray) const
 	}
 
 	return result_color;
+}
+
+void NaiveTracer::render(Image &image) const
+{
+	// assuming fov is in x direction, otherwise invert this
+	const float aspect = (float)image.resolution.h / image.resolution.w;
+
+	Vector3 left, right, bottom, top;
+	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
+
+#ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
+	#pragma omp parallel for
+	for(intmax_t y = 0; y < image.resolution.h; ++y)
+#else
+	#pragma omp parallel for
+	for(uint32_t y = 0; y < image.resolution.h; ++y)
+#endif
+	{
+		for(uint32_t x = 0; x < image.resolution.w; ++x)
+		{
+			const float i_x = (float)x / (image.resolution.w-1);
+			const float i_y = (float)y / (image.resolution.h-1);
+
+			Ray ray(scene.camera.position, (left * (1.f - i_x) + right * i_x + top * (1.f - i_y) + bottom * i_y).normalize());
+
+			Color c = trace(scene, ray);
+			image.setPixel(x, y, c);
+		}
+	}
 }
