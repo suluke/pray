@@ -1,4 +1,4 @@
-#include "naive_tracer.hpp"
+#include "cpu_tracer.hpp"
 
 static TriangleIndex intersectTriangle(const Scene &scene, const Ray &ray, float *out_distance)
 {
@@ -61,7 +61,7 @@ static Color trace(const Scene &scene, const Ray &ray)
 	return result_color;
 }
 
-void NaiveTracer::render(Image &image) const
+void CpuTracer::render(Image &image) const
 {
 	// assuming fov is in x direction, otherwise invert this
 	const float aspect = (float)image.resolution.h / image.resolution.w;

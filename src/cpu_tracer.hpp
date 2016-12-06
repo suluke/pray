@@ -5,10 +5,10 @@
 #include "scene.hpp"
 #include "image.hpp"
 
-class NaiveTracer {
+class CpuTracer {
   const Scene &scene;
 public:
-  NaiveTracer(const Scene &scene) : scene(scene) {}
+  CpuTracer(const Scene &scene) : scene(scene) {}
   void render(Image &image) const;
 };
 

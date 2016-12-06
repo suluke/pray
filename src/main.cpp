@@ -1,7 +1,7 @@
 #include "scene.hpp"
 #include "image.hpp"
 
-#include "naive_tracer.hpp"
+#include "cpu_tracer.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 
 	Image image(image_resolution);
 
-	NaiveTracer tracer(scene);
+	CpuTracer tracer(scene);
 	tracer.render(image);
 
 	image.save(argv[2]);
