@@ -9,10 +9,11 @@ struct Image
 {
 	IntDimension2 resolution;
 	std::vector<uint8_t> pixels;
+	using dim_t = IntDimension2::dim_t;
 
 	Image(const IntDimension2 &res) : resolution(res), pixels(3 * resolution.w * resolution.h) {}
 
-	void setPixel(uint32_t x, uint32_t y, const Color &c)
+	void setPixel(dim_t x, dim_t y, const Color &c)
 	{
 		ASSERT(x < resolution.w); ASSERT(y < resolution.h);
 
@@ -30,6 +31,28 @@ struct Image
 			return false;
 		}
 		return true;
+	}
+};
+
+/**
+ * Defines a sub-view on the image (buffer).
+ * In other words: Same as an image, but only operating on a part of a real image
+ */
+struct ImageView {
+	Image &img;
+	using dim_t = IntDimension2::dim_t;
+	dim_t min_y;
+	dim_t max_y;
+	IntDimension2 resolution;
+	ImageView(Image &img, IntDimension2::dim_t min_y, IntDimension2::dim_t max_y) : img(img), min_y(min_y), max_y(max_y) {
+		ASSERT(min_y < max_y); // don't allow empty views
+		resolution = {img.resolution.w, max_y - min_y};
+	}
+
+	void setPixel(dim_t x, dim_t y, const Color &c)
+	{
+		ASSERT(y + min_y < max_y);
+		img.setPixel(x, y + min_y, c);
 	}
 };
 

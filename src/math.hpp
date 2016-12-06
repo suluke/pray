@@ -67,10 +67,11 @@ struct Color
 
 struct IntDimension2
 {
-	uint32_t w, h;
+	using dim_t = uint32_t;
+	dim_t w, h;
 
 	IntDimension2() {}
-	IntDimension2(uint32_t _w, uint32_t _h) : w(_w), h(_h) {}
+	IntDimension2(dim_t w, dim_t h) : w(w), h(h) {}
 };
 
 inline bool intersectRayTriangle(const Vector3 &r_o, const Vector3 &r_d, const Vector3 &t_v1, const Vector3 &t_v2, const Vector3 &t_v3, float *out_distance)

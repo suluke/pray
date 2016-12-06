@@ -17,9 +17,10 @@ int main(int argc, char *argv[])
 	if(!scene.load(argv[1], &image_resolution)) return 1;
 
 	Image image(image_resolution);
+	ImageView img(image, 0, image_resolution.h);
 
 	CpuTracer tracer(scene);
-	tracer.render(image);
+	tracer.render(img);
 
 	image.save(argv[2]);
 }

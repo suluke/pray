@@ -61,7 +61,7 @@ static Color trace(const Scene &scene, const Ray &ray)
 	return result_color;
 }
 
-void CpuTracer::render(Image &image) const
+void CpuTracer::render(ImageView &image) const
 {
 	// assuming fov is in x direction, otherwise invert this
 	const float aspect = (float)image.resolution.h / image.resolution.w;

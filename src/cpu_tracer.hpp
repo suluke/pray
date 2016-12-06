@@ -9,7 +9,7 @@ class CpuTracer {
   const Scene &scene;
 public:
   CpuTracer(const Scene &scene) : scene(scene) {}
-  void render(Image &image) const;
+  void render(ImageView &image) const;
 };
 
 #endif
