@@ -13,5 +13,6 @@ pray:test:
     - cd out
     - cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Release ..
     - make all
+    - cd ..
     - ~/pdmkp_testing/utils/run_tests.sh out/pray
     - ~/pdmkp_testing/utils/run_benchmarks.sh out/pray
