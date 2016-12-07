@@ -10,7 +10,7 @@ struct approx
 	approx(float x) : x(x) {}
 	float x;
 };
-inline constexpr bool operator==(float a, const approx &approx) { return a > approx.x - 0.001f && a < approx.x + 0.001f; }
+inline constexpr bool operator==(float a, const approx &approx) { return a > approx.x - 0.00001f && a < approx.x + 0.00001f; }
 inline constexpr bool operator!=(float a, const approx &approx) { return !(a == approx); }
 
 struct Vector2

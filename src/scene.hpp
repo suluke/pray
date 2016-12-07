@@ -63,13 +63,13 @@ struct Camera
 	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
 	{
 		const Vector3 global_up(0.f, 1.f, 0.f);
-		const Vector3 local_right = global_up.cross(direction).normalize();
-		const Vector3 local_up = direction.cross(local_right).normalize();
+		const Vector3 local_left = direction.cross(global_up).normalize();
+		const Vector3 local_up = local_left.cross(direction).normalize();
 
-		*left   = -local_right * tan(fov/2.f);
-		*right  = local_right  * tan(fov/2.f);
-		*bottom = -local_up    * tan(fov/2.f) * aspect;
+		*left   = local_left   * tan(fov/2.f);
+		*right  = -local_left  * tan(fov/2.f);
 		*top    = local_up     * tan(fov/2.f) * aspect;
+		*bottom = -local_up    * tan(fov/2.f) * aspect;
 	}
 };
 

@@ -68,8 +68,8 @@ void CpuTracer::render(ImageView &image) const
 	const float aspect = (float)image.resolution.h / image.resolution.w;
 	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
-	float max_x = (float) image.resolution.w - 1;
-	float max_y = (float) image.img.resolution.h - 1;
+	float max_x = (float) image.resolution.w;
+	float max_y = (float) image.img.resolution.h;
 
 #ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
 	#pragma omp parallel for
@@ -79,10 +79,10 @@ void CpuTracer::render(ImageView &image) const
 	for(uint32_t y = 0; y < image.resolution.h; ++y)
 #endif
 	{
-		const float i_y = (float)1.f - 2 * image.getGlobalY(y) / max_y;
+		const float i_y = 1.f - (2 * image.getGlobalY(y) + 1) / max_y;
 		for(uint32_t x = 0; x < image.resolution.w; ++x)
 		{
-			const float i_x = 1.f - 2 * x / max_x;
+			const float i_x = 1.f - (2 * x + 1) / max_x;
 
 			Ray ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
 
