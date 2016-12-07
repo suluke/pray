@@ -58,7 +58,7 @@ struct Camera
 {
 	Vector3 position = Vector3(0.f, 0.f, 0.f);
 	Vector3 direction = Vector3(0.f, 0.f, -1.f);
-	float fov = PI / 2.f;
+	float fov = acos(-1) / 2.f;
 
 	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
 	{

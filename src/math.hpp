@@ -5,8 +5,6 @@
 #include <cmath>
 #include <ostream>
 
-constexpr float PI = 3.14159265f;
-
 struct approx
 {
 	approx(float x) : x(x) {}
