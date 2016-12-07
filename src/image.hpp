@@ -16,10 +16,11 @@ struct Image
 	void setPixel(dim_t x, dim_t y, const Color &c)
 	{
 		ASSERT(x < resolution.w); ASSERT(y < resolution.h);
+		ASSERT(c.r >= 0.f); ASSERT(c.g >= 0.f); ASSERT(c.b >= 0.f);
 
-		pixels[3 * (y * resolution.w + x) + 0] = c.r * 255;
-		pixels[3 * (y * resolution.w + x) + 1] = c.g * 255;
-		pixels[3 * (y * resolution.w + x) + 2] = c.b * 255;
+		pixels[3 * (y * resolution.w + x) + 0] = std::round(std::min(c.r, 1.f) * 255.f);
+		pixels[3 * (y * resolution.w + x) + 1] = std::round(std::min(c.g, 1.f) * 255.f);
+		pixels[3 * (y * resolution.w + x) + 2] = std::round(std::min(c.b, 1.f) * 255.f);
 	}
 
 	bool save(const std::string &filename)
