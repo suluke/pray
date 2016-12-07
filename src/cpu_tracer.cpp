@@ -53,7 +53,7 @@ static Color trace(const Scene &scene, const Ray &ray)
 		if(intersectTriangle(scene, shadow_ray, &intersection_distance) == TriangleIndex_Invalid || intersection_distance > light_distance)
 		{
 			// don't use intersection_distance here, use light_distance instead!
-			const Color shading_color = scene.materials[material_index].color * light.color * (std::max(L.dot(N), 0.f) / sqrt(light_distance));
+			const Color shading_color = scene.materials[material_index].color * light.color * (std::max(L.dot(N), 0.f) / (light_distance * light_distance));
 			result_color += shading_color;
 		}
 	}
