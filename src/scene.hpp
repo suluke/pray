@@ -4,6 +4,7 @@
 
 #include "debug.hpp"
 #include "math.hpp"
+#include "image.hpp"
 
 #include <cstdint>
 #include <limits>
@@ -29,7 +30,7 @@ struct Triangle
 	std::array<Vector3, 3> vertices;
 	MaterialIndex material_index;
 
-	Triangle(const std::array<Vector3, 3> &_vertices, MaterialIndex _material_index) : vertices(_vertices), material_index(_material_index) {}
+	Triangle(const std::array<Vector3, 3> &vertices, MaterialIndex material_index) : vertices(vertices), material_index(material_index) {}
 
 	Vector3 calculateNormal() const
 	{
@@ -42,7 +43,7 @@ struct Material
 {
 	Color color;
 
-	Material(Color _color) : color(_color) {}
+	Material(Color color) : color(color) {}
 };
 
 struct Light
@@ -50,7 +51,7 @@ struct Light
 	Vector3 position;
 	Color color;
 
-	Light(const Vector3 &_position, const Color &_color) : position(_position), color(_color) {}
+	Light(const Vector3 &position, const Color &color) : position(position), color(color) {}
 };
 
 struct Camera
@@ -59,16 +60,20 @@ struct Camera
 	Vector3 direction = Vector3(0.f, 0.f, -1.f);
 	float fov = PI / 2.f;
 
-	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
+	void calculateFrustumVectors(const ImageView &img, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
 	{
+		// TODO fix vectors for ImageView subimage
+		// assuming fov is in x direction, otherwise invert this
+		const float aspect = (float)img.resolution.h / img.resolution.w;
+		
 		const Vector3 global_up(0.f, 1.f, 0.f);
 		const Vector3 local_right = global_up.cross(direction).normalize();
 		const Vector3 local_up = direction.cross(local_right).normalize();
 
-		*left = direction + -local_right * tan(fov/2.f);
-		*right = direction + local_right * tan(fov/2.f);
-		*bottom = direction + -local_up * tan(fov/2.f) * aspect;
-		*top = direction + local_up * tan(fov/2.f) * aspect;
+		*left   = direction + -local_right * tan(fov/2.f);
+		*right  = direction + local_right  * tan(fov/2.f);
+		*bottom = direction + -local_up    * tan(fov/2.f) * aspect;
+		*top    = direction + local_up     * tan(fov/2.f) * aspect;
 	}
 };
 

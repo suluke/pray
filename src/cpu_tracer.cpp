@@ -63,11 +63,8 @@ static Color trace(const Scene &scene, const Ray &ray)
 
 void CpuTracer::render(ImageView &image) const
 {
-	// assuming fov is in x direction, otherwise invert this
-	const float aspect = (float)image.resolution.h / image.resolution.w;
-
 	Vector3 left, right, bottom, top;
-	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
+	scene.camera.calculateFrustumVectors(image, &left, &right, &bottom, &top);
 
 #ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
 	#pragma omp parallel for
