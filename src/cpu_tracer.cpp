@@ -81,7 +81,7 @@ void CpuTracer::render(ImageView &image) const
 		{
 			const float i_x = (float)x / (image.resolution.w-1);
 
-			Ray ray(scene.camera.position, (left * (1.f - i_x) + right * i_x + top * (1.f - i_y) + bottom * i_y - scene.camera.direction).normalize());
+			Ray ray(scene.camera.position, (left * (1.f - i_x) + right * i_x + top * (1.f - i_y) + bottom * i_y + scene.camera.direction).normalize());
 
 			Color c = trace(scene, ray);
 			image.setPixel(x, y, c);

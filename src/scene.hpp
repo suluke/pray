@@ -66,10 +66,10 @@ struct Camera
 		const Vector3 local_right = global_up.cross(direction).normalize();
 		const Vector3 local_up = direction.cross(local_right).normalize();
 
-		*left   = direction + -local_right * tan(fov/2.f);
-		*right  = direction + local_right  * tan(fov/2.f);
-		*bottom = direction + -local_up    * tan(fov/2.f * aspect);
-		*top    = direction + local_up     * tan(fov/2.f * aspect);
+		*left   = -local_right * tan(fov/2.f);
+		*right  = local_right  * tan(fov/2.f);
+		*bottom = -local_up    * tan(fov/2.f) * aspect;
+		*top    = local_up     * tan(fov/2.f) * aspect;
 	}
 };
 
