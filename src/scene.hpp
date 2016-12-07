@@ -60,12 +60,8 @@ struct Camera
 	Vector3 direction = Vector3(0.f, 0.f, -1.f);
 	float fov = PI / 2.f;
 
-	void calculateFrustumVectors(const ImageView &img, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
+	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
 	{
-		// TODO fix vectors for ImageView subimage
-		// assuming fov is in x direction, otherwise invert this
-		const float aspect = (float)img.resolution.h / img.resolution.w;
-		
 		const Vector3 global_up(0.f, 1.f, 0.f);
 		const Vector3 local_right = global_up.cross(direction).normalize();
 		const Vector3 local_up = direction.cross(local_right).normalize();

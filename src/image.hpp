@@ -55,6 +55,10 @@ struct ImageView {
 		ASSERT(y + min_y < max_y);
 		img.setPixel(x, y + min_y, c);
 	}
+
+	dim_t getGlobalY(dim_t y) {
+		return y + min_y;
+	}
 };
 
 #endif
