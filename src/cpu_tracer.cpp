@@ -65,7 +65,7 @@ void CpuTracer::render(ImageView &image) const
 {
 	Vector3 left, right, bottom, top;
 	// assuming fov is in x direction, otherwise invert this
-	const float aspect = (float)img.resolution.h / img.resolution.w;
+	const float aspect = (float)image.resolution.h / image.resolution.w;
 	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
 #ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
