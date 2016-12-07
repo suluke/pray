@@ -68,8 +68,8 @@ struct Camera
 
 		*left   = direction + -local_right * tan(fov/2.f);
 		*right  = direction + local_right  * tan(fov/2.f);
-		*bottom = direction + -local_up    * tan(fov/2.f) * aspect;
-		*top    = direction + local_up     * tan(fov/2.f) * aspect;
+		*bottom = direction + -local_up    * tan(fov/2.f * aspect);
+		*top    = direction + local_up     * tan(fov/2.f * aspect);
 	}
 };
 

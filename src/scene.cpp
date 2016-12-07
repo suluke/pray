@@ -95,7 +95,7 @@ bool Scene::load(const string &filename, IntDimension2 *out_image_resolution)
 	}
 
 	camera.position = Vector3(json_input["camera_position"][0], json_input["camera_position"][1], json_input["camera_position"][2]);
-	camera.direction = Vector3(json_input["camera_look"][0], json_input["camera_look"][1], json_input["camera_look"][2]);
+	camera.direction = Vector3(json_input["camera_look"][0], json_input["camera_look"][1], json_input["camera_look"][2]).normalize();
 	camera.fov = json_input["fov"].get<float>() * PI / 180.f; // convert to radians
 
 	background_color = Color(json_input["background"][0], json_input["background"][1], json_input["background"][2]);
