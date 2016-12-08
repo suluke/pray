@@ -1,10 +1,24 @@
 stages:
-  - test
+  - run
 
-pray:test:
-  stage: test
+pray:pc205:
+  stage: run
   tags:
     - benchmark
+    - pc205
+  only:
+    - master
+  script:
+    - if [[ -f ~/pdmkp_env ]]; then . ~/pdmkp_env; fi
+    - make
+    - ~/pdmkp_testing/utils/run_tests.sh out/pray
+    - ~/pdmkp_testing/utils/run_benchmarks.sh out/pray
+
+pray:pc189:
+  stage: run
+  tags:
+    - benchmark
+    - pc189
   only:
     - master
   script:
