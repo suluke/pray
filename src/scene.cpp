@@ -19,7 +19,7 @@ static bool loadObj(Scene &scene, const fs::path &file)
 	fs::path dir = file.parent_path();
 	dir += fs::path::preferred_separator;
 
-	bool success = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, file.c_str(), dir.c_str());
+	bool success = tinyobj::LoadObj(&attrib, &shapes, &materials, &error, file.string().c_str(), dir.string().c_str());
 
 	if(!error.empty())
 	{
