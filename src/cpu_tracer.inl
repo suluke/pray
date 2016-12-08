@@ -1,33 +1,16 @@
 #include "cpu_tracer.hpp"
 
-static TriangleIndex intersectTriangle(const Scene &scene, const Ray &ray, float *out_distance)
+template<class AccelerationStructure>
+inline void CpuTracer<AccelerationStructure>::preprocess()
 {
-	TriangleIndex intersected_triangle = TriangleIndex_Invalid;
-	float minimum_distance = std::numeric_limits<float>::max();
-
-	for(TriangleIndex triangle_index = 0u; triangle_index < index_cast<TriangleIndex>(scene.triangles.size()); ++triangle_index)
-	{
-		const Triangle &triangle = scene.triangles[triangle_index];
-
-		float distance;
-		if(intersectRayTriangle(ray.origin, ray.direction, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], &distance))
-		{
-			if(distance < minimum_distance)
-			{
-				intersected_triangle = triangle_index;
-				minimum_distance = distance;
-			}
-		}
-	}
-
-	*out_distance = minimum_distance;
-	return intersected_triangle;
+	acceleration_structure.build(scene);
 }
 
-static Color trace(const Scene &scene, const Ray &ray)
+template<class AccelerationStructure>
+inline Color trace(const Scene &scene, const AccelerationStructure &acceleration_structure, const Ray &ray)
 {
 	float intersection_distance;
-	const TriangleIndex intersected_triangle = intersectTriangle(scene, ray, &intersection_distance);
+	const TriangleIndex intersected_triangle = acceleration_structure.intersectTriangle(scene, ray, &intersection_distance);
 
 	if(intersected_triangle == TriangleIndex_Invalid) return scene.background_color;
 
@@ -50,7 +33,7 @@ static Color trace(const Scene &scene, const Ray &ray)
 		const Vector3 L = light_vector / light_distance;
 
 		const Ray shadow_ray(P + L * 0.001f, L);
-		if(intersectTriangle(scene, shadow_ray, &intersection_distance) == TriangleIndex_Invalid || intersection_distance > light_distance)
+		if(acceleration_structure.intersectTriangle(scene, shadow_ray, &intersection_distance) == TriangleIndex_Invalid || intersection_distance > light_distance)
 		{
 			// don't use intersection_distance here, use light_distance instead!
 			const Color shading_color = scene.materials[material_index].color * light.color * (std::max(L.dot(N), 0.f) / (light_distance * light_distance));
@@ -61,7 +44,8 @@ static Color trace(const Scene &scene, const Ray &ray)
 	return result_color;
 }
 
-void CpuTracer::render(ImageView &image) const
+template<class AccelerationStructure>
+inline void CpuTracer<AccelerationStructure>::render(ImageView &image) const
 {
 	Vector3 left, right, bottom, top;
 	// assuming fov is in x direction, otherwise invert this
@@ -86,7 +70,7 @@ void CpuTracer::render(ImageView &image) const
 
 			Ray ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
 
-			Color c = trace(scene, ray);
+			Color c = trace(scene, acceleration_structure, ray);
 			image.setPixel(x, y, c);
 		}
 	}
