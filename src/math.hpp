@@ -74,34 +74,4 @@ struct IntDimension2
 	IntDimension2(dim_t w, dim_t h) : w(w), h(h) {}
 };
 
-inline bool intersectRayTriangle(const Vector3 &r_o, const Vector3 &r_d, const Vector3 &t_v1, const Vector3 &t_v2, const Vector3 &t_v3, float *out_distance)
-{
-	// http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
-
-	const Vector3 e1 = t_v2 - t_v1;
-	const Vector3 e2 = t_v3 - t_v1;
-
-	const Vector3 p = r_d.cross(e2);
-
-	const float det = p.dot(e1);
-
-	if(det == approx(0.f)) return false;
-
-	const Vector3 t = r_o - t_v1;
-
-	const Vector3 q = t.cross(e1);
-
-	const float u = p.dot(t) / det;
-	const float v = q.dot(r_d) / det;
-
-	if(u >= 0.f && v >= 0.f && u + v <= 1.f)
-	{
-		const float distance = q.dot(e2) / det;
-		*out_distance = distance;
-		return distance >= 0.f;
-	}
-
-	return false;
-}
-
 #endif

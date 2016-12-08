@@ -6,8 +6,9 @@ add_executable(pray
   math.hpp
   scene.cpp
   scene.hpp
+  simd.hpp
   cpu_tracer.hpp
-  cpu_tracer.cpp
+  cpu_tracer.impl.hpp
   )
 
 set_target_properties(pray PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")

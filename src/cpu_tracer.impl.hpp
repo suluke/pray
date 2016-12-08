@@ -1,6 +1,7 @@
 #include "cpu_tracer.hpp"
 
-static TriangleIndex intersectTriangle(const Scene &scene, const Ray &ray, float *out_distance)
+template <class ray_t>
+TriangleIndex CpuTracer<ray_t>::intersectTriangle(const Scene &scene, const ray_t &ray, float *out_distance) const
 {
 	TriangleIndex intersected_triangle = TriangleIndex_Invalid;
 	float minimum_distance = std::numeric_limits<float>::max();
@@ -10,7 +11,7 @@ static TriangleIndex intersectTriangle(const Scene &scene, const Ray &ray, float
 		const Triangle &triangle = scene.triangles[triangle_index];
 
 		float distance;
-		if(intersectRayTriangle(ray.origin, ray.direction, triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], &distance))
+		if(ray.intersectTriangle(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], &distance))
 		{
 			if(distance < minimum_distance)
 			{
@@ -24,7 +25,8 @@ static TriangleIndex intersectTriangle(const Scene &scene, const Ray &ray, float
 	return intersected_triangle;
 }
 
-static Color trace(const Scene &scene, const Ray &ray)
+template <class ray_t>
+Color CpuTracer<ray_t>::trace(const Scene &scene, const ray_t &ray) const
 {
 	float intersection_distance;
 	const TriangleIndex intersected_triangle = intersectTriangle(scene, ray, &intersection_distance);
@@ -49,7 +51,7 @@ static Color trace(const Scene &scene, const Ray &ray)
 		const float light_distance = light_vector.length();
 		const Vector3 L = light_vector / light_distance;
 
-		const Ray shadow_ray(P + L * 0.001f, L);
+		const ray_t shadow_ray(P + L * 0.001f, L);
 		if(intersectTriangle(scene, shadow_ray, &intersection_distance) == TriangleIndex_Invalid || intersection_distance > light_distance)
 		{
 			// don't use intersection_distance here, use light_distance instead!
@@ -61,7 +63,8 @@ static Color trace(const Scene &scene, const Ray &ray)
 	return result_color;
 }
 
-void CpuTracer::render(ImageView &image) const
+template <class ray_t>
+void CpuTracer<ray_t>::render(ImageView &image) const
 {
 	Vector3 left, right, bottom, top;
 	// assuming fov is in x direction, otherwise invert this
@@ -84,7 +87,7 @@ void CpuTracer::render(ImageView &image) const
 		{
 			const float i_x = 1.f - (2 * x + 1) / max_x;
 
-			Ray ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
+			ray_t ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
 
 			Color c = trace(scene, ray);
 			image.setPixel(x, y, c);
