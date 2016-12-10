@@ -1,0 +1,13 @@
+{
+	"obj_file": "axis_cube.obj",
+	"resolution_x": 512,
+	"resolution_y": 512,
+	"camera_position": [0.0, 0.0, 0.0],
+	"camera_look": [0.0, 0.0, 1.0],
+	"fov": 100,
+	"lights" : [
+		{"position": [0.0, 0.0, 0.0], "color": [1.0, 1.0, 1.0]},
+		{"position": [0.0, 0.0, 10.0], "color": [1.0, 1.0, 1.0]}
+	],
+	"background": [0.0, 0.0, 0.0]
+}

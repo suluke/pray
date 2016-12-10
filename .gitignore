@@ -13,3 +13,6 @@ out/
 *.bmp
 
 *.user
+
+tests/results
+tests/reference

@@ -2,6 +2,7 @@
 #include "image.hpp"
 
 #include "cpu_tracer.hpp"
+#include "ray.hpp"
 
 int main(int argc, char *argv[])
 {
@@ -19,7 +20,7 @@ int main(int argc, char *argv[])
 	Image image(image_resolution);
 	ImageView img(image, 0, image_resolution.h);
 
-	CpuTracer tracer(scene);
+	CpuTracer<Ray> tracer(scene);
 	tracer.render(img);
 
 	image.save(argv[2]);

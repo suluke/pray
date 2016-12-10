@@ -73,14 +73,6 @@ struct Camera
 	}
 };
 
-struct Ray
-{
-	Vector3 origin;
-	Vector3 direction;
-
-	Ray(const Vector3 &_origin, const Vector3 &_direction) : origin(_origin), direction(_direction) {}
-};
-
 struct Scene
 {
 	std::vector<Triangle> triangles;

@@ -2,12 +2,15 @@ set(PRAY_SOURCES
   debug.hpp
   ext.cpp
   ext.hpp
+  image.hpp
+  image.cpp
   main.cpp
   math.hpp
   scene.cpp
   scene.hpp
+  simd.hpp
   cpu_tracer.hpp
-  cpu_tracer.cpp
+  cpu_tracer.impl.hpp
   )
 
 if (WITH_CUDA)
