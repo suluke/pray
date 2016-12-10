@@ -26,6 +26,11 @@ else()
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 endif()
 
+set(CUDA_NVCC_FLAGS
+  ${CUDA_NVCC_FLAGS};
+  -gencode arch=compute_35,code=compute_35
+  )
+
 add_subdirectory(src)
 
 configure_file(

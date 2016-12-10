@@ -1,4 +1,4 @@
-add_executable(pray
+set(PRAY_SOURCES
   debug.hpp
   ext.cpp
   ext.hpp
@@ -8,9 +8,17 @@ add_executable(pray
   scene.hpp
   cpu_tracer.hpp
   cpu_tracer.cpp
-  cuda_renderer.hpp
-  cuda_renderer.cu
   )
+
+if (NOT WITH_CUDA)
+  add_executable(pray ${PRAY_SOURCES})
+else()
+  cuda_add_executable(pray
+    ${PRAY_SOURCES}
+    cuda_renderer.hpp
+    cuda_renderer.cu
+    )
+endif()
 
 set_target_properties(pray PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
