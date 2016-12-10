@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cmath>
+#include <algorithm>
 #include <ostream>
 
 struct approx
@@ -20,7 +21,7 @@ struct Vector3
 	Vector3() {}
 	constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
 
-	template<class T> constexpr float &operator[](T index) { ASSERT(index < 3); return *(&x + index); }
+	template<class T> float &operator[](T index) { ASSERT(index < 3); return *(&x + index); }
 	template<class T> constexpr const float &operator[](T index) const { ASSERT(index < 3); return *(&x + index); }
 
 	constexpr Vector3 operator-() const { return Vector3(-x, -y, -z); }
@@ -45,6 +46,58 @@ inline std::ostream &operator<<(std::ostream &o, const Vector3 &v)
 	o << v.x << " " << v.y << " " << v.z;
 	return o;
 }
+
+struct AABox3
+{
+	Vector3 min, max;
+
+	AABox3() {}
+	constexpr AABox3(Vector3 min, Vector3 max) : min(min), max(max) {}
+
+	template<class It>
+	AABox3(const It &begin, const It &end)
+	{
+		clear();
+		for(auto p = begin; p != end; ++p) insert(*p);
+	}
+
+	AABox3 &clear()
+	{
+		min = Vector3(std::numeric_limits<float>::max(), std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+		max = Vector3(std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest(), std::numeric_limits<float>::lowest());
+		return *this;
+	}
+
+	AABox3 &insert(const Vector3 &other)
+	{
+		for(auto i=0; i<3; ++i) min[i] = std::min(min[i], other[i]);
+		for(auto i=0; i<3; ++i) max[i] = std::max(max[i], other[i]);
+		return *this;
+	}
+
+	AABox3 &insert(const AABox3 &other)
+	{
+		insert(other.min);
+		insert(other.max);
+		return *this;
+	}
+
+	Vector3 calculateCenter() const
+	{
+		return (min + max) / 2.f;
+	}
+
+	bool isValid() const
+	{
+		return min.x <= max.x && min.y <= max.y && min.z <= max.z;
+	}
+
+	// not using float delta here, not necessary!
+	bool isZero() const
+	{
+		return min.x == max.x && min.y == max.y && min.z == max.z;
+	}
+};
 
 struct Color
 {

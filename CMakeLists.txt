@@ -13,6 +13,12 @@ if (NOT CUDA_FOUND OR NOT CUDA_CUDA_LIBRARY)
   set(WITH_CUDA OFF CACHE BOOL "Build with CUDA support" FORCE)
 endif()
 
+option(WITH_DEBUG_TOOL "Build the debug tool" OFF)
+if  (WITH_DEBUG_TOOL)
+  find_package(OpenGL)
+  find_package(GLUT)
+endif()
+
 include_directories(
   "${PROJECT_SOURCE_DIR}/include"
   "${PROJECT_SOURCE_DIR}/ext"
@@ -27,6 +33,10 @@ else()
 endif()
 
 add_subdirectory(src)
+
+if(WITH_DEBUG_TOOL)
+  add_subdirectory(debug_tool)
+endif()
 
 configure_file(
   "${PROJECT_SOURCE_DIR}/include/pray/Config.h.in"

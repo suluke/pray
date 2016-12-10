@@ -9,6 +9,8 @@ add_executable(pray
   cpu_tracer.hpp
   cpu_tracer.inl
   dummy_acceleration.hpp
+  bih.hpp
+  bih.cpp
   )
 
 set_target_properties(pray PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
