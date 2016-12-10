@@ -8,6 +8,10 @@
 
 #include <iostream>
 
-#define ASSERT(exp) do { if(!(exp)) std::cerr << "Assertion failed: " << #exp " at(" __FILE__ ":" << __LINE__ << ")\n"; } while(false);
+#ifdef DEBUG
+#define ASSERT(exp) do { if(!(exp)) std::cerr << "Assertion failed: " << #exp " at(" __FILE__ ":" << __LINE__ << ")\n"; } while(false)
+#else
+#define ASSERT(exp) do {} while(false)
+#endif
 
 #endif
