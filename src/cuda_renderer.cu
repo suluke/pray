@@ -81,39 +81,61 @@ void CudaRenderer::render(ImageView &image) const
         float max_x = (float) image.resolution.w;
         float max_y = (float) image.img.resolution.h;
 
-#ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
-        #pragma omp parallel for
-        for(intmax_t y = 0; y < image.resolution.h; ++y)
-#else
-        #pragma omp parallel for
-        for(uint32_t y = 0; y < image.resolution.h; ++y)
-#endif
-        {
-                const float i_y = 1.f - (2 * image.getGlobalY(y) + 1) / max_y;
-                for(uint32_t x = 0; x < image.resolution.w; ++x)
+        //Cuda Variables
+        float *cuda_max_x;
+        float *cuda_max_y;
+        Vector3 *cuda_left;
+        Vector3 *cuda_top;
+        dim_t *cuda_height;
+        dim_t *cuda_width;
+
+        HANDLE_ERROR( cudaMalloc(&cuda_max_x, sizeof(float)) );
+        HANDLE_ERROR( cudaMalloc(&cuda_max_y, sizeof(float)) );
+        HANDLE_ERROR( cudaMalloc(&cuda_left, sizeof(Vector3)) );
+        HANDLE_ERROR( cudaMalloc(&cuda_top, sizeof(Vector3)) );
+        HANDLE_ERROR( cudaMalloc(&cuda_height, sizeof(dim_t)) );
+        HANDLE_ERROR( cudaMalloc(&cuda_width, sizeof(dim_t)) );
+
+        raytracer<<<1,8>>>(cuda_max_x,cuda_max_y,cuda_left,cuda_height,cuda_height,cuda_width);
+
+
+        #ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
+                #pragma omp parallel for
+                for(intmax_t y = 0; y < image.resolution.h; ++y)
+        #else
+                #pragma omp parallel for
+                for(uint32_t y = 0; y < image.resolution.h; ++y)
+        #endif
                 {
-                        const float i_x = 1.f - (2 * x + 1) / max_x;
+                        const float i_y = 1.f - (2 * image.getGlobalY(y) + 1) / max_y;
+                        for(uint32_t x = 0; x < image.resolution.w; ++x)
+                        {
+                                const float i_x = 1.f - (2 * x + 1) / max_x;
 
-                        Ray ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
+                                Ray ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
 
-                        Color c = trace(scene, ray);
-                        image.setPixel(x, y, c);
+                                Color c = trace(scene, ray);
+                                image.setPixel(x, y, c);
+                        }
                 }
         }
-}
 
 
-bool initDatastructures () {
-    //Init the datastructures for cuda
+        bool initDatastructures () {
+            //Init the datastructures for cuda
 
 
-    //Init Scene
-}
+            //Init Scene
+        }
 
-__global__ void raytracer () {
+        __global__ void raytracer (Scene *scene, ImageView* image, float* max_x, float* max_y,
+                                   Vector3 *left, Vector3 *top, dim_t *height, dim_t *width) {
+            //Calculate my position to write
+            unsigned int id = threadIdx.x + blockDim.x * blockIdx.x;
+            unsigned int i_x = id /
 
-}
+        }
 
-__device__ shootRayPacket () {
+        __device__ shootRayPacket () {
 
-}
+        }
