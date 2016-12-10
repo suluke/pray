@@ -27,7 +27,8 @@ else()
 endif()
 
 set(CUDA_NVCC_FLAGS
-  ${CUDA_NVCC_FLAGS};
+  ${CUDA_NVCC_FLAGS}
+  -std=c++11
   -gencode arch=compute_35,code=compute_35
   )
 

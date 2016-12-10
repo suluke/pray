@@ -10,15 +10,15 @@ set(PRAY_SOURCES
   cpu_tracer.cpp
   )
 
-if (NOT WITH_CUDA)
-  add_executable(pray ${PRAY_SOURCES})
-else()
-  cuda_add_executable(pray
-    ${PRAY_SOURCES}
+if (WITH_CUDA)
+  cuda_compile(cuda_files
     cuda_renderer.hpp
-    cuda_renderer.cu
-    )
+    cuda_renderer.cu)
+  list(APPEND PRAY_SOURCES ${cuda_files})
 endif()
+
+add_executable(pray ${PRAY_SOURCES})
+
 
 set_target_properties(pray PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
