@@ -4,6 +4,7 @@
 
 #include <cmath>
 #include <ostream>
+#include "debug.hpp"
 
 struct approx
 {

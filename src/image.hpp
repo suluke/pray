@@ -2,8 +2,8 @@
 #define PRAY_IMAGE_H
 #pragma once
 
+#include <vector>
 #include "math.hpp"
-#include "ext.hpp"
 
 struct Image
 {
@@ -23,16 +23,7 @@ struct Image
 		pixels[3 * (y * resolution.w + x) + 2] = std::round(std::min(c.b, 1.f) * 255.f);
 	}
 
-	bool save(const std::string &filename)
-	{
-		int write_error = stbi_write_bmp(filename.c_str(), resolution.w, resolution.h, 3, pixels.data());
-		if(write_error == 0)
-		{
-			std::cerr << "could not write output image" << "\n";
-			return false;
-		}
-		return true;
-	}
+	bool save(const std::string &filename) const;
 };
 
 /**
