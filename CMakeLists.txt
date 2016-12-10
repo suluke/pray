@@ -29,8 +29,10 @@ endif()
 set(CUDA_NVCC_FLAGS
   ${CUDA_NVCC_FLAGS}
   -std=c++11
+  --expt-relaxed-constexpr
   -gencode arch=compute_35,code=compute_35
   )
+set(CUDA_PROPAGATE_HOST_FLAGS off)
 
 add_subdirectory(src)
 
