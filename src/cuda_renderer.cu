@@ -88,6 +88,8 @@ void CudaRenderer::render(ImageView &image) const
         Vector3 *cuda_top;
         dim_t *cuda_height;
         dim_t *cuda_width;
+        Scene *cuda_scene;
+        ImageView *cuda_image;
 
         HANDLE_ERROR( cudaMalloc(&cuda_max_x, sizeof(float)) );
         HANDLE_ERROR( cudaMalloc(&cuda_max_y, sizeof(float)) );
@@ -95,6 +97,8 @@ void CudaRenderer::render(ImageView &image) const
         HANDLE_ERROR( cudaMalloc(&cuda_top, sizeof(Vector3)) );
         HANDLE_ERROR( cudaMalloc(&cuda_height, sizeof(dim_t)) );
         HANDLE_ERROR( cudaMalloc(&cuda_width, sizeof(dim_t)) );
+        HANDLE_ERROR( cudaMalloc(&cuda_scene, sizeof(Scene)) ); //Fixme: Does not work as it contains vectors
+        HANDLE_ERROR( cudaMalloc(&cuda_image, sizeof(ImageView)) );
 
         HANDLE_ERROR( cudaMemcpy( cuda_max_x, max_x, sizeof(float), cudaMemcpyHostToDevice) );
         HANDLE_ERROR( cudaMemcpy( cuda_max_y, max_y, sizeof(float), cudaMemcpyHostToDevice) );
@@ -102,10 +106,13 @@ void CudaRenderer::render(ImageView &image) const
         HANDLE_ERROR( cudaMemcpy( cuda_top, top, sizeof(Vector3), cudaMemcpyHostToDevice) );
         HANDLE_ERROR( cudaMemcpy( cuda_height, image.resolution.h, sizeof(dim_t), cudaMemcpyHostToDevice) );
         HANDLE_ERROR( cudaMemcpy( cuda_width, image.resolution.w, sizeof(dim_t), cudaMemcpyHostToDevice) );
+        HANDLE_ERROR( cudaMemcpy( cuda_scene, scene, sizeof(Scene), cudaMemcpyHostToDevice) );
+        HANDLE_ERROR( cudaMemcpy( cuda_image, image, sizeof(ImageView), cudaMemcpyHostToDevice) );
 
 
         //FIXME only works for certain size of images
-        raytracer<<<image.resolution.h,image.resolution.w>>>(cuda_max_x,cuda_max_y,cuda_left,cuda_height,cuda_height,cuda_width);
+        raytracer<<<image.resolution.h,image.resolution.w>>>(cuda_scene, cuda_image,cuda_max_x,cuda_max_y,cuda_left,
+                                                             cuda_top,cuda_height,cuda_width);
 
         HANDLE_ERROR( cudaFree(cuda_max_x));
         HANDLE_ERROR( cudaFree(cuda_max_y));
@@ -113,6 +120,8 @@ void CudaRenderer::render(ImageView &image) const
         HANDLE_ERROR( cudaFree(cuda_top));
         HANDLE_ERROR( cudaFree(cuda_height));
         HANDLE_ERROR( cudaFree(cuda_width));
+        HANDLE_ERROR( cudaFree(cuda_scene));
+        HANDLE_ERROR( cudaFree(cuda_image));
 
         #ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
                 #pragma omp parallel for
