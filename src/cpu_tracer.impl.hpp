@@ -85,7 +85,7 @@ void CpuTracer<ray_t>::render(ImageView &image) const
 		const float i_y = 1.f - (2 * image.getGlobalY(y) + 1) / max_y;
 		for(uint32_t x = 0; x < image.resolution.w; ++x)
 		{
-			if (x % 2 != 1 && x != image.resolution.w -1) {
+			if (x % 2 == 1 && x != image.resolution.w -1) {
 				continue;
 			}
 			const float i_x = 1.f - (2 * x + 1) / max_x;
@@ -97,8 +97,15 @@ void CpuTracer<ray_t>::render(ImageView &image) const
 		}
 		for(uint32_t x = 1; x < image.resolution.w-1; x+=2)
 		{
-			Color c = (image.getPixel(x-1,y) + image.getPixel(x+1,y)) * 0.5f;
+			/*Color c = (image.getPixel(x-1,y)) + image.getPixel(x+1,y)) * 0.5f;
 
+			image.setPixel(x, y, c);*/
+			const float i_x = 1.f - (2 * x + 1) / max_x;
+
+			ray_t ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
+
+			Color c = trace(scene, ray);
+			c = image.getPixel(x-1,y);
 			image.setPixel(x, y, c);
 		}
 	}
