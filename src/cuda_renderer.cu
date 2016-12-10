@@ -96,7 +96,8 @@ void CudaRenderer::render(ImageView &image) const
         HANDLE_ERROR( cudaMalloc(&cuda_height, sizeof(dim_t)) );
         HANDLE_ERROR( cudaMalloc(&cuda_width, sizeof(dim_t)) );
 
-        raytracer<<<1,8>>>(cuda_max_x,cuda_max_y,cuda_left,cuda_height,cuda_height,cuda_width);
+        //FIXME only works for certain size of images
+        raytracer<<<image.resolution.h,image.resolution.w>>>(cuda_max_x,cuda_max_y,cuda_left,cuda_height,cuda_height,cuda_width);
 
 
         #ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
@@ -120,22 +121,16 @@ void CudaRenderer::render(ImageView &image) const
                 }
         }
 
-
-        bool initDatastructures () {
-            //Init the datastructures for cuda
-
-
-            //Init Scene
-        }
-
-        __global__ void raytracer (Scene *scene, ImageView* image, float* max_x, float* max_y,
+__global__ void raytracer (Scene *scene, ImageView* image, float* max_x, float* max_y,
                                    Vector3 *left, Vector3 *top, dim_t *height, dim_t *width) {
             //Calculate my position to write
             unsigned int id = threadIdx.x + blockDim.x * blockIdx.x;
-            unsigned int i_x = id /
 
-        }
+            const float i_y = 1.f - (2 * image->getGlobalY(blockIdx.x) + 1) / max_y;
+            const float i_x = 1.f - (2 * x + 1) / max_x;
 
-        __device__ shootRayPacket () {
+            Ray ray(scene->camera.position, (*left * i_x + *top * i_y + scene->camera.direction).normalize());
 
-        }
+            Color c = trace(scene, ray);
+            image->setPixel(threadIdx.x, blockIdx.x, c);
+}
