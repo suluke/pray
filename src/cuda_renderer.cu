@@ -2,7 +2,7 @@
 Raytracer that takes pixel size and scene as input
 */
 
-#include<cuda_renderer.hpp>
+#include "cuda_renderer.hpp"
 
 __device__ static TriangleIndex intersectTriangle(const Scene &scene, const Ray &ray, float *out_distance)
 {
