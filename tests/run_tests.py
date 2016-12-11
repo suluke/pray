@@ -160,7 +160,7 @@ class TestSuite:
     self.provideReferenceRepository();
     self.build(self.devRepPath)
     self.build(self.refRepPath)
-    self.runTests(createImages=False);
+    self.runTests();
     self.printResults();
 
 

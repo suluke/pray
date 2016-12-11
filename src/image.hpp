@@ -14,10 +14,14 @@ struct Color
 	constexpr Color(float r, float g, float b) : r(r), g(g), b(b) {}
 
 	constexpr Color operator+(const Color &a) const { return Color(r+a.r, g+a.g, b+a.b); }
+	constexpr Color operator-(const Color &a) const { return Color(r-a.r, g-a.g, b-a.b); }
 	constexpr Color operator*(const Color &a) const { return Color(r*a.r, g*a.g, b*a.b); }
 	constexpr Color operator*(float a) const { return Color(r*a, g*a, b*a); }
+	constexpr Color operator/(float a) const { return Color(r/a, g/a, b/a); }
 
 	Color &operator+=(const Color &a) { return *this = *this + a; }
+	Color &operator-=(const Color &a) { return *this = *this - a; }
+
 	void writeToImage(ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) const;
 };
 
@@ -37,6 +41,13 @@ struct Image
 		pixels[3 * (y * resolution.w + x) + 0] = std::round(std::min(c.r, 1.f) * 255.f);
 		pixels[3 * (y * resolution.w + x) + 1] = std::round(std::min(c.g, 1.f) * 255.f);
 		pixels[3 * (y * resolution.w + x) + 2] = std::round(std::min(c.b, 1.f) * 255.f);
+	}
+
+	Color getPixel(dim_t x, dim_t y) {
+		ASSERT(x < resolution.w); ASSERT(y < resolution.h);
+		return Color{((float)pixels[3 * (y * resolution.w + x) + 0]) / 255.f,
+								((float)pixels[3 * (y * resolution.w + x) + 1]) / 255.f,
+								((float)pixels[3 * (y * resolution.w + x) + 2]) / 255.f};
 	}
 
 	bool save(const std::string &filename) const;
@@ -60,6 +71,10 @@ struct ImageView {
 	{
 		ASSERT(y + min_y < max_y);
 		img.setPixel(x, y + min_y, c);
+	}
+
+	Color getPixel(dim_t x, dim_t y) {
+		return img.getPixel(x,y);
 	}
 
 	dim_t getGlobalY(dim_t y) {
