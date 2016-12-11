@@ -15,7 +15,7 @@ struct Image
 
 	void setPixel(dim_t x, dim_t y, const Color &c)
 	{
-		ASSERT(x < resolution.w); ASSERT(y < resolution.h);
+                ASSERT(x < resolution.w); ASSERT(y < resolution.h);
 		ASSERT(c.r >= 0.f); ASSERT(c.g >= 0.f); ASSERT(c.b >= 0.f);
 
 		pixels[3 * (y * resolution.w + x) + 0] = std::round(std::min(c.r, 1.f) * 255.f);
@@ -23,7 +23,23 @@ struct Image
 		pixels[3 * (y * resolution.w + x) + 2] = std::round(std::min(c.b, 1.f) * 255.f);
 	}
 
-	bool save(const std::string &filename) const;
+        Color getPixel(dim_t x, dim_t y) {
+            ASSERT(x < resolution.w); ASSERT(y < resolution.h);
+            return Color{((float)pixels[3 * (y * resolution.w + x) + 0]) / 255.f,
+                        ((float)pixels[3 * (y * resolution.w + x) + 1]) / 255.f,
+                        ((float)pixels[3 * (y * resolution.w + x) + 2]) / 255.f};
+        }
+
+	bool save(const std::string &filename)
+	{
+		int write_error = stbi_write_bmp(filename.c_str(), resolution.w, resolution.h, 3, pixels.data());
+		if(write_error == 0)
+		{
+			std::cerr << "could not write output image" << "\n";
+			return false;
+		}
+		return true;
+	}
 };
 
 /**
@@ -46,6 +62,10 @@ struct ImageView {
 		ASSERT(y + min_y < max_y);
 		img.setPixel(x, y + min_y, c);
 	}
+
+        Color getPixel(dim_t x, dim_t y) {
+            return img.getPixel(x,y);
+        }
 
 	dim_t getGlobalY(dim_t y) {
 		return y + min_y;

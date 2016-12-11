@@ -60,10 +60,13 @@ struct Color
 	constexpr Color(float r, float g, float b) : r(r), g(g), b(b) {}
 
 	constexpr Color operator+(const Color &a) const { return Color(r+a.r, g+a.g, b+a.b); }
+	constexpr Color operator-(const Color &a) const { return Color(r-a.r, g-a.g, b-a.b); }
 	constexpr Color operator*(const Color &a) const { return Color(r*a.r, g*a.g, b*a.b); }
 	constexpr Color operator*(float a) const { return Color(r*a, g*a, b*a); }
+	constexpr Color operator/(float a) const { return Color(r/a, g/a, b/a); }
 
 	Color &operator+=(const Color &a) { return *this = *this + a; }
+	Color &operator-=(const Color &a) { return *this = *this - a; }
 };
 
 struct IntDimension2
