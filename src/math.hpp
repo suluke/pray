@@ -52,27 +52,13 @@ inline std::ostream &operator<<(std::ostream &o, const Vector3 &v)
 	return o;
 }
 
-struct Color
-{
-	float r, g, b;
-
-	constexpr Color() : r(0.f), g(0.f), b(0.f){}
-	constexpr Color(float r, float g, float b) : r(r), g(g), b(b) {}
-
-	constexpr Color operator+(const Color &a) const { return Color(r+a.r, g+a.g, b+a.b); }
-	constexpr Color operator*(const Color &a) const { return Color(r*a.r, g*a.g, b*a.b); }
-	constexpr Color operator*(float a) const { return Color(r*a, g*a, b*a); }
-
-	Color &operator+=(const Color &a) { return *this = *this + a; }
-};
-
 struct IntDimension2
 {
 	using dim_t = uint32_t;
 	dim_t w, h;
 
 	IntDimension2() {}
-	IntDimension2(dim_t w, dim_t h) : w(w), h(h) {}
+	constexpr IntDimension2(dim_t w, dim_t h) : w(w), h(h) {}
 };
 
 #endif

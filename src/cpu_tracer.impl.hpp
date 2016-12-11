@@ -67,30 +67,22 @@ template <class ray_t>
 void CpuTracer<ray_t>::render(ImageView &image) const
 {
 	Vector3 left, right, bottom, top;
-	// assuming fov is in x direction, otherwise invert this
-	const float aspect = (float)image.resolution.h / image.resolution.w;
+	const float aspect = (float) image.resolution.h / image.resolution.w;
 	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
 	float max_x = (float) image.resolution.w;
 	float max_y = (float) image.img.resolution.h;
 
-#ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
 	#pragma omp parallel for
-	for(intmax_t y = 0; y < image.resolution.h; ++y)
-#else
-	#pragma omp parallel for
-	for(uint32_t y = 0; y < image.resolution.h; ++y)
-#endif
-	{
+	for(long y = 0; y < image.resolution.h; y += ray_t::dim.h) {
 		const float i_y = 1.f - (2 * image.getGlobalY(y) + 1) / max_y;
-		for(uint32_t x = 0; x < image.resolution.w; ++x)
-		{
+		for(long x = 0; x < image.resolution.w; x += ray_t::dim.w) {
 			const float i_x = 1.f - (2 * x + 1) / max_x;
 
 			ray_t ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
 
-			Color c = trace(scene, ray);
-			image.setPixel(x, y, c);
+			typename ray_t::color_t c = trace(scene, ray);
+			c.writeToImage(image, x, y);
 		}
 	}
 }

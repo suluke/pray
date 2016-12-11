@@ -1,10 +1,12 @@
-#include "simd.hpp"
+#include "math.hpp"
 
 struct Ray {
-	Vector3 origin;
-	Vector3 direction;
+  static constexpr IntDimension2 dim = {1, 1};
+  using color_t = Color;
+  Vector3 origin;
+  Vector3 direction;
 
-	Ray(const Vector3 &_origin, const Vector3 &_direction) : origin(_origin), direction(_direction) {}
+  Ray(const Vector3 &_origin, const Vector3 &_direction) : origin(_origin), direction(_direction) {}
 
   inline bool intersectTriangle(const Vector3 &t_v1, const Vector3 &t_v2, const Vector3 &t_v3, float *out_distance) const
   {
@@ -35,4 +37,10 @@ struct Ray {
 
     return false;
   }
+};
+
+#include "simd.hpp"
+
+struct SSERay {
+  
 };
