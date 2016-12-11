@@ -15,7 +15,7 @@ struct Image
 
 	void setPixel(dim_t x, dim_t y, const Color &c)
 	{
-		ASSERT(x < resolution.w); ASSERT(y < resolution.h);
+                ASSERT(x < resolution.w); ASSERT(y < resolution.h);
 		ASSERT(c.r >= 0.f); ASSERT(c.g >= 0.f); ASSERT(c.b >= 0.f);
 
 		pixels[3 * (y * resolution.w + x) + 0] = std::round(std::min(c.r, 1.f) * 255.f);
@@ -24,7 +24,10 @@ struct Image
 	}
 
         Color getPixel(dim_t x, dim_t y) {
-            return Color(pixels[3 * (y * resolution.w + x) + 0],pixels[3 * (y * resolution.w + x) + 1],pixels[3 * (y * resolution.w + x) + 2]);
+            ASSERT(x < resolution.w); ASSERT(y < resolution.h);
+            return Color{((float)pixels[3 * (y * resolution.w + x) + 0]) / 255.f,
+                        ((float)pixels[3 * (y * resolution.w + x) + 1]) / 255.f,
+                        ((float)pixels[3 * (y * resolution.w + x) + 2]) / 255.f};
         }
 
 	bool save(const std::string &filename)
