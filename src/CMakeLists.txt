@@ -2,6 +2,8 @@ add_executable(pray
   debug.hpp
   ext.cpp
   ext.hpp
+  image.hpp
+  image.cpp
   main.cpp
   math.hpp
   scene.cpp

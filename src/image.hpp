@@ -2,8 +2,8 @@
 #define PRAY_IMAGE_H
 #pragma once
 
+#include <vector>
 #include "math.hpp"
-#include "ext.hpp"
 
 struct Image
 {
