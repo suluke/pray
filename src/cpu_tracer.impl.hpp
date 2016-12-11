@@ -85,17 +85,21 @@ void CpuTracer<ray_t>::render(ImageView &image) const
 		const float i_y = 1.f - (2 * image.getGlobalY(y) + 1) / max_y;
 		for(uint32_t x = 0; x < image.resolution.w; ++x)
 		{
+#ifdef ADAPTIVE_SAMPLE
 			if (x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y || (x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)) {
+#endif /*ADAPTIVE_SAMPE*/
 				const float i_x = 1.f - (2 * x + 1) / max_x;
 
 				ray_t ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
 
 				Color c = trace(scene, ray);
 				image.setPixel(x, y, c);
+#ifdef ADAPTIVE_SAMPLE
 			}
+#endif /*ADAPTIVE_SAMPLE*/
 		}
 	}
-
+#ifdef ADAPTIVE_SAMPLE
 #ifdef _MSC_VER // msvc does not support uint32_t as index variable in for loop
 	#pragma omp parallel for
 	for(intmax_t y = 1; y < image.resolution.h-1; ++y)
@@ -118,4 +122,5 @@ void CpuTracer<ray_t>::render(ImageView &image) const
 			}
 		}
 	}
+#endif /*ADAPTIVE_SAMPLE*/
 }
