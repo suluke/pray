@@ -30,8 +30,8 @@ struct Image
                         ((float)pixels[3 * (y * resolution.w + x) + 2]) / 255.f};
         }
 
-	bool save(const std::string &filename)
-	{
+        bool save(const std::string &filename) const;
+        /*{
 		int write_error = stbi_write_bmp(filename.c_str(), resolution.w, resolution.h, 3, pixels.data());
 		if(write_error == 0)
 		{
@@ -39,7 +39,7 @@ struct Image
 			return false;
 		}
 		return true;
-	}
+        }*/
 };
 
 /**
