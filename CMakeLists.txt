@@ -21,8 +21,11 @@ if (NOT SIMD_FOUND)
   set(WITH_SSE OFF CACHE BOOL "Build with SIMD (SSE) support" FORCE)
 endif()
 
+option(WITH_SUBSAMPLING "Build with adaptive subsampling enabled" OFF)
+
 include_directories(
   "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_BINARY_DIR}/include"
   "${PROJECT_SOURCE_DIR}/ext"
   )
 

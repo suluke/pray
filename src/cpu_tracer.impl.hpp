@@ -1,4 +1,5 @@
 #include "cpu_tracer.hpp"
+#include "pray/Config.h"
 
 template <class ray_t>
 TriangleIndex CpuTracer<ray_t>::intersectTriangle(const Scene &scene, const ray_t &ray, float *out_distance) const
@@ -78,18 +79,18 @@ void CpuTracer<ray_t>::render(ImageView &image) const
 		const float i_y = 1.f - (2 * image.getGlobalY(y) + 1) / max_y;
 		for(long x = 0; x < image.resolution.w; x += ray_t::dim.w) {
 			const float i_x = 1.f - (2 * x + 1) / max_x;
-#ifdef ADAPTIVE_SAMPLE
+#ifdef WITH_SUBSAMPLING
 			if (x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y || (x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)) {
-#endif /*ADAPTIVE_SAMPE*/
+#endif /*WITH_SUBSAMPLING*/
 				ray_t ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
 				typename ray_t::color_t c = trace(scene, ray);
 				c.writeToImage(image, x, y);
-#ifdef ADAPTIVE_SAMPLE
+#ifdef WITH_SUBSAMPLING
 			}
-#endif /*ADAPTIVE_SAMPLE*/
+#endif /*WITH_SUBSAMPLING*/
 		}
 	}
-#ifdef ADAPTIVE_SAMPLE
+#ifdef WITH_SUBSAMPLING
 	#pragma omp parallel for
 	for(long y = 1; y < image.resolution.h-1; ++y)
 	{
@@ -107,5 +108,5 @@ void CpuTracer<ray_t>::render(ImageView &image) const
 			}
 		}
 	}
-#endif /*ADAPTIVE_SAMPLE*/
+#endif /*WITH_SUBSAMPLING*/
 }
