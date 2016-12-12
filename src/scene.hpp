@@ -11,8 +11,8 @@
 #include <array>
 #include <vector>
 
-typedef uint32_t TriangleIndex;
-typedef uint32_t MaterialIndex;
+using TriangleIndex = uint32_t;
+using MaterialIndex = uint32_t;
 
 constexpr auto TriangleIndex_Invalid = std::numeric_limits<TriangleIndex>::max();
 constexpr auto MaterialIndex_Invalid = std::numeric_limits<MaterialIndex>::max();

@@ -2,17 +2,17 @@
 #include "pray/Config.h"
 
 template <class ray_t>
-TriangleIndex CpuTracer<ray_t>::intersectTriangle(const Scene &scene, const ray_t &ray, float *out_distance) const
+typename ray_t::intersect_t CpuTracer<ray_t>::intersectTriangle(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
-	TriangleIndex intersected_triangle = TriangleIndex_Invalid;
-	float minimum_distance = std::numeric_limits<float>::max();
+	typename ray_t::intersect_t intersected_triangle = TriangleIndex_Invalid;
+	typename ray_t::distance_t minimum_distance = ray_t::max_distance();
 
 	for(TriangleIndex triangle_index = 0u; triangle_index < index_cast<TriangleIndex>(scene.triangles.size()); ++triangle_index)
 	{
 		const Triangle &triangle = scene.triangles[triangle_index];
 
 		float distance;
-		if(ray.intersectTriangle(triangle.vertices[0], triangle.vertices[1], triangle.vertices[2], &distance))
+		if(ray.intersectTriangle(triangle, &distance))
 		{
 			if(distance < minimum_distance)
 			{
@@ -27,36 +27,28 @@ TriangleIndex CpuTracer<ray_t>::intersectTriangle(const Scene &scene, const ray_
 }
 
 template <class ray_t>
-Color CpuTracer<ray_t>::trace(const Scene &scene, const ray_t &ray) const
+typename ray_t::color_t CpuTracer<ray_t>::trace(const Scene &scene, const ray_t &ray) const
 {
-	float intersection_distance;
-	const TriangleIndex intersected_triangle = intersectTriangle(scene, ray, &intersection_distance);
+	typename ray_t::distance_t intersection_distance;
+	const typename ray_t::intersect_t intersected_triangle = intersectTriangle(scene, ray, &intersection_distance);
 
-	if(intersected_triangle == TriangleIndex_Invalid) return scene.background_color;
+	if (intersected_triangle == TriangleIndex_Invalid) return scene.background_color;
 
-	const Vector3 N = scene.triangles[intersected_triangle].calculateNormal();
+	//~ // optimization: back faces are never lit
+	//~ if(ray.direction.dot(N) >= 0.f) return Color(0.f, 0.f, 0.f);
 
-	// optimization: back faces are never lit
-	if(ray.direction.dot(N) >= 0.f) return Color(0.f, 0.f, 0.f);
+	const auto P = ray.getIntersectionPoint(intersection_distance);
 
-	const Vector3 P = ray.origin + ray.direction * intersection_distance;
+	typename ray_t::color_t result_color(0.f, 0.f, 0.f);
 
-	const MaterialIndex material_index = scene.triangles[intersected_triangle].material_index;
-	ASSERT(material_index != MaterialIndex_Invalid);
-
-	Color result_color(0.f, 0.f, 0.f);
-
-	for(auto &light : scene.lights)
+	for (auto &light : scene.lights)
 	{
-		const Vector3 light_vector = light.position - P;
-		const float light_distance = light_vector.length();
-		const Vector3 L = light_vector / light_distance;
-
-		const ray_t shadow_ray(P + L * 0.001f, L);
+		typename ray_t::distance_t light_distance;
+		const ray_t shadow_ray = ray_t::getShadowRay(light, P, &light_distance);
 		if(intersectTriangle(scene, shadow_ray, &intersection_distance) == TriangleIndex_Invalid || intersection_distance > light_distance)
 		{
 			// don't use intersection_distance here, use light_distance instead!
-			const Color shading_color = scene.materials[material_index].color * light.color * (std::max(L.dot(N), 0.f) / (light_distance * light_distance));
+			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light);
 			result_color += shading_color;
 		}
 	}
@@ -81,15 +73,13 @@ void CpuTracer<ray_t>::render(ImageView &image) const
 
 	#pragma omp parallel for
 	for(long y = 0; y < image.resolution.h; y += ray_t::dim.h) {
-		const float i_y = 1.f - (2 * image.getGlobalY(y) + 1) / max_y;
 		for(long x = 0; x < image.resolution.w; x += ray_t::dim.w) {
-			const float i_x = 1.f - (2 * x + 1) / max_x;
 			if (!subsampling_enabled || (
 					x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y ||
 					(x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)))
 			{
-				ray_t ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
-				typename ray_t::color_t c = trace(scene, ray);
+				ray_t ray(scene.camera, left, top, x, image.getGlobalY(y), max_x, max_y);
+				auto c = trace(scene, ray);
 				writeColorToImage(c, image, x, y);
 			}
 		}

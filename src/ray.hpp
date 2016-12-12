@@ -1,16 +1,28 @@
-#include "math.hpp"
+#include "scene.hpp" // includes math and image
 
 struct Ray {
-  static constexpr IntDimension2 dim = {1, 1};
+  using dim_t = IntDimension2::dim_t;
+  using intersect_t = TriangleIndex;
+  using material_t = MaterialIndex;
   using color_t = Color;
-  Vector3 origin;
-  Vector3 direction;
+  using location_t = Vector3;
+  using distance_t = float;
+  
+  static constexpr IntDimension2 dim = {1, 1};
+  
+  const Vector3 origin;
+  const Vector3 direction;
 
-  Ray(const Vector3 &_origin, const Vector3 &_direction) : origin(_origin), direction(_direction) {}
+  Ray(const Camera &cam, const Vector3 &left, const Vector3&top, const dim_t x, const dim_t y, float max_x, float max_y)
+  : origin(cam.position), direction((top * (1.f - (2 * y + 1) / max_y) + left * (1.f - (2 * x + 1) / max_x) + cam.direction).normalize()) {}
 
-  inline bool intersectTriangle(const Vector3 &t_v1, const Vector3 &t_v2, const Vector3 &t_v3, float *out_distance) const
+
+  inline bool intersectTriangle(const Triangle &triangle, distance_t *out_distance) const
   {
     // http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
+    const Vector3 &t_v1 = triangle.vertices[0];
+    const Vector3 &t_v2 = triangle.vertices[1];
+    const Vector3 &t_v3 = triangle.vertices[2];
 
     const Vector3 e1 = t_v2 - t_v1;
     const Vector3 e2 = t_v3 - t_v1;
@@ -37,10 +49,64 @@ struct Ray {
 
     return false;
   }
+
+  location_t getIntersectionPoint(distance_t intersection_distance) const {
+    return origin + direction * intersection_distance;
+  }
+
+private:
+  Ray(Vector3 origin, Vector3 direction) : origin(origin), direction(direction) {}
+
+public:
+  static Ray getShadowRay(Light light, location_t P, distance_t *ld) {
+    const Vector3 light_vector = light.position - P;
+		const float light_distance = light_vector.length();
+		const Vector3 L = light_vector / light_distance;
+    *ld = light_distance;
+    return {P + L * 0.001f, L};
+  }
+  
+  static color_t shade(const Scene &scene, const location_t &P, intersect_t triangle, const Light &light) {
+    const auto N = scene.triangles[triangle].calculateNormal();
+    const auto material_index = scene.triangles[triangle].material_index;
+    ASSERT(material_index != MaterialIndex_Invalid);
+
+    // TODO duplicated code
+    const Vector3 light_vector = light.position - P;
+		const float light_distance = light_vector.length();
+		const Vector3 L = light_vector / light_distance;
+    
+    return scene.materials[material_index].color * light.color * (std::max(L.dot(N), 0.f) / (light_distance * light_distance));
+  }
+
+  static distance_t max_distance() {
+    return std::numeric_limits<distance_t>::max();
+  }
 };
 
 #include "simd.hpp"
 
+struct SSEColor {
+  SSEColor(const Color &c) {}
+  void writeToImage(ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) const {
+    
+  }
+};
+
+inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) {
+	//img.setPixel(x, y, c);
+}
+
+struct SSEIntersect {
+  SSEIntersect(TriangleIndex t) {}
+  bool operator==(TriangleIndex t) const {
+    return false;
+  }
+  simd::f_t intersections;
+};
+
 struct SSERay {
-  
+  static constexpr IntDimension2 dim = {1, 1};
+  using color_t = SSERay;
+  using intersect_t = SSEIntersect;
 };
