@@ -5,26 +5,6 @@
 #include <vector>
 #include "math.hpp"
 
-struct ImageView;
-struct Color
-{
-	float r, g, b;
-
-	constexpr Color() : r(0.f), g(0.f), b(0.f){}
-	constexpr Color(float r, float g, float b) : r(r), g(g), b(b) {}
-
-	constexpr Color operator+(const Color &a) const { return Color(r+a.r, g+a.g, b+a.b); }
-	constexpr Color operator-(const Color &a) const { return Color(r-a.r, g-a.g, b-a.b); }
-	constexpr Color operator*(const Color &a) const { return Color(r*a.r, g*a.g, b*a.b); }
-	constexpr Color operator*(float a) const { return Color(r*a, g*a, b*a); }
-	constexpr Color operator/(float a) const { return Color(r/a, g/a, b/a); }
-
-	Color &operator+=(const Color &a) { return *this = *this + a; }
-	Color &operator-=(const Color &a) { return *this = *this - a; }
-
-	void writeToImage(ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) const;
-};
-
 struct Image
 {
 	const IntDimension2 resolution;
@@ -82,8 +62,8 @@ struct ImageView {
 	}
 };
 
-inline void Color::writeToImage(ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) const {
-	img.setPixel(x, y, *this);
+inline void writeColorToImage(const Color &c, ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) {
+	img.setPixel(x, y, c);
 }
 
 #endif

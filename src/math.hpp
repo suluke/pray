@@ -61,4 +61,21 @@ struct IntDimension2
 	constexpr IntDimension2(dim_t w, dim_t h) : w(w), h(h) {}
 };
 
+struct Color
+{
+	float r, g, b;
+
+	constexpr Color() : r(0.f), g(0.f), b(0.f){}
+	constexpr Color(float r, float g, float b) : r(r), g(g), b(b) {}
+
+	constexpr Color operator+(const Color &a) const { return Color(r+a.r, g+a.g, b+a.b); }
+	constexpr Color operator-(const Color &a) const { return Color(r-a.r, g-a.g, b-a.b); }
+	constexpr Color operator*(const Color &a) const { return Color(r*a.r, g*a.g, b*a.b); }
+	constexpr Color operator*(float a) const { return Color(r*a, g*a, b*a); }
+	constexpr Color operator/(float a) const { return Color(r/a, g/a, b/a); }
+
+	Color &operator+=(const Color &a) { return *this = *this + a; }
+	Color &operator-=(const Color &a) { return *this = *this - a; }
+};
+
 #endif

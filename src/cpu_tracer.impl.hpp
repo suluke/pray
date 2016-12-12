@@ -84,7 +84,7 @@ void CpuTracer<ray_t>::render(ImageView &image) const
 #endif /*WITH_SUBSAMPLING*/
 				ray_t ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
 				typename ray_t::color_t c = trace(scene, ray);
-				c.writeToImage(image, x, y);
+				writeColorToImage(c, image, x, y);
 #ifdef WITH_SUBSAMPLING
 			}
 #endif /*WITH_SUBSAMPLING*/
