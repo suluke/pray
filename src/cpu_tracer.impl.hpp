@@ -73,40 +73,44 @@ void CpuTracer<ray_t>::render(ImageView &image) const
 
 	float max_x = (float) image.resolution.w;
 	float max_y = (float) image.img.resolution.h;
+	#ifdef WITH_SUBSAMPLING
+		const bool subsampling_enabled = true;
+	#else
+		const bool subsampling_enabled = false;
+	#endif /*WITH_SUBSAMPLING*/
 
 	#pragma omp parallel for
 	for(long y = 0; y < image.resolution.h; y += ray_t::dim.h) {
 		const float i_y = 1.f - (2 * image.getGlobalY(y) + 1) / max_y;
 		for(long x = 0; x < image.resolution.w; x += ray_t::dim.w) {
 			const float i_x = 1.f - (2 * x + 1) / max_x;
-#ifdef WITH_SUBSAMPLING
-			if (x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y || (x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)) {
-#endif /*WITH_SUBSAMPLING*/
+			if (!subsampling_enabled || (
+					x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y ||
+					(x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)))
+			{
 				ray_t ray(scene.camera.position, (left * i_x + top * i_y + scene.camera.direction).normalize());
 				typename ray_t::color_t c = trace(scene, ray);
 				writeColorToImage(c, image, x, y);
-#ifdef WITH_SUBSAMPLING
 			}
-#endif /*WITH_SUBSAMPLING*/
 		}
 	}
-#ifdef WITH_SUBSAMPLING
-	#pragma omp parallel for
-	for(long y = 1; y < image.resolution.h-1; ++y)
-	{
-		for(long x = 1; x < image.resolution.w-1; ++x)
+	if (subsampling_enabled) {
+		#pragma omp parallel for
+		for(long y = 1; y < image.resolution.h-1; ++y)
 		{
-			if (x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y || (x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)) {
-				continue;
-			} else {
-				Color c = image.getPixel(x,y);
-				c += image.getPixel(x-1,y) * 0.25f;
-				c += image.getPixel(x,y-1) * 0.25f;
-				c += image.getPixel(x+1,y) * 0.25f;
-				c += image.getPixel(x,y+1) * 0.25f;
-				image.setPixel(x, y, c);
+			for(long x = 1; x < image.resolution.w-1; ++x)
+			{
+				if (x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y || (x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)) {
+					continue;
+				} else {
+					Color c = image.getPixel(x,y);
+					c += image.getPixel(x-1,y) * 0.25f;
+					c += image.getPixel(x,y-1) * 0.25f;
+					c += image.getPixel(x+1,y) * 0.25f;
+					c += image.getPixel(x,y+1) * 0.25f;
+					image.setPixel(x, y, c);
+				}
 			}
 		}
 	}
-#endif /*WITH_SUBSAMPLING*/
 }
