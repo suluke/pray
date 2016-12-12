@@ -57,10 +57,19 @@ static void keyboard(unsigned char key, int x, int y)
 			if(key == 'p') bih_current_node = bih_current_node->parent;
 			if(key == 'l') bih_current_node = bih_current_node->child1;
 			if(key == 'r') bih_current_node = bih_current_node->child2;
+			if(key == 'f') ++bih_current_node;
+			if(key == 'b') --bih_current_node;
 
 			if(old_current_node != bih_current_node)
 			{
-				std::cout << "current: " << bih_current_node->index << " p: " << bih_current_node->parent->index << " l: " << bih_current_node->child1->index << " r: " << bih_current_node->child2->index << "\n";
+				if(bih_current_node->type == Bih::Node::Leaf)
+				{
+					std::cout << "current: " << bih_current_node->index << " p: " << bih_current_node->parent->index << " Leaf with " << bih_current_node->data.leaf.children_count << " children" << "\n";
+				}
+				else
+				{
+					std::cout << "current: " << bih_current_node->index << " p: " << bih_current_node->parent->index << " l: " << bih_current_node->child1->index << " r: " << bih_current_node->child2->index << "\n";
+				}
 			}
 		}
 
