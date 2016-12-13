@@ -3,7 +3,6 @@
 struct Ray {
   using dim_t = IntDimension2::dim_t;
   using intersect_t = TriangleIndex;
-  using material_t = MaterialIndex;
   using color_t = Color;
   using location_t = Vector3;
   using distance_t = float;
@@ -105,15 +104,10 @@ struct SSEColor : public simd::Vec3Pack {
   SSEColor(simd::floatty r, simd::floatty g, simd::floatty b) : simd::Vec3Pack(r, g, b) {}
 };
 
-inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) {
-	//img.setPixel(x, y, c);
-}
-
 struct SSEIntersect {
   SSEIntersect(TriangleIndex t) {}
   bool operator==(TriangleIndex t) const {
-    // TODO
-    return false;
+    return simd::cmpeq_all_epi32(intersections, simd::set1_epi32(t));
   }
   simd::intty intersections;
 };
@@ -121,7 +115,6 @@ struct SSEIntersect {
 struct SSERay {
   using dim_t = IntDimension2::dim_t;
   using intersect_t = SSEIntersect;
-  using material_t = simd::floatty;
   using color_t = SSEColor;
   using location_t = simd::Vec3Pack;
   using distance_t = simd::floatty;
@@ -165,8 +158,40 @@ struct SSERay {
   }
 
   inline bool intersectTriangle(const Triangle &triangle, distance_t *out_distance) const {
+    // http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
+    const Vector3 &t_v1 = triangle.vertices[0];
+    const Vector3 &t_v2 = triangle.vertices[1];
+    const Vector3 &t_v3 = triangle.vertices[2];
+
+    const Vector3 e1 = t_v2 - t_v1;
+    const Vector3 e2 = t_v3 - t_v1;
+
+    const auto p = direction.cross(e2);
+
+    const auto det = p.dot(e1);
+
+    // if the ray is parallel to the triangle, there is no hit :)
+    //~ if(det == approx(0.f)) return false;
+
+    const auto t = origin - t_v1;
+
+    const auto q = t.cross(e1);
+
+    const auto u = simd::div_ps(p.dot(t), det);
+    const auto v = simd::div_ps(q.dot(direction), det);
+
+    // Scalar: if(u >= 0.f && v >= 0.f && u + v <= 1.f)
+    auto zero = simd::setzero_ps();
+    auto one = simd::set1_ps(1.f);
+    auto MASK = simd::cmple_ps(zero, u);
+    MASK = simd::and_ps(MASK, simd::cmple_ps(zero, v));
+    MASK = simd::and_ps(MASK, simd::cmple_ps(simd::add_ps(u, v), one));
+    
+    const auto distance = simd::and_ps(simd::div_ps(q.dot(e2), det), MASK);
+    *out_distance = distance;
     // TODO
-    return false;
+    //~ return distance >= 0.f;
+    return true;
   }
 
   location_t getIntersectionPoint(distance_t intersection_distance) const {
@@ -246,3 +271,18 @@ public:
     // TODO
   }
 };
+
+inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) {
+  std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
+  std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
+  std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
+  simd::store_ps(&R[0], c.x);
+  simd::store_ps(&G[0], c.y);
+  simd::store_ps(&B[0], c.z);
+  for (unsigned i_y = 0; i_y < SSERay::dim.h && i_y + y < img.resolution.h; ++i_y) {
+    for (unsigned i_x = 0; i_x < SSERay::dim.w && i_x + x < img.resolution.w; ++i_x) {
+      auto idx = i_y * SSERay::dim.w + i_x;
+      img.setPixel(x + i_x, y + i_y, {R[idx], G[idx], B[idx]});
+    }
+  }
+}

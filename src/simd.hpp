@@ -1,6 +1,9 @@
+#include <array>
+
 #if defined(__AVX__)
 
 #include <immintrin.h>
+#include "math.hpp"
 
 namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = 32u;
@@ -19,11 +22,30 @@ namespace simd {
   constexpr auto set1_ps = _mm256_set1_ps;
   constexpr auto sqrt_ps = _mm256_sqrt_ps;
   constexpr auto set_ps = _mm256_set_ps;
+  constexpr auto set1_epi32 = _mm256_set1_epi32;
+  constexpr auto setzero_ps = _mm256_setzero_ps;
   constexpr auto load_ps = _mm256_load_ps;
   constexpr auto store_ps = _mm256_store_ps;
   constexpr auto store_si = _mm256_store_si256;
   inline floatty cmplt_ps(floatty a, floatty b) {
     return _mm256_cmp_ps(a, b, _CMP_LT_OS);
+  }
+  inline floatty cmple_ps(floatty a, floatty b) {
+    return _mm256_cmp_ps(a, b, _CMP_LT_OS);
+  }
+  inline bool cmpeq_all_epi32(intty a, intty b) {
+    std::array<int, REGISTER_CAPACITY_FLOAT> A, B;
+    store_si((intty *) &A[0], a);
+    store_si((intty *) &B[0], b);
+    auto itA = A.begin();
+    auto itB = A.begin();
+    while(itA != A.end()) {
+      if (*itA != approx(*itB))
+        return false;
+      ++itA;
+      ++itB;
+    }
+    return true;
   }
   constexpr auto max_ps = _mm256_max_ps;
 }
@@ -49,10 +71,23 @@ namespace simd {
   constexpr auto set1_ps = _mm_set1_ps;
   constexpr auto sqrt_ps = _mm_sqrt_ps;
   constexpr auto set_ps = _mm_set_ps;
+  constexpr auto set1_epi32 = _mm_set1_epi32;
+  constexpr auto setzero_ps = _mm_setzero_ps;
   constexpr auto load_ps = _mm_load_ps;
   constexpr auto store_ps = _mm_store_ps;
   constexpr auto store_si = _mm_store_si128;
   constexpr auto cmplt_ps = _mm_cmplt_ps;
+  constexpr auto cmple_ps = _mm_cmple_ps;
+  inline bool cmpeq_all_epi32(intty a, intty b) {
+    const auto eq_vec = _mm_cmpeq_epi32(a, b);
+    std::array<int, REGISTER_CAPACITY_I32> E;
+    simd::store_si((intty *) &E[0], eq_vec);
+    for (int i : E) {
+      if (i == 0)
+        return false;
+    }
+    return true;
+  }
   constexpr auto max_ps = _mm_max_ps;
 }
 
