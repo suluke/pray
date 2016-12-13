@@ -64,7 +64,7 @@ struct BihBuilder
 
 			auto split_axis = getSplitAxis(initial_aabb);
 
-			current_node.type = static_cast<bih_t::Node::Type>(split_axis);
+			current_node.type = static_cast<typename bih_t::Node::Type>(split_axis);
 
 			float left_plane = std::numeric_limits<float>::lowest(), right_plane = std::numeric_limits<float>::max();
 
