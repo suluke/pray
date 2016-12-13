@@ -7,18 +7,6 @@
 #include <ostream>
 #include "debug.hpp"
 
-#include <ctime>
-
-inline clock_t getTime () {
-	return clock();
-}
-
-
-
-inline clock_t diffTime (clock_t start, clock_t end) {
-	return (end - start);
-}
-
 struct approx
 {
 	constexpr approx(float x) : x(x) {}

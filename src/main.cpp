@@ -18,6 +18,9 @@
 	using accel_t = DummyAcceleration<ray_t>;
 #endif
 
+#ifdef DEBUG
+ #include <chrono>
+#endif
 int main(int argc, char *argv[])
 {
 	if (argc != 3)
@@ -31,29 +34,28 @@ int main(int argc, char *argv[])
 	IntDimension2 image_resolution = IntDimension2(1920, 1080);
 	if(!scene.load(argv[1], &image_resolution)) return 1;
 #ifdef DEBUG
-	clock_t start1 = getTime();
+	auto start1 = std::chrono::high_resolution_clock::now();
 #endif
 	Image image(image_resolution);
 	ImageView img(image, 0, image_resolution.h);
 	CpuTracer<ray_t, accel_t> tracer(scene);
 #ifdef DEBUG
-	clock_t start3 = getTime();
+	auto start2 = std::chrono::high_resolution_clock::now();
 #endif
 	tracer.preprocess();
 #ifdef DEBUG
-	clock_t end1 = getTime();
-	clock_t start4 = getTime();
+	auto point1 = std::chrono::high_resolution_clock::now();
 #endif
 	tracer.render(img);
 #ifdef DEBUG
-	clock_t end2 = getTime();
+	auto end1 = std::chrono::high_resolution_clock::now();
 #endif
 	image.save(argv[2]);
 
 #ifdef DEBUG
-	clock_t end3 = getTime();
-	std::cout <<"Preprocess Time: " << diffTime(start3,end1) << "\n";
-	std::cout <<"Render Time: " << diffTime(start4,end2) << "\n";
-	std::cout <<"Total Time: " << diffTime(start1,end3) << "\n";
+	auto end2 = std::chrono::high_resolution_clock::now();
+	std::cout <<"Preprocess Time: "<< std::chrono::duration_cast<std::chrono::nanoseconds>(point1-start2).count() << "ns\n";
+	std::cout <<"Render Time: "<< std::chrono::duration_cast<std::chrono::microseconds>(end1-point1).count() << "ms\n";
+	std::cout <<"Total Time: "<< std::chrono::duration_cast<std::chrono::microseconds>(end2-start1).count() << "ms\n";
 #endif
 }
