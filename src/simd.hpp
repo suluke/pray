@@ -168,6 +168,14 @@ namespace simd {
   };
 }
 
+inline std::ostream &operator<<(std::ostream &o, const simd::floatty &f) {
+  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> F;
+  simd::store_ps(&F[0], f);
+  for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
+    o << F[i] << ", ";
+  }
+  return o;
+}
 inline std::ostream &operator<<(std::ostream &o, const simd::Vec3Pack &v) {
   alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
   alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;

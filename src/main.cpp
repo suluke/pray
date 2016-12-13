@@ -5,10 +5,8 @@
 #include "cpu_tracer.hpp"
 
 #ifdef WITH_SSE
-	#include "ray.hpp"
-	using ray_t = Ray;
-	//~ #include "sse_ray.hpp"
-	//~ using ray_t = SSERay;
+	#include "sse_ray.hpp"
+	using ray_t = SSERay;
 #else
 	#include "ray.hpp"
 	using ray_t = Ray;

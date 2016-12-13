@@ -85,6 +85,11 @@ struct SSERay {
     auto distance = simd::and_ps(simd::div_ps(q.dot(e2), det), MASK);
     const auto max = simd::and_ps(simd::not_ps(MASK), max_distance());
     distance = simd::or_ps(distance, max); // We need to set all places that have no intersection to max
+
+    // Negative intersections are intersections at infinity
+    MASK = simd::cmplt_ps(distance, simd::setzero_ps());
+    distance = simd::or_ps(simd::and_ps(simd::not_ps(MASK), distance), simd::and_ps(MASK, max_distance()));
+    
     *out_distance = distance;
     // TODO
     //~ return distance >= 0.f;
@@ -107,6 +112,7 @@ private:
     for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
       auto triangle = int_ersects[i];
       if (triangle != TriangleIndex_Invalid) {
+        // TODO we could also load the triangles into a Vec3Pack and calculate normals with SIMD code
         const auto N = scene.triangles[triangle].calculateNormal();
         X[i] = N.x;
         Y[i] = N.y;
