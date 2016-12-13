@@ -16,3 +16,12 @@ out/
 
 tests/results
 tests/reference
+
+# Tex
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.pdf
+*.toc
