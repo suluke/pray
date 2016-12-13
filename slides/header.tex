@@ -1,0 +1,100 @@
+%% LaTeX-Beamer template for KIT design
+%% by Erik Burger, Christian Hammer
+%% title picture by Klaus Krogmann
+%%
+%% version 2.1
+%%
+%% mostly compatible to KIT corporate design v2.0
+%% http://intranet.kit.edu/gestaltungsrichtlinien.php
+%%
+%% Problems, bugs and comments to
+%% burger@kit.edu
+
+\documentclass[18pt]{beamer}
+\usepackage[utf8x]{inputenc}
+\usepackage{units}
+\usepackage{booktabs}
+
+%% CUSTOM
+\usepackage{amsmath}
+\usepackage{algpseudocode}
+%\usepackage{kbordermatrix}
+%% GBI-Stuff
+% \usepackage{tikz}
+%\usetikzlibrary{arrows,shapes}
+%\usetikzlibrary{automata}
+%\usetikzlibrary{matrix}
+
+%% Definitions
+\DeclareMathOperator{\div2}{div}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\newcommand{\sq}{$\square$}
+\newcommand{\da}{$\downarrow$}
+\algnewcommand\algorithmicto{\textbf{to}}
+\algrenewtext{For}[3]{\algorithmicfor\ $#1 \gets #2$ \algorithmicto\ $#3$ \algorithmicdo}
+%\algrenewtext{If}[1]{\alggorithmicdo}
+%\algrenewtext{EndIf}{\algorithmicod}
+\algnewcommand\algorithmicod{\textbf{od}}
+\algrenewtext{EndWhile}{\algorithmicod}
+\algrenewtext{EndFor}{\algorithmicod}
+\AtBeginSection[]{%
+\begin{frame}<beamer> % do nothing in handouts
+    \frametitle{Überblick}
+    \tableofcontents[sectionstyle=show/shaded,
+    subsectionstyle=show/show/hide]
+\end{frame}
+}
+%\AtBeginSubsection[]{%
+%\begin{frame}<beamer> % do nothing in handouts
+%    \frametitle{Überblick}
+%    \tableofcontents[sectionstyle=show/shaded,
+%    subsectionstyle=show/shaded/hide]
+%\end{frame}
+%}
+
+%% SLIDE FORMAT
+
+% use 'beamerthemekit' for standard 4:3 ratio
+% for widescreen slides (16:9), use 'beamerthemekitwide'
+
+\usepackage{templates/beamerthemekit}
+%\usepackage{templates/beamerthemekitwide}
+
+ %% TITLE PICTURE
+
+ % if a custom picture is to be used on the title page, copy it into the 'logos'
+ % directory, in the line below, replace 'mypicture' with the 
+ % filename (without extension) and uncomment the following line
+ % (picture proportions: 63 : 20 for standard, 169 : 40 for wide
+ % *.eps format if you use latex+dvips+ps2pdf, 
+ % *.jpg/*.png/*.pdf if you use pdflatex)
+
+
+\titleimage{banner}
+ 
+ 
+%% Define some colors:
+\definecolor{darkblue}{rgb}{0,0,.5}
+\definecolor{darkgreen}{rgb}{0,.5,0}
+
+ %% TITLE LOGO
+
+ % for a custom logo on the front page, copy your file into the 'logos'
+ % directory, insert the filename in the line below and uncomment it
+
+\titlelogo{empty_logo}
+ 
+ % (*.eps format if you use latex+dvips+ps2pdf,
+ % *.jpg/*.png/*.pdf if you use pdflatex)
+ 
+ %% TikZ INTEGRATION
+ 
+ % use these packages for PCM symbols and UML classes
+ % \usepackage{templates/tikzkit}
+ % \usepackage{templates/tikzuml}
+ 
+ % the presentation starts here
+ 
+\author{Lukas B\"ohm, Lukas Feller, Marcel Kost, Nicholas Kj\"ar}
+\institute{Institut f\"ur Informatik}
