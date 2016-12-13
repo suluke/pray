@@ -3,12 +3,14 @@
 #include "dummy_acceleration.hpp"
 #include "bih.hpp"
 #include "cpu_tracer.hpp"
-#include "ray.hpp"
 
 #ifdef WITH_SSE
+	#include "ray.hpp"
 	using ray_t = Ray;
+	//~ #include "sse_ray.hpp"
 	//~ using ray_t = SSERay;
 #else
+	#include "ray.hpp"
 	using ray_t = Ray;
 #endif
 #ifdef WITH_BIH

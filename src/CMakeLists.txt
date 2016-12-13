@@ -9,6 +9,8 @@ add_executable(pray
   scene.cpp
   scene.hpp
   simd.hpp
+  ray.hpp
+  sse_ray.hpp
   cpu_tracer.hpp
   cpu_tracer.impl.hpp
   dummy_acceleration.hpp
