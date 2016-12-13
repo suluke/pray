@@ -3,7 +3,6 @@
 #include "dummy_acceleration.hpp"
 #include "bih.hpp"
 #include "cpu_tracer.hpp"
-#include "math.hpp"
 
 #ifdef WITH_SSE
 	#include "sse_ray.hpp"
