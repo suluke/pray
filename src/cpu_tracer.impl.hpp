@@ -1,32 +1,17 @@
 #include "cpu_tracer.hpp"
 #include "pray/Config.h"
 
-template <class ray_t>
-typename ray_t::intersect_t CpuTracer<ray_t>::intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
+template <class ray_t, class accel_t>
+inline void CpuTracer<ray_t, accel_t>::preprocess()
 {
-	typename ray_t::intersect_t intersected_triangle = TriangleIndex_Invalid;
-	typename ray_t::distance_t minimum_distance = ray_t::max_distance();
-
-	for(TriangleIndex triangle_index = 0u; triangle_index < index_cast<TriangleIndex>(scene.triangles.size()); ++triangle_index)
-	{
-		const Triangle &triangle = scene.triangles[triangle_index];
-
-		typename ray_t::distance_t distance;
-		if(ray.intersectTriangle(triangle, &distance))
-		{
-			ray_t::updateIntersections(&intersected_triangle, triangle_index, &minimum_distance, distance);
-		}
-	}
-
-	*out_distance = minimum_distance;
-	return intersected_triangle;
+	acceleration_structure.build(scene);
 }
 
-template <class ray_t>
-typename ray_t::color_t CpuTracer<ray_t>::trace(const Scene &scene, const ray_t &ray) const
+template <class ray_t, class accel_t>
+typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, const ray_t &ray) const
 {
 	typename ray_t::distance_t intersection_distance;
-	const typename ray_t::intersect_t intersected_triangle = intersect(scene, ray, &intersection_distance);
+	const typename ray_t::intersect_t intersected_triangle = acceleration_structure.intersect(scene, ray, &intersection_distance);
 
 	if (intersected_triangle == TriangleIndex_Invalid) return scene.background_color;
 
@@ -41,7 +26,7 @@ typename ray_t::color_t CpuTracer<ray_t>::trace(const Scene &scene, const ray_t 
 	{
 		typename ray_t::distance_t light_distance;
 		const ray_t shadow_ray = ray_t::getShadowRay(light, P, &light_distance);
-		if (intersect(scene, shadow_ray, &intersection_distance) == TriangleIndex_Invalid)
+		if (acceleration_structure.intersect(scene, shadow_ray, &intersection_distance) == TriangleIndex_Invalid)
 		{
 			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance);
 			result_color += shading_color;
@@ -51,8 +36,8 @@ typename ray_t::color_t CpuTracer<ray_t>::trace(const Scene &scene, const ray_t 
 	return result_color;
 }
 
-template <class ray_t>
-void CpuTracer<ray_t>::render(ImageView &image) const
+template <class ray_t, class accel_t>
+void CpuTracer<ray_t, accel_t>::render(ImageView &image) const
 {
 	Vector3 left, right, bottom, top;
 	const float aspect = (float) image.resolution.h / image.resolution.w;

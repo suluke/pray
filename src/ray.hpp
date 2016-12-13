@@ -16,7 +16,6 @@ struct Ray {
   Ray(const Camera &cam, const Vector3 &left, const Vector3 &top, const dim_t x, const dim_t y, float max_x, float max_y)
   : origin(cam.position), direction((top * (1.f - (2 * y + 1) / max_y) + left * (1.f - (2 * x + 1) / max_x) + cam.direction).normalize()) {}
 
-
   inline bool intersectTriangle(const Triangle &triangle, distance_t *out_distance) const
   {
     // http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
@@ -54,7 +53,9 @@ struct Ray {
     return origin + direction * intersection_distance;
   }
 
+#ifndef DEBUG // for debugging tool...
 private:
+#endif
   Ray(location_t origin, Vector3 direction) : origin(origin), direction(direction) {}
 
 public:

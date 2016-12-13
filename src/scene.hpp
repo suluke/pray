@@ -37,6 +37,16 @@ struct Triangle
 		// clockwise order...
 		return (vertices[1] - vertices[0]).cross(vertices[2] - vertices[0]).normalize();
 	}
+
+	Vector3 calculateCentroid() const
+	{
+		return (vertices[0] + vertices[1] + vertices[2]) / 3.f;
+	}
+
+	AABox3 calculateAabb() const
+	{
+		return AABox3(vertices.begin(), vertices.end());
+	}
 };
 
 struct Material

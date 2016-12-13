@@ -5,15 +5,16 @@
 #include "scene.hpp"
 #include "image.hpp"
 
-template<class ray_t>
+template<class ray_t, class accel_t>
 class CpuTracer {
   const Scene &scene;
+  accel_t acceleration_structure;
 public:
   CpuTracer(const Scene &scene) : scene(scene) {}
+  void preprocess();
   void render(ImageView &image) const;
 
 private:
-  typename ray_t::intersect_t intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
   typename ray_t::color_t trace(const Scene &scene, const ray_t &ray) const;
 };
 
