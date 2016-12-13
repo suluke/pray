@@ -17,15 +17,15 @@ struct Image
 	{
 		ASSERT(x < resolution.w); ASSERT(y < resolution.h);
 		ASSERT(c.r >= 0.f); ASSERT(c.g >= 0.f); ASSERT(c.b >= 0.f);
-#if defined(__SSE__)
+
                 pixels[3 * (y * resolution.w + x) + 0] = round(std::min(c.r, 1.f) * 255.f);
                 pixels[3 * (y * resolution.w + x) + 1] = round(std::min(c.g, 1.f) * 255.f);
                 pixels[3 * (y * resolution.w + x) + 2] = round(std::min(c.b, 1.f) * 255.f);
-#else
+/*
 		pixels[3 * (y * resolution.w + x) + 0] = std::round(std::min(c.r, 1.f) * 255.f);
 		pixels[3 * (y * resolution.w + x) + 1] = std::round(std::min(c.g, 1.f) * 255.f);
 		pixels[3 * (y * resolution.w + x) + 2] = std::round(std::min(c.b, 1.f) * 255.f);
-#endif
+*/
         }
 
 	Color getPixel(dim_t x, dim_t y) {
