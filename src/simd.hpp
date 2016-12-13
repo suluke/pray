@@ -18,6 +18,7 @@ namespace simd {
   constexpr auto mul_ps = _mm256_mul_ps;
   constexpr auto div_ps = _mm256_div_ps;
   constexpr auto and_ps = _mm256_and_ps;
+  constexpr auto or_ps = _mm256_or_ps;
   constexpr auto xor_ps = _mm256_xor_ps;
   constexpr auto set1_ps = _mm256_set1_ps;
   constexpr auto sqrt_ps = _mm256_sqrt_ps;
@@ -47,7 +48,15 @@ namespace simd {
     }
     return true;
   }
+  inline floatty not_ps (floatty x) {
+    return _mm256_xor_ps(x, _mm256_castsi256_ps(_mm256_set1_epi32(-1)));
+  }
   constexpr auto max_ps = _mm256_max_ps;
+
+  // casts
+  constexpr auto castps_si = _mm256_castps_si256;
+  constexpr auto castsi_ps = _mm256_castsi256_ps;
+  
 }
 
 #elif defined(__SSE2__)
@@ -67,6 +76,7 @@ namespace simd {
   constexpr auto mul_ps = _mm_mul_ps;
   constexpr auto div_ps = _mm_div_ps;
   constexpr auto and_ps = _mm_and_ps;
+  constexpr auto or_ps = _mm_or_ps;
   constexpr auto xor_ps = _mm_xor_ps;
   constexpr auto set1_ps = _mm_set1_ps;
   constexpr auto sqrt_ps = _mm_sqrt_ps;
@@ -88,7 +98,14 @@ namespace simd {
     }
     return true;
   }
+  inline floatty not_ps (floatty x) {
+    return _mm_xor_ps(x, _mm_castsi128_ps(_mm_set1_epi32(-1)));
+  }
   constexpr auto max_ps = _mm_max_ps;
+
+  // casts
+  constexpr auto castps_si = _mm_castps_si128;
+  constexpr auto castsi_ps = _mm_castsi128_ps;
 }
 
 #else

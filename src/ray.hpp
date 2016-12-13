@@ -93,6 +93,14 @@ public:
       *minimum_distance = distance;
     }
   }
+
+  static bool isNoIntersect(intersect_t intersect) {
+    return intersect == TriangleIndex_Invalid;
+  }
+
+  static intersect_t getNoIntersection() {
+    return TriangleIndex_Invalid;
+  }
 };
 
 #include "simd.hpp"
@@ -104,17 +112,9 @@ struct SSEColor : public simd::Vec3Pack {
   SSEColor(simd::floatty r, simd::floatty g, simd::floatty b) : simd::Vec3Pack(r, g, b) {}
 };
 
-struct SSEIntersect {
-  SSEIntersect(TriangleIndex t) {}
-  bool operator==(TriangleIndex t) const {
-    return simd::cmpeq_all_epi32(intersections, simd::set1_epi32(t));
-  }
-  simd::intty intersections;
-};
-
 struct SSERay {
   using dim_t = IntDimension2::dim_t;
-  using intersect_t = SSEIntersect;
+  using intersect_t = simd::intty;
   using color_t = SSEColor;
   using location_t = simd::Vec3Pack;
   using distance_t = simd::floatty;
@@ -187,7 +187,9 @@ struct SSERay {
     MASK = simd::and_ps(MASK, simd::cmple_ps(zero, v));
     MASK = simd::and_ps(MASK, simd::cmple_ps(simd::add_ps(u, v), one));
     
-    const auto distance = simd::and_ps(simd::div_ps(q.dot(e2), det), MASK);
+    auto distance = simd::and_ps(simd::div_ps(q.dot(e2), det), MASK);
+    const auto max = simd::and_ps(simd::not_ps(MASK), max_distance());
+    distance = simd::or_ps(distance, max); // We need to set all places that have no intersection to max
     *out_distance = distance;
     // TODO
     //~ return distance >= 0.f;
@@ -203,7 +205,7 @@ private:
 
   static simd::Vec3Pack getNormals(const Scene &scene, intersect_t intersects) {
     std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
-    simd::store_si((simd::intty *) &int_ersects[0], intersects.intersections);
+    simd::store_si((simd::intty *) &int_ersects[0], intersects);
     std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
     std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
     std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
@@ -218,7 +220,7 @@ private:
 
   static color_t getMaterialColors(const Scene &scene, intersect_t intersects) {
     std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
-    simd::store_si((simd::intty *) &int_ersects[0], intersects.intersections);
+    simd::store_si((simd::intty *) &int_ersects[0], intersects);
     std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
     std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
     std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
@@ -267,8 +269,21 @@ public:
     return simd::set1_ps(std::numeric_limits<float>::max());
   }
 
-  static void updateIntersections(intersect_t *intersectTriangle, TriangleIndex triangle_index, distance_t *minimum_distance, distance_t distance) {
-    // TODO
+  static void updateIntersections(intersect_t *intersect, TriangleIndex triangle_index, distance_t *minimum_distance, distance_t distance) {
+    const auto DIST_MASK = simd::cmplt_ps(distance, *minimum_distance);
+    const auto DIST_MASK_INV = simd::not_ps(DIST_MASK);
+    *minimum_distance = simd::or_ps(simd::and_ps(DIST_MASK, distance), simd::and_ps(DIST_MASK_INV, *minimum_distance));
+    const auto trianglevec_float = simd::castsi_ps(simd::set1_epi32(triangle_index));
+    const auto intersect_float = simd::castsi_ps(*intersect);
+    *intersect = simd::castps_si(simd::or_ps(simd::and_ps(DIST_MASK, trianglevec_float), simd::and_ps(DIST_MASK_INV, intersect_float)));
+  }
+
+  static bool isNoIntersection(intersect_t intersect) {
+    return simd::cmpeq_all_epi32(intersect, simd::set1_epi32(TriangleIndex_Invalid));
+  }
+  
+  static intersect_t getNoIntersection() {
+    return simd::set1_epi32(TriangleIndex_Invalid);
   }
 };
 
