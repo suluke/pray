@@ -9,7 +9,7 @@
 
 #include <time.h>
 
-inline time_t startTime () {
+inline time_t getTime () {
 	return time(NULL);
 }
 
