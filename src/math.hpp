@@ -7,6 +7,10 @@
 #include <ostream>
 #include "debug.hpp"
 
+#if defined(__SSE__)
+#include <emmintrin.h>
+#endif
+
 struct approx
 {
 	constexpr approx(float x) : x(x) {}
@@ -145,5 +149,16 @@ inline bool intersectRayAABB(const Vector3 &r_o, const Vector3 &r_d, const AABox
 
 	return true;
 }
+
+#if defined(__SSE__)
+inline int ftoi_sse1(float f)
+{
+	//SSE1 for float to int http://stackoverflow.com/questions/2352303/avoiding-calls-to-floor
+	return _mm_cvtt_ss2si(_mm_load_ss(&f));
+}
+inline int round (float f) {
+	return ftoi_sse1(f + 0.5);
+}
+#endif
 
 #endif
