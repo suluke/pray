@@ -8,22 +8,17 @@
 
 struct approx
 {
-	approx(float x) : x(x) {}
+	constexpr approx(float x) : x(x) {}
 	float x;
 };
 inline constexpr bool operator==(float a, const approx &approx) { return a > approx.x - 0.00001f && a < approx.x + 0.00001f; }
 inline constexpr bool operator!=(float a, const approx &approx) { return !(a == approx); }
 
-struct Vector2
-{
-	float x, y;
-};
-
 struct Vector3
 {
 	float x, y, z;
 
-	constexpr Vector3() : x(0.f), y(0.f), z(0.f) {}
+	Vector3() {}
 	constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
 
 	template<class T> constexpr float &operator[](T index) { ASSERT(index < 3); return *(&x + index); }
@@ -65,7 +60,7 @@ struct Color
 {
 	float r, g, b;
 
-	constexpr Color() : r(0.f), g(0.f), b(0.f){}
+	Color() {}
 	constexpr Color(float r, float g, float b) : r(r), g(g), b(b) {}
 
 	constexpr Color operator+(const Color &a) const { return Color(r+a.r, g+a.g, b+a.b); }
