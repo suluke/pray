@@ -35,7 +35,7 @@ namespace simd {
     return _mm256_cmp_ps(a, b, _CMP_LT_OS);
   }
   inline bool cmpeq_all_epi32(intty a, intty b) {
-    std::array<int, REGISTER_CAPACITY_FLOAT> A, B;
+    alignas(16) std::array<int, REGISTER_CAPACITY_I32> A, B;
     store_si((intty *) &A[0], a);
     store_si((intty *) &B[0], b);
     auto itA = A.begin();
@@ -90,7 +90,7 @@ namespace simd {
   constexpr auto cmple_ps = _mm_cmple_ps;
   inline bool cmpeq_all_epi32(intty a, intty b) {
     const auto eq_vec = _mm_cmpeq_epi32(a, b);
-    std::array<int, REGISTER_CAPACITY_I32> E;
+    alignas(16) std::array<int, REGISTER_CAPACITY_I32> E;
     simd::store_si((intty *) &E[0], eq_vec);
     for (int i : E) {
       if (i == 0)
@@ -166,4 +166,17 @@ namespace simd {
     floatty length() const { return sqrt_ps(lengthSquared()); }
     Vec3Pack &normalize() { /*ASSERT(length() != approx(0));*/ return *this /= length(); }
   };
+}
+
+inline std::ostream &operator<<(std::ostream &o, const simd::Vec3Pack &v) {
+  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
+  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
+  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
+  simd::store_ps(&X[0], v.x);
+  simd::store_ps(&Y[0], v.y);
+  simd::store_ps(&Z[0], v.z);
+  for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
+    o << "(" << X[i] << ", " << Y[i] << ", " << Z[i] << ")";
+  }
+  return o;
 }

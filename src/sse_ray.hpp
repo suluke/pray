@@ -20,9 +20,9 @@ struct SSERay {
   simd::Vec3Pack direction;
 
   SSERay(const Camera &cam, const Vector3 &left, const Vector3 &top, const dim_t x, const dim_t y, float max_x, float max_y) : origin(cam.position) {
-    std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
-    std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
-    std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
     for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
       X[i] = cam.direction.x;
       Y[i] = cam.direction.y;
@@ -32,18 +32,18 @@ struct SSERay {
       float f_x = 1.f - (2 * (x + i_x) + 1) / max_x;
       auto l = left * f_x;
       for (unsigned i_y = 0; i_y < dim.h; ++i_y) {
-        X[i_y * dim.w + i_x] = l.x;
-        Y[i_y * dim.w + i_x] = l.y;
-        Z[i_y * dim.w + i_x] = l.z;
+        X[i_y * dim.w + i_x] += l.x;
+        Y[i_y * dim.w + i_x] += l.y;
+        Z[i_y * dim.w + i_x] += l.z;
       }
     }
     for (unsigned i_y = 0; i_y < dim.h; ++i_y) {
       float f_y = 1.f - (2 * (y + i_y) + 1) / max_y;
       auto t = top * f_y;
-      for (unsigned i_x = 0; i_x < dim.h; ++i_x) {
-        X[i_y * dim.w + i_x] = t.x;
-        Y[i_y * dim.w + i_x] = t.y;
-        Z[i_y * dim.w + i_x] = t.z;
+      for (unsigned i_x = 0; i_x < dim.w; ++i_x) {
+        X[i_y * dim.w + i_x] += t.x;
+        Y[i_y * dim.w + i_x] += t.y;
+        Z[i_y * dim.w + i_x] += t.z;
       }
     }
     direction.x = simd::load_ps(&X[0]);
@@ -99,11 +99,11 @@ private:
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction) {}
 
   static simd::Vec3Pack getNormals(const Scene &scene, intersect_t intersects) {
-    std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
+    alignas(16) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
     simd::store_si((simd::intty *) &int_ersects[0], intersects);
-    std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
-    std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
-    std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
     for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
       const auto N = scene.triangles[int_ersects[i]].calculateNormal();
       X[i] = N.x;
@@ -114,11 +114,11 @@ private:
   }
 
   static color_t getMaterialColors(const Scene &scene, intersect_t intersects) {
-    std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
+    alignas(16) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
     simd::store_si((simd::intty *) &int_ersects[0], intersects);
-    std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
-    std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
-    std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
     for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
       const auto material_index = scene.triangles[int_ersects[i]].material_index;
       const auto C = scene.materials[material_index].color;
@@ -182,10 +182,15 @@ public:
   }
 };
 
+inline std::ostream &operator<<(std::ostream &o, const SSERay &r) {
+  o << "Origin: " << r.origin << "\n" << "Direction: " << r.direction;
+  return o;
+}
+
 inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) {
-  std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
-  std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
-  std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
+  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
+  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
+  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
   simd::store_ps(&R[0], c.x);
   simd::store_ps(&G[0], c.y);
   simd::store_ps(&B[0], c.z);

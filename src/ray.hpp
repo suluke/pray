@@ -102,3 +102,8 @@ public:
     return TriangleIndex_Invalid;
   }
 };
+
+inline std::ostream &operator<<(std::ostream &o, const Ray &r) {
+  o << "Origin: " << r.origin << "\nDirection: " << r.direction;
+  return o;
+}
