@@ -5,6 +5,18 @@
 #include "cpu_tracer.hpp"
 #include "ray.hpp"
 
+#ifdef WITH_SSE
+	using ray_t = Ray;
+	//~ using ray_t = SSERay;
+#else
+	using ray_t = Ray;
+#endif
+#ifdef WITH_BIH
+	using accel_t = Bih<ray_t>;
+#else
+	using accel_t = DummyAcceleration<ray_t>;
+#endif
+
 int main(int argc, char *argv[])
 {
 	if (argc != 3)
@@ -21,11 +33,9 @@ int main(int argc, char *argv[])
 	Image image(image_resolution);
 	ImageView img(image, 0, image_resolution.h);
 
-	CpuTracer<Ray, Bih<Ray>> tracer(scene);
-	//CpuTracer<Ray, DummyAcceleration<Ray>> tracer(scene);
+	CpuTracer<ray_t, accel_t> tracer(scene);
 
 	tracer.preprocess();
-
 	tracer.render(img);
 
 	image.save(argv[2]);
