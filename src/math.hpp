@@ -7,6 +7,16 @@
 #include <ostream>
 #include "debug.hpp"
 
+#include <time.h>
+
+inline time_t startTime () {
+	return time(NULL);
+}
+
+inline time_t endTime (time_t start) {
+	return difftime(start,time(NULL));
+}
+
 struct approx
 {
 	constexpr approx(float x) : x(x) {}
