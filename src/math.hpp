@@ -7,18 +7,16 @@
 #include <ostream>
 #include "debug.hpp"
 
-#include <time.h>
+#include <ctime>
 
-inline time_t getTime () {
-	return time(NULL);
+inline clock_t getTime () {
+	return clock();
 }
 
-inline time_t endTime (time_t start) {
-	return difftime(start,time(NULL));
-}
 
-inline time_t diffTime (time_t start, time_t end) {
-	return difftime(start,end);
+
+inline clock_t diffTime (clock_t start, clock_t end) {
+	return (end - start);
 }
 
 struct approx
