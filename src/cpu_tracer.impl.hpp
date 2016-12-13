@@ -2,7 +2,7 @@
 #include "pray/Config.h"
 
 template <class ray_t>
-typename ray_t::intersect_t CpuTracer<ray_t>::intersectTriangle(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
+typename ray_t::intersect_t CpuTracer<ray_t>::intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
 	typename ray_t::intersect_t intersected_triangle = TriangleIndex_Invalid;
 	typename ray_t::distance_t minimum_distance = ray_t::max_distance();
@@ -11,14 +11,10 @@ typename ray_t::intersect_t CpuTracer<ray_t>::intersectTriangle(const Scene &sce
 	{
 		const Triangle &triangle = scene.triangles[triangle_index];
 
-		float distance;
+		typename ray_t::distance_t distance;
 		if(ray.intersectTriangle(triangle, &distance))
 		{
-			if(distance < minimum_distance)
-			{
-				intersected_triangle = triangle_index;
-				minimum_distance = distance;
-			}
+			ray_t::updateIntersections(&intersected_triangle, triangle_index, &minimum_distance, distance);
 		}
 	}
 
@@ -30,7 +26,7 @@ template <class ray_t>
 typename ray_t::color_t CpuTracer<ray_t>::trace(const Scene &scene, const ray_t &ray) const
 {
 	typename ray_t::distance_t intersection_distance;
-	const typename ray_t::intersect_t intersected_triangle = intersectTriangle(scene, ray, &intersection_distance);
+	const typename ray_t::intersect_t intersected_triangle = intersect(scene, ray, &intersection_distance);
 
 	if (intersected_triangle == TriangleIndex_Invalid) return scene.background_color;
 
@@ -39,16 +35,15 @@ typename ray_t::color_t CpuTracer<ray_t>::trace(const Scene &scene, const ray_t 
 
 	const auto P = ray.getIntersectionPoint(intersection_distance);
 
-	typename ray_t::color_t result_color(0.f, 0.f, 0.f);
+	typename ray_t::color_t result_color(Color(0.f, 0.f, 0.f));
 
 	for (auto &light : scene.lights)
 	{
 		typename ray_t::distance_t light_distance;
 		const ray_t shadow_ray = ray_t::getShadowRay(light, P, &light_distance);
-		if(intersectTriangle(scene, shadow_ray, &intersection_distance) == TriangleIndex_Invalid || intersection_distance > light_distance)
+		if (intersect(scene, shadow_ray, &intersection_distance) == TriangleIndex_Invalid)
 		{
-			// don't use intersection_distance here, use light_distance instead!
-			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light);
+			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance);
 			result_color += shading_color;
 		}
 	}
