@@ -15,7 +15,7 @@ if (NOT CUDA_FOUND OR NOT CUDA_CUDA_LIBRARY)
   set(WITH_CUDA OFF CACHE BOOL "Build with CUDA support" FORCE)
 endif()
 
-option(WITH_SSE "Build with SIMD (SSE) support" ON)
+option(WITH_SSE "Build with SIMD (SSE) support" OFF)
 find_package(SIMD)
 if (NOT SIMD_FOUND)
   set(WITH_SSE OFF CACHE BOOL "Build with SIMD (SSE) support" FORCE)
