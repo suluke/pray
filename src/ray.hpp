@@ -230,7 +230,7 @@ public:
     const auto N = getNormals(scene, intersects);
     const auto materialColors = getMaterialColors(scene, intersects);
 
-    const auto light_dist_squared = light_distance * light_distance;
+    const auto light_dist_squared = simd::mul_ps(light_distance, light_distance);
     const auto lambert = getLambert(L, N, light_dist_squared);
     
     const auto res = materialColors * color_t(light.color) * lambert;

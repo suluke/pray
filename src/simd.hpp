@@ -28,12 +28,14 @@ namespace simd {
   constexpr auto max_ps = _mm256_max_ps;
 }
 
-#elif defined(__SSE3__)
+#elif defined(__SSE2__)
 
-#include <ammintrin.h>
+#include <emmintrin.h>
+
 namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = 16u;
   static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
+  static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
 
   using floatty = __m128;
   using intty = __m128i;
@@ -50,7 +52,7 @@ namespace simd {
   constexpr auto load_ps = _mm_load_ps;
   constexpr auto store_ps = _mm_store_ps;
   constexpr auto store_si = _mm_store_si128;
-  constexpr auto cmplt_ps = mm_cmplt_ps;
+  constexpr auto cmplt_ps = _mm_cmplt_ps;
   constexpr auto max_ps = _mm_max_ps;
 }
 
