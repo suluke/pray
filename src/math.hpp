@@ -17,6 +17,10 @@ inline time_t endTime (time_t start) {
 	return difftime(start,time(NULL));
 }
 
+inline time_t diffTime (time_t start, time_t end) {
+	return difftime(start,end);
+}
+
 struct approx
 {
 	constexpr approx(float x) : x(x) {}
