@@ -6,10 +6,10 @@ struct DummyAcceleration
 {
 	void build(const Scene &) {}
 
-	TriangleIndex intersect(const Scene &scene, const ray_t &ray, float *out_distance) const
+	typename ray_t::intersect_t intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 	{
-		TriangleIndex intersected_triangle = TriangleIndex_Invalid;
-		float minimum_distance = std::numeric_limits<float>::max();
+		typename ray_t::intersect_t intersected_triangle = TriangleIndex_Invalid;
+		auto minimum_distance = ray_t::max_distance();
 
 		for(TriangleIndex triangle_index = 0u; triangle_index < index_cast<TriangleIndex>(scene.triangles.size()); ++triangle_index)
 		{
