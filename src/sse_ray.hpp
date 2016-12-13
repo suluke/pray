@@ -105,10 +105,18 @@ private:
     alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
     alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
     for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
-      const auto N = scene.triangles[int_ersects[i]].calculateNormal();
-      X[i] = N.x;
-      Y[i] = N.y;
-      Z[i] = N.z;
+      auto triangle = int_ersects[i];
+      if (triangle != TriangleIndex_Invalid) {
+        const auto N = scene.triangles[triangle].calculateNormal();
+        X[i] = N.x;
+        Y[i] = N.y;
+        Z[i] = N.z;
+      } else {
+        // TODO is this necessary or default initialized?
+        X[i] = 0;
+        Y[i] = 0;
+        Z[i] = 0;
+      }
     }
     return {simd::load_ps(&X[0]), simd::load_ps(&Y[0]), simd::load_ps(&Z[0])};
   }
@@ -120,11 +128,18 @@ private:
     alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
     alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
     for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
-      const auto material_index = scene.triangles[int_ersects[i]].material_index;
-      const auto C = scene.materials[material_index].color;
-      R[i] = C.r;
-      G[i] = C.g;
-      B[i] = C.b;
+      auto triangle = int_ersects[i];
+      if (triangle != TriangleIndex_Invalid) {
+        const auto material_index = scene.triangles[int_ersects[i]].material_index;
+        const auto C = scene.materials[material_index].color;
+        R[i] = C.r;
+        G[i] = C.g;
+        B[i] = C.b;
+      } else {
+        R[i] = 0;
+        G[i] = 0;
+        B[i] = 0;
+      }
     }
     return {simd::load_ps(&R[0]), simd::load_ps(&G[0]), simd::load_ps(&B[0])};
   }

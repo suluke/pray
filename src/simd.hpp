@@ -39,7 +39,7 @@ namespace simd {
     store_si((intty *) &A[0], a);
     store_si((intty *) &B[0], b);
     auto itA = A.begin();
-    auto itB = A.begin();
+    auto itB = B.begin();
     while(itA != A.end()) {
       if (*itA != approx(*itB))
         return false;
