@@ -7,5 +7,6 @@
 #cmakedefine WITH_SSE
 #cmakedefine WITH_SUBSAMPLING
 #cmakedefine WITH_BIH
+#cmakedefine WITH_TIMING
 
 #endif

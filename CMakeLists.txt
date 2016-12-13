@@ -23,6 +23,7 @@ endif()
 
 option(WITH_SUBSAMPLING "Build with adaptive subsampling enabled" OFF)
 option(WITH_BIH "Build with BIH acceleration structure" ON)
+option(WITH_TIMING "Build with logging of processing time enabled" OFF)
 
 option(WITH_DEBUG_TOOL "Build the debug tool" OFF)
 if  (WITH_DEBUG_TOOL)
