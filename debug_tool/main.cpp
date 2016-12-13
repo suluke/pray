@@ -7,15 +7,20 @@
 using namespace std;
 
 static Scene scene;
+
 static float camera_pan = 0.f, camera_tilt = 0.f;
+static float camera_distance = 5.f;
 
 static string debug_mode;
 static string debug_mode_parameter;
 
 // "bih"
 static Bih bih;
-static int bih_depth = 0; // "all"
-static Bih::Node *bih_current_node = nullptr;
+static int bih_depth = 0; // "draw_all"
+static Bih::Node *bih_current_node = nullptr; // "draw_single"
+static Ray bih_ray(Vector3(0.f, 5.f, -5.f), Vector3(0.f, -1.f, 1.f).normalize()); // "intersect"
+extern std::vector<size_t> bih_intersected_nodes;
+static bool bih_draw_intersected_nodes = true;
 
 static void bih_rebuild()
 {
@@ -44,14 +49,16 @@ static void keyboard(unsigned char key, int x, int y)
 	if(key == 'd') camera_pan -= 10.f;
 	if(key == 'w') camera_tilt += 10.f;
 	if(key == 's') camera_tilt -= 10.f;
+	if(key == '+') camera_distance -= 0.3f;
+	if(key == '-') camera_distance += 0.3f;
 	if(debug_mode == "bih")
 	{
-		if(debug_mode_parameter == "all")
+		if(debug_mode_parameter == "draw_all")
 		{
 			if(key == 'i') ++bih_depth;
 			if(key == 'k') --bih_depth;
 		}
-		else if(debug_mode_parameter == "single")
+		else if(debug_mode_parameter == "draw_single")
 		{
 			auto old_current_node = bih_current_node;
 			if(key == 'p') bih_current_node = bih_current_node->parent;
@@ -68,9 +75,22 @@ static void keyboard(unsigned char key, int x, int y)
 				}
 				else
 				{
-					std::cout << "current: " << bih_current_node->index << " p: " << bih_current_node->parent->index << " l: " << bih_current_node->child1->index << " r: " << bih_current_node->child2->index << "\n";
+					std::cout << "current: " << bih_current_node->index << " p: " << (bih_current_node->parent ? bih_current_node->parent->index : 13371337) << " l: " << bih_current_node->child1->index << " r: " << bih_current_node->child2->index << "\n";
 				}
 			}
+		}
+		else if(debug_mode_parameter == "intersect")
+		{
+			if(key == 'i') bih_draw_intersected_nodes = !bih_draw_intersected_nodes;
+		}
+
+		if(key == 'm')
+		{
+			static std::vector<std::string> parameters = { "draw_all", "draw_single", "intersect" };
+			auto current = std::find(parameters.begin(), parameters.end(), debug_mode_parameter);
+			auto next = ++current;
+			if(current == parameters.end()) next = parameters.begin();
+			debug_mode_parameter = *next;
 		}
 
 		if(key == 'r')
@@ -122,7 +142,7 @@ static void draw_bih_node(const Bih::Node &node, const AABox3 &deduced_box, int 
 {
 	if(node.type == Bih::Node::Leaf)
 	{
-		if(debug_mode_parameter == "all")
+		if(debug_mode_parameter == "draw_all")
 		{
 			if(bih_depth == depth)
 			{
@@ -130,9 +150,17 @@ static void draw_bih_node(const Bih::Node &node, const AABox3 &deduced_box, int 
 				draw_triangle(scene.triangles[bih.triangles[node.data.leaf.children_index]]);
 			}
 		}
-		else if(debug_mode_parameter == "single")
+		else if(debug_mode_parameter == "draw_single")
 		{
-			if(depth == 1)
+			if(depth == 1 || &node == bih_current_node)
+			{
+				glColor3f(0.f, 1.f, 0.f);
+				draw_triangle(scene.triangles[bih.triangles[node.data.leaf.children_index]]);
+			}
+		}
+		else if(debug_mode_parameter == "intersect")
+		{
+			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.nodes[0]) != bih_intersected_nodes.end())
 			{
 				glColor3f(0.f, 1.f, 0.f);
 				draw_triangle(scene.triangles[bih.triangles[node.data.leaf.children_index]]);
@@ -146,7 +174,7 @@ static void draw_bih_node(const Bih::Node &node, const AABox3 &deduced_box, int 
 		auto child2_box = deduced_box;
 		child2_box.min[node.type] = node.data.split.right_plane;
 
-		if(debug_mode_parameter == "all")
+		if(debug_mode_parameter == "draw_all")
 		{
 			if(bih_depth == depth)
 			{
@@ -159,7 +187,7 @@ static void draw_bih_node(const Bih::Node &node, const AABox3 &deduced_box, int 
 				draw_bih_node(bih.nodes[node.data.split.children_index+1], child2_box, depth+2);
 			}
 		}
-		else if(debug_mode_parameter == "single")
+		else if(debug_mode_parameter == "draw_single")
 		{
 			if(&node == bih_current_node)
 			{
@@ -184,6 +212,17 @@ static void draw_bih_node(const Bih::Node &node, const AABox3 &deduced_box, int 
 				draw_bih_node(bih.nodes[node.data.split.children_index+1], child2_box, depth);
 			}
 		}
+		else if(debug_mode_parameter == "intersect")
+		{
+			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.nodes[0]) != bih_intersected_nodes.end())
+			{
+				glColor3f(1.f, 0.f, 0.f);
+				draw_box(deduced_box);
+
+				draw_bih_node(bih.nodes[node.data.split.children_index+0], child1_box, depth+1);
+				draw_bih_node(bih.nodes[node.data.split.children_index+1], child2_box, depth+2);
+			}
+		}
 	}
 }
 
@@ -193,7 +232,7 @@ static void display()
 
 	glLoadIdentity();
 
-	glTranslatef(0.f, 0.f, -5.f);
+	glTranslatef(0.f, 0.f, -camera_distance);
 
 	glRotatef(camera_tilt, 1.f, 0.f, 0.f);
 	glRotatef(camera_pan, 0.f, 1.f, 0.f);
@@ -214,6 +253,21 @@ static void display()
 	{
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ONE);
+
+		glEnable(GL_DEPTH_TEST);
+		glBegin(GL_LINES);
+		glColor3f(0.f, 0.f, 1.f);
+		glVertex3fv(&bih_ray.origin.x);
+		Vector3 e = bih_ray.origin + bih_ray.direction * 1000.f;
+		glVertex3fv(&e.x);
+		glEnd();
+		glDisable(GL_DEPTH_TEST);
+
+		if(debug_mode_parameter == "intersect")
+		{
+			float distance;
+			bih.intersectTriangle(scene, bih_ray, &distance);
+		}
 
 		draw_bih_node(bih.nodes[0], bih.scene_aabb, 0);
 

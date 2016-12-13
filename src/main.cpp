@@ -1,6 +1,6 @@
 #include "scene.hpp"
 #include "image.hpp"
-#include "dummy_acceleration.hpp"
+#include "bih.hpp"
 #include "cpu_tracer.hpp"
 
 int main(int argc, char *argv[])
@@ -19,7 +19,10 @@ int main(int argc, char *argv[])
 	Image image(image_resolution);
 	ImageView img(image, 0, image_resolution.h);
 
-	CpuTracer<DummyAcceleration> tracer(scene);
+	CpuTracer<Bih> tracer(scene);
+
+	tracer.preprocess();
+
 	tracer.render(img);
 
 	image.save(argv[2]);
