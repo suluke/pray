@@ -70,8 +70,10 @@ int main(int argc, char *argv[])
 #ifdef WITH_TIMING
 	auto end1 = chrono::high_resolution_clock::now();
 #endif
+#ifndef DISABLE_OUTPUT
 	cout << "Saving..." << endl;
 	image.save(argv[2]);
+#endif
 
 #ifdef WITH_TIMING
 	auto end2 = chrono::high_resolution_clock::now();

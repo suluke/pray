@@ -24,6 +24,7 @@ endif()
 option(WITH_SUBSAMPLING "Build with adaptive subsampling enabled" OFF)
 option(WITH_BIH "Build with BIH acceleration structure" OFF)
 option(WITH_TIMING "Build with logging of processing time enabled" OFF)
+option(DISABLE_OUTPUT "Disable writing out the image. Useful for profiling" OFF)
 
 option(WITH_DEBUG_TOOL "Build the debug tool" OFF)
 if  (WITH_DEBUG_TOOL)
@@ -48,6 +49,7 @@ print_opt(WITH_BIH)
 print_opt(WITH_SUBSAMPLING)
 print_opt(WITH_TIMING)
 print_opt(WITH_DEBUG_TOOL)
+print_opt(DISABLE_OUTPUT)
 message(STATUS "##################\n")
 
 include_directories(

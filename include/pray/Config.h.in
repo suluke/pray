@@ -8,5 +8,6 @@
 #cmakedefine WITH_SUBSAMPLING
 #cmakedefine WITH_BIH
 #cmakedefine WITH_TIMING
+#cmakedefine DISABLE_OUTPUT
 
 #endif
