@@ -28,6 +28,12 @@ static bool loadObj(Scene &scene, const fs::path &file)
 
 	if(!success) return false;
 
+	for(auto &m : materials)
+	{
+		const Color diffuse_color = Color(m.diffuse[0], m.diffuse[1], m.diffuse[2]);
+		scene.insertMaterial(diffuse_color);
+	}
+
 	for(auto &s : shapes)
 	{
 		size_t index_offset = 0;
@@ -39,9 +45,7 @@ static bool loadObj(Scene &scene, const fs::path &file)
 			// only triangles are supported
 			ASSERT(fv == 3);
 
-			//TODO: this is shit, improve please!
-			const Color diffuse_color = Color(materials[s.mesh.material_ids[f]].diffuse[0], materials[s.mesh.material_ids[f]].diffuse[1], materials[s.mesh.material_ids[f]].diffuse[2]);
-			const MaterialIndex material_index = scene.insertMaterial(diffuse_color);
+			const MaterialIndex material_index = s.mesh.material_ids[f];
 
 			array<Vector3, 3> vertices;
 			for (size_t v = 0; v < fv; v++) {
