@@ -1,4 +1,6 @@
 \include{header}
+\setbeamertemplate{caption}{\raggedright\insertcaption\par}
+
 
 \title[LLNM]{LLNM - Zwischenpräsenation}
 \subtitle{}
@@ -8,7 +10,7 @@
 	\begin{frame}
 		\titlepage
 	\end{frame}
-	\begin{frame}{Erreichte Execution Times}
+	\begin{frame}{Benchmarking}
 		
 	\end{frame}
 	\begin{frame}{BiH Datenstruktur}
@@ -28,12 +30,23 @@
         \end{minipage}
     \end{figure}
 	\end{frame}
-	\begin{frame}{Benchmarking}
+
+	\begin{frame}{Diff Bilder}
 		%sulukas laufzeitvergleiche
 	\end{frame}
+
 	\begin{frame}{Hot Code Paths}
 		%callgrind der aktuellen version
+		\begin{figure}[ht]
+        	\begin{minipage}[b]{0.7\linewidth}
+            \centering
+            \includegraphics[width=\textwidth]{images/callgrind2.png}
+            \caption{KCallgrind Export}
+            \label{fig:a}
+        	\end{minipage}
+	\end{figure}
 	\end{frame}
+
 	\begin{frame}{Ausblick}
 		Cuda, etc.
 	\end{frame}
