@@ -114,6 +114,7 @@ struct BihBuilder
 		else
 		{
 			// build a leaf
+
 			current_node.type = bih_t::Node::Leaf;
 			current_node.data.leaf.children_index = std::distance(bih.triangles.begin(), triangles_begin);
 			current_node.data.leaf.children_count = children_count;
@@ -193,6 +194,7 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 		left_aabb.max[split_axis] = left_plane;
 		right_aabb.min[split_axis] = right_plane;
 
+		//TODO: this can be done smarter!
 		auto intersect_left = intersectRayAABB(ray.origin, ray.direction, left_aabb);
 		if(intersect_left) intersectBihNode(left_child, left_aabb, bih, scene, ray, intersection);
 		auto intersect_right = intersectRayAABB(ray.origin, ray.direction, right_aabb);

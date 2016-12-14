@@ -8,7 +8,7 @@
 template<class ray_t>
 struct Bih
 {
-	//TODO: compactify this (mode children_index into type)
+	//TODO: compactify this (merge children_index and type)
 	struct Node
 	{
 		enum Type
