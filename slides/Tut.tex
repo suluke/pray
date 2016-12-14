@@ -58,12 +58,17 @@
 
 	\begin{frame}{Hot Code Paths}
 		\begin{figure}[ht]
-        	\begin{minipage}[b]{0.7\linewidth}
-            \centering
-            \includegraphics[width=\textwidth]{images/callgrind2.png}
-            \caption{KCallgrind Export}
-            \label{fig:a}
-        	\end{minipage}
+			\begin{columns}
+				\begin{column}{.48\textwidth}
+					\center
+					\includegraphics[height=.7\textheight]{images/callgrind_bih.png}
+					\caption{KCachegrind-Graph für pray mit BIH}
+				\end{column}
+				\begin{column}{.48\textwidth}
+					\includegraphics[width=\textwidth]{images/callgrind_sse.png}
+					\caption{KCachegrind-Graph für pray mit SSE}
+				\end{column}
+			\end{columns}
 	\end{figure}
 	\end{frame}
 
