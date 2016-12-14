@@ -55,7 +55,8 @@ struct BihBuilder
 
 		//TODO: if two triangles happen to have the same centroid, this recursion never ends...
 
-		if(children_count != 1)
+		//TODO: how to pass this constant as a parameter? (pls not template...)
+		if(children_count > 4)
 		{
 			// build a node
 
