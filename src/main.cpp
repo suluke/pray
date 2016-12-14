@@ -29,6 +29,10 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+#ifdef DEBUG
+	cout << "Warning: This is a Debug build and might be very slow!\n";
+#endif
+
 	Scene scene;
 
 	IntDimension2 image_resolution = IntDimension2(1920, 1080);
