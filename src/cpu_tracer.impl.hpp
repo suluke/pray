@@ -53,7 +53,9 @@ void CpuTracer<ray_t, accel_t>::render(ImageView &image) const
 		const bool subsampling_enabled = false;
 	#endif /*WITH_SUBSAMPLING*/
 
+#ifdef WITH_OMP
 	#pragma omp parallel for
+#endif
 	for(long y = 0; y < image.resolution.h; y += ray_t::dim.h) {
 		for(long x = 0; x < image.resolution.w; x += ray_t::dim.w) {
 			if (!subsampling_enabled || (
@@ -67,7 +69,9 @@ void CpuTracer<ray_t, accel_t>::render(ImageView &image) const
 		}
 	}
 	if (subsampling_enabled) {
-		#pragma omp parallel for
+#ifdef WITH_OMP
+	#pragma omp parallel for
+#endif
 		for(long y = 1; y < image.resolution.h-1; ++y)
 		{
 			for(long x = 1; x < image.resolution.w-1; ++x)
