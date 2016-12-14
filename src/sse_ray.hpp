@@ -125,8 +125,8 @@ struct SSERay {
     for(int i=0; i<3; ++i)
     {
       auto i_d = simd::div_ps(one, direction[i]);
-      auto t0 = simd::mul_ps(simd::sub_ps(simd::set_ps(aabb.min[i]), origin[i]), direction[i]);
-      auto t1 = simd::mul_ps(simd::sub_ps(simd::set_ps(aabb.max[i]), origin[i]), direction[i]);
+      auto t0 = simd::mul_ps(simd::sub_ps(simd::set1_ps(aabb.min[i]), origin[i]), direction[i]);
+      auto t1 = simd::mul_ps(simd::sub_ps(simd::set1_ps(aabb.max[i]), origin[i]), direction[i]);
       
       // if(i_d < 0.f) std::swap(t0, t1);
       auto mask = simd::cmplt_ps(i_d, zero);
@@ -146,7 +146,7 @@ struct SSERay {
       t_min = simd::min_ps(t_min, t0);
       t_max = simd::min_ps(t_max, t1);
       
-      result = simd::or_ps(result, simd::castps_si(simd::cmplt_ps(t_max, t_min)));
+      result = simd::castps_si(simd::or_ps(simd::castsi_ps(result), simd::cmplt_ps(t_max, t_min)));
     }
     
     return result;

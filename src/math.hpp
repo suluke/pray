@@ -18,7 +18,7 @@ inline constexpr bool operator!=(float a, const approx &approx) { return !(a == 
 
 struct Vector3
 {
-  using component_t = float;
+	using component_t = float;
   
 	component_t x, y, z;
 

@@ -1,4 +1,4 @@
-template<class bih_t, class vec3_t>
+template<class bih_t>
 struct BihBuilder
 {
 	const Scene &scene;
@@ -143,7 +143,7 @@ struct BihBuilder
 template<class ray_t>
 void Bih<ray_t>::build(const Scene &scene)
 {
-	BihBuilder<Bih<ray_t>, typename ray_t::location_t> builder(scene, *this);
+	BihBuilder<Bih<ray_t>> builder(scene, *this);
 	builder.build();
 }
 
@@ -155,8 +155,8 @@ extern std::vector<size_t> bih_intersected_nodes;
 template<class ray_t>
 struct IntersectionResult
 {
-	TriangleIndex triangle = TriangleIndex_Invalid;
-	typename ray_t::distance_t distance = std::numeric_limits<typename ray_t::distance_t>::max();
+	typename ray_t::intersect_t triangle = ray_t::getNoIntersection();
+	typename ray_t::distance_t distance = ray_t::max_distance();
 };
 
 template<class ray_t>
@@ -215,7 +215,7 @@ typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_
 #endif
 
   // TODO: Marcel
-  if(!ray.intersectAABB(scene_aabb)) return TriangleIndex_Invalid;
+  if(!ray.intersectAABB(scene_aabb)) return ray_t::getNoIntersection();
 
 	IntersectionResult<ray_t> intersection_result;
 	intersectBihNode(nodes[0u], scene_aabb, *this, scene, ray, intersection_result);

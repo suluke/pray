@@ -138,6 +138,9 @@ namespace simd {
         case 2: return z; break;
       }
     }
+    template<class T> const component_t &operator[](T index) const {
+      return (*this)[index];
+    }
     
     Vec3Pack operator-() const {
       const auto SIGN_MASK = set1_ps(-0.0f);
