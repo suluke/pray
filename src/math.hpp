@@ -147,7 +147,7 @@ inline bool intersectRayAABB(const Vector3 &r_o, const Vector3 &r_d, const AABox
 	return true;
 }
 
-inline int round (float f) {
+inline int fast_round (float f) {
 	return (int)(f + 0.5f);
 }
 #endif
