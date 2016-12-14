@@ -20,6 +20,8 @@ namespace simd {
   constexpr auto and_ps = _mm256_and_ps;
   constexpr auto or_ps = _mm256_or_ps;
   constexpr auto xor_ps = _mm256_xor_ps;
+  constexpr auto min_ps = _mm256_min_ps;
+  constexpr auto max_ps = _mm256_max_ps;
   constexpr auto set1_ps = _mm256_set1_ps;
   constexpr auto sqrt_ps = _mm256_sqrt_ps;
   constexpr auto set_ps = _mm256_set_ps;
@@ -51,7 +53,6 @@ namespace simd {
   inline floatty not_ps (floatty x) {
     return _mm256_xor_ps(x, _mm256_castsi256_ps(_mm256_set1_epi32(-1)));
   }
-  constexpr auto max_ps = _mm256_max_ps;
 
   // casts
   constexpr auto castps_si = _mm256_castps_si256;
@@ -78,6 +79,8 @@ namespace simd {
   constexpr auto and_ps = _mm_and_ps;
   constexpr auto or_ps = _mm_or_ps;
   constexpr auto xor_ps = _mm_xor_ps;
+  constexpr auto min_ps = _mm_min_ps;
+  constexpr auto max_ps = _mm_max_ps;
   constexpr auto set1_ps = _mm_set1_ps;
   constexpr auto sqrt_ps = _mm_sqrt_ps;
   constexpr auto set_ps = _mm_set_ps;
@@ -101,7 +104,6 @@ namespace simd {
   inline floatty not_ps (floatty x) {
     return _mm_xor_ps(x, _mm_castsi128_ps(_mm_set1_epi32(-1)));
   }
-  constexpr auto max_ps = _mm_max_ps;
 
   // casts
   constexpr auto castps_si = _mm_castps_si128;
@@ -116,13 +118,27 @@ namespace simd {
 
 namespace simd {
   struct Vec3Pack {
-    floatty x, y, z;
+    using component_t = floatty;
+    using bool_t = intty;
+    
+    component_t x, y, z;
 
     Vec3Pack() {}
-    Vec3Pack(floatty x, floatty y, floatty z) : x(x), y(y), z(z) {}
+    Vec3Pack(component_t x, component_t y, component_t z) : x(x), y(y), z(z) {}
     Vec3Pack(Vector3 v) : x(set1_ps(v.x)), y(set1_ps(v.y)), z(set1_ps(v.z)) {}
     Vec3Pack(float x, float y, float z) : x(set1_ps(x)), y(set1_ps(y)), z(set1_ps(z)) {}
-
+    
+    template<class T> component_t &operator[](T index) {
+      ASSERT(index < 3);
+      
+      switch (index)
+      {
+        case 0: return x; break;
+        case 1: return y; break;
+        case 2: return z; break;
+      }
+    }
+    
     Vec3Pack operator-() const {
       const auto SIGN_MASK = set1_ps(-0.0f);
       return Vec3Pack(xor_ps(x, SIGN_MASK), xor_ps(y, SIGN_MASK), xor_ps(z, SIGN_MASK));
@@ -136,18 +152,18 @@ namespace simd {
     Vec3Pack operator*(const Vec3Pack &a) const {
       return Vec3Pack(mul_ps(x, a.x), mul_ps(y, a.y), mul_ps(z, a.z));
     }
-    Vec3Pack operator*(floatty a) const {
+    Vec3Pack operator*(component_t a) const {
       return Vec3Pack(mul_ps(x, a), mul_ps(y, a), mul_ps(z, a));
     }
-    Vec3Pack operator/(floatty a) const {
+    Vec3Pack operator/(component_t a) const {
       return Vec3Pack(div_ps(x, a), div_ps(y, a), div_ps(z, a));
     }
 
     Vec3Pack &operator+=(const Vec3Pack &a) { return *this = *this + a; }
-    Vec3Pack &operator*=(floatty a) { return *this = *this * a; }
-    Vec3Pack &operator/=(floatty a) { return *this = *this / a; }
+    Vec3Pack &operator*=(component_t a) { return *this = *this * a; }
+    Vec3Pack &operator/=(component_t a) { return *this = *this / a; }
 
-    floatty dot(const Vec3Pack &a) const {
+    component_t dot(const Vec3Pack &a) const {
       const auto X = mul_ps(x, a.x);
       const auto Y = mul_ps(y, a.y);
       const auto Z = mul_ps(z, a.z);
@@ -160,10 +176,10 @@ namespace simd {
       return Vec3Pack(X, Y, Z);
     }
 
-    floatty lengthSquared() const {
+    component_t lengthSquared() const {
       return dot(*this);
     }
-    floatty length() const { return sqrt_ps(lengthSquared()); }
+    component_t length() const { return sqrt_ps(lengthSquared()); }
     Vec3Pack &normalize() { /*ASSERT(length() != approx(0));*/ return *this /= length(); }
   };
 }

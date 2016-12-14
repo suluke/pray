@@ -47,6 +47,26 @@ struct Ray {
 
     return false;
   }
+  
+  inline bool intersectAABB(const AABox3 &aabb) const
+  {
+    // http://psgraphics.blogspot.de/2016/02/new-simple-ray-box-test-from-andrew.html
+
+    float t_min = std::numeric_limits<float>::lowest(), t_max = std::numeric_limits<float>::max();
+
+    for(int i=0; i<3; ++i)
+    {
+      float i_d = 1.f / r_d[i];
+      float t0 = (aabb.min[i] - origin[i]) * direction;
+      float t1 = (aabb.max[i] - origin[i]) * direction;
+      if(i_d < 0.f) std::swap(t0, t1);
+      t_min = std::max(t_min, t0);
+      t_max = std::min(t_max, t1);
+      if(t_max < t_min) return false;
+    }
+
+    return true;
+  }
 
   location_t getIntersectionPoint(distance_t intersection_distance) const {
     return origin + direction * intersection_distance;

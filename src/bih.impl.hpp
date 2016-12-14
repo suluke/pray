@@ -1,4 +1,4 @@
-template<class bih_t>
+template<class bih_t, class vec3_t>
 struct BihBuilder
 {
 	const Scene &scene;
@@ -143,7 +143,7 @@ struct BihBuilder
 template<class ray_t>
 void Bih<ray_t>::build(const Scene &scene)
 {
-	BihBuilder<Bih<ray_t>> builder(scene, *this);
+	BihBuilder<Bih<ray_t>, typename ray_t::location_t> builder(scene, *this);
 	builder.build();
 }
 
@@ -152,14 +152,15 @@ extern std::vector<size_t> bih_intersected_nodes;
 #endif
 
 // move to global namespace and use this intead of float *out_distance?
+template<class ray_t>
 struct IntersectionResult
 {
 	TriangleIndex triangle = TriangleIndex_Invalid;
-	float distance = std::numeric_limits<float>::max();
+	typename ray_t::distance_t distance = std::numeric_limits<typename ray_t::distance_t>::max();
 };
 
 template<class ray_t>
-static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3 aabb, const Bih<ray_t> &bih, const Scene &scene, const ray_t &ray, IntersectionResult &intersection)
+static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3 aabb, const Bih<ray_t> &bih, const Scene &scene, const ray_t &ray, IntersectionResult<ray_t> &intersection)
 {
 #ifdef DEBUG_TOOL
 	bih_intersected_nodes.push_back(&node - &bih.nodes[0]);
@@ -173,7 +174,7 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 			const TriangleIndex triangle_index = bih.triangles[node.getChildrenIndex() + i];
 			const Triangle &triangle = scene.triangles[triangle_index];
 
-			float distance;
+			typename ray_t::distance_t distance;
 			if(ray.intersectTriangle(triangle, &distance))
 			{
 				if(distance < intersection.distance)
@@ -199,23 +200,24 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 		right_aabb.min[split_axis] = right_plane;
 
 		//TODO: this can be done smarter!
-		auto intersect_left = intersectRayAABB(ray.origin, ray.direction, left_aabb);
+		auto intersect_left = ray.intersectAABB(left_aabb);
 		if(intersect_left) intersectBihNode(left_child, left_aabb, bih, scene, ray, intersection);
-		auto intersect_right = intersectRayAABB(ray.origin, ray.direction, right_aabb);
+		auto intersect_right = ray.intersectAABB(right_aabb);
 		if(intersect_right) intersectBihNode(right_child, right_aabb, bih, scene, ray, intersection);
 	}
 }
 
 template<class ray_t>
-TriangleIndex Bih<ray_t>::intersect(const Scene &scene, const ray_t &ray, float *out_distance) const
+typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
 #ifdef DEBUG_TOOL
 	bih_intersected_nodes.clear();
 #endif
 
-	if(!intersectRayAABB(ray.origin, ray.direction, scene_aabb)) return TriangleIndex_Invalid;
+  // TODO: Marcel
+  if(!ray.intersectAABB(scene_aabb)) return TriangleIndex_Invalid;
 
-	IntersectionResult intersection_result;
+	IntersectionResult<ray_t> intersection_result;
 	intersectBihNode(nodes[0u], scene_aabb, *this, scene, ray, intersection_result);
 
 	*out_distance = intersection_result.distance;
