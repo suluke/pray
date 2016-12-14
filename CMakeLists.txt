@@ -31,6 +31,25 @@ if  (WITH_DEBUG_TOOL)
   find_package(GLUT)
 endif()
 
+macro(print_opt OPT)
+  if(${OPT})
+    message(STATUS "${OPT} is ON")
+  else()
+    message(STATUS "${OPT} is OFF")
+  endif()
+endmacro()
+
+message(STATUS "")
+message(STATUS "##### CONFIG #####")
+print_opt(WITH_OMP)
+print_opt(WITH_CUDA)
+print_opt(WITH_SSE)
+print_opt(WITH_BIH)
+print_opt(WITH_SUBSAMPLING)
+print_opt(WITH_TIMING)
+print_opt(WITH_DEBUG_TOOL)
+message(STATUS "##################\n")
+
 include_directories(
   "${PROJECT_SOURCE_DIR}/include"
   "${PROJECT_BINARY_DIR}/include"
