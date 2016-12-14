@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
 
 	Scene scene;
 
+	cout << "Loading...\n";
 	IntDimension2 image_resolution = IntDimension2(1920, 1080);
 	if(!scene.load(argv[1], &image_resolution)) return 1;
 
@@ -59,14 +60,17 @@ int main(int argc, char *argv[])
 #ifdef WITH_TIMING
 	auto start2 = chrono::high_resolution_clock::now();
 #endif
+	cout << "Preprocessing...\n";
 	tracer.preprocess();
 #ifdef WITH_TIMING
 	auto point1 = chrono::high_resolution_clock::now();
 #endif
+	cout << "Rendering...\n";
 	tracer.render(img);
 #ifdef WITH_TIMING
 	auto end1 = chrono::high_resolution_clock::now();
 #endif
+	cout << "Saving...\n";
 	image.save(argv[2]);
 
 #ifdef WITH_TIMING
