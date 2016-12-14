@@ -15,14 +15,14 @@ if (NOT CUDA_FOUND OR NOT CUDA_CUDA_LIBRARY)
   set(WITH_CUDA OFF CACHE BOOL "Build with CUDA support" FORCE)
 endif()
 
-option(WITH_SSE "Build with SIMD (SSE) support" OFF)
+option(WITH_SSE "Build with SIMD (SSE) support" ON)
 find_package(SIMD)
 if (NOT SIMD_FOUND)
   set(WITH_SSE OFF CACHE BOOL "Build with SIMD (SSE) support" FORCE)
 endif()
 
 option(WITH_SUBSAMPLING "Build with adaptive subsampling enabled" OFF)
-option(WITH_BIH "Build with BIH acceleration structure" ON)
+option(WITH_BIH "Build with BIH acceleration structure" OFF)
 option(WITH_TIMING "Build with logging of processing time enabled" OFF)
 
 option(WITH_DEBUG_TOOL "Build the debug tool" OFF)
