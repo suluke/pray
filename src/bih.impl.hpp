@@ -1,7 +1,3 @@
-#ifdef DEBUG
-std::vector<size_t> bih_intersected_nodes;
-#endif
-
 template<class bih_t>
 struct BihBuilder
 {
@@ -145,6 +141,10 @@ void Bih<ray_t>::build(const Scene &scene)
 	builder.build();
 }
 
+#ifdef DEBUG_TOOL
+extern std::vector<size_t> bih_intersected_nodes;
+#endif
+
 // move to global namespace and use this intead of float *out_distance?
 struct IntersectionResult
 {
@@ -155,7 +155,7 @@ struct IntersectionResult
 template<class ray_t>
 static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3 aabb, const Bih<ray_t> &bih, const Scene &scene, const ray_t &ray, IntersectionResult &intersection)
 {
-#ifdef DEBUG
+#ifdef DEBUG_TOOL
 	bih_intersected_nodes.push_back(&node - &bih.nodes[0]);
 #endif
 
@@ -202,7 +202,7 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 template<class ray_t>
 TriangleIndex Bih<ray_t>::intersect(const Scene &scene, const ray_t &ray, float *out_distance) const
 {
-#ifdef DEBUG
+#ifdef DEBUG_TOOL
 	bih_intersected_nodes.clear();
 #endif
 

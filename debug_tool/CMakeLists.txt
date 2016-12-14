@@ -4,6 +4,8 @@ add_executable(pray_debug_tool
   ../src/scene.cpp
   )
 
+target_compile_definitions(pray_debug_tool PRIVATE DEBUG_TOOL)
+
 target_include_directories(pray_debug_tool PRIVATE ../src)
 set_target_properties(pray_debug_tool PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
