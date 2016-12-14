@@ -31,8 +31,9 @@ struct BihBuilder
 		bih.triangles.resize(scene.triangles.size());
 		for(TriangleIndex i=0u; i<scene.triangles.size(); ++i) bih.triangles[i] = i;
 
-		//TODO: magic number !!!!
-		bih.nodes.reserve(10000u);
+		// https://de.wikipedia.org/wiki/Bin%C3%A4rbaum#Abz.C3.A4hlungen
+		// The bih is a binary tree with (at most) scene.triangles.size() leaves.
+		bih.nodes.reserve(scene.triangles.size() + scene.triangles.size() - 1);
 
 		bih.nodes.emplace_back();
 #ifdef DEBUG
@@ -90,7 +91,7 @@ struct BihBuilder
 
 			// allocate child nodes (this is a critical section)
 			current_node.data.split.children_index = bih.nodes.size();
-			ASSERT(bih.nodes.capacity() - bih.nodes.size() >= 2u); // we don't want relocation (breaks iterators and references)
+			ASSERT(bih.nodes.capacity() - bih.nodes.size() >= 2u); // we don't want relocation (breaks references)
 			bih.nodes.emplace_back(); bih.nodes.emplace_back();
 			auto &child1 = bih.nodes[current_node.data.split.children_index+0];
 			auto &child2 = bih.nodes[current_node.data.split.children_index+1];
