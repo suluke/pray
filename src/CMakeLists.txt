@@ -19,11 +19,18 @@ add_executable(pray
   )
 
 set_target_properties(pray PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-	target_link_libraries(pray "-lc++experimental")
+  find_library(LIBCXX_EXPERIMENTAL NAMES "c++experimental" "libc++experimental" HAS_LIBCXX11)
+  if(${LIBCXX_EXPERIMENTAL} STREQUAL "LIBCXX_EXPERIMENTAL-NOTFOUND")
+    target_link_libraries(pray "-lstdc++fs")
+  else()
+    target_link_libraries(pray "-lc++experimental")
+  endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 	target_link_libraries(pray "-lstdc++fs")
 endif()
+
 if (WITH_OMP)
   target_compile_options(pray PRIVATE ${OpenMP_CXX_FLAGS})
   target_link_libraries(pray ${OpenMP_CXX_FLAGS})
