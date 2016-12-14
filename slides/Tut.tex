@@ -10,8 +10,27 @@
 	\begin{frame}
 		\titlepage
 	\end{frame}
-	\begin{frame}{Benchmarking}
-		
+	\begin{frame}{Benchmarking: Cube.json}
+		\begin{tabular}{l*{4}{r}}
+		Methode           & Preprocessing & Rendering & Render Speedup \\%& Total  \\
+		\hline
+		Rein Sequentiell  & /      & 5837ms & /      \\%& 6847ms \\
+		OpenMP            & /      & 3023ms & 1.93   \\%& 5022ms \\
+		BiH               & 0.3ms  & 1452ms & 4.02   \\%& 2592ms \\
+		SSE               & /      & 2079ms & 2.81   \\%& 3537ms \\
+		Subsampling       & /      & 3374ms & 1.73   \\%& 4711ms \\
+		OpenMP + BiH      & 0.3ms  &  904ms & 6.45   \\%& 2354ms \\
+		OpenMP + SSE      & /      &  901ms & 6.48   \\%& 2724ms \\
+		\end{tabular}
+	\end{frame}
+	\begin{frame}{Benchmarking: Sponza}
+		\begin{tabular}{l*{4}{r}}
+		Methode           & Preprocessing & Rendering & Render Speedup \\%& Total  \\
+		\hline
+		Rein Sequentiell  & /      & $>$10min & /        \\
+		OpenMP + BiH      & 39ms   & 41.3s    & $>$ 14.5 \\
+		OpenMP + SSE      & /      & 150s     & $>$ 4    \\
+		\end{tabular}
 	\end{frame}
 	\begin{frame}{BIH Datenstruktur}
 		\begin{figure}[ht]
