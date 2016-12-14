@@ -37,12 +37,25 @@ int main(int argc, char *argv[])
 
 	IntDimension2 image_resolution = IntDimension2(1920, 1080);
 	if(!scene.load(argv[1], &image_resolution)) return 1;
+
+	Image image(image_resolution);
+
+	if(scene.triangles.empty())
+	{
+		// when the scene is empty, just fill the image with the background color and get outta here, no need to do any ray tracing stuff
+		image.fill(scene.background_color);
+		image.save(argv[2]);
+		return 0;
+	}
+
 #ifdef WITH_TIMING
 	auto start1 = chrono::high_resolution_clock::now();
 #endif
-	Image image(image_resolution);
+
 	ImageView img(image, 0, image_resolution.h);
+
 	CpuTracer<ray_t, accel_t> tracer(scene);
+
 #ifdef WITH_TIMING
 	auto start2 = chrono::high_resolution_clock::now();
 #endif
@@ -62,4 +75,6 @@ int main(int argc, char *argv[])
 	cout <<"Render Time: "<< chrono::duration_cast<chrono::milliseconds>(end1-point1).count() << "ms\n";
 	cout <<"Total Time: "<< chrono::duration_cast<chrono::milliseconds>(end2-start1).count() << "ms\n";
 #endif
+
+	return 0;
 }

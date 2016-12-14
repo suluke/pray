@@ -35,6 +35,16 @@ struct Image
 								((float)pixels[3 * (y * resolution.w + x) + 2]) / 255.f};
 	}
 
+	void fill(const Color &c)
+	{
+		// no need to optimize...
+		for(dim_t y=0; y<resolution.h; ++y)
+		for(dim_t x=0; x<resolution.w; ++x)
+		{
+			setPixel(x, y, c);
+		}
+	}
+
 	bool save(const std::string &filename) const;
 };
 
