@@ -2,7 +2,7 @@
 \setbeamertemplate{caption}{\raggedright\insertcaption\par}
 
 
-\title[LLNM]{LLNM - Zwischenpräsenation}
+\title[LLNM]{LLNM - Zwischenpräsentation}
 \subtitle{}
 \date{\today}
 \begin{document}
@@ -14,7 +14,7 @@
 		\begin{tabular}{l*{4}{r}}
 		Methode           & Preprocessing & Rendering & Render Speedup \\%& Total  \\
 		\hline
-		Rein Sequentiell  & /      & 5837ms & /      \\%& 6847ms \\
+		rein sequentiell  & /      & 5837ms & /      \\%& 6847ms \\
 		OpenMP            & /      & 3023ms & 1.93   \\%& 5022ms \\
 		BiH               & 0.3ms  & 1452ms & 4.02   \\%& 2592ms \\
 		SSE               & /      & 2079ms & 2.81   \\%& 3537ms \\
@@ -27,7 +27,7 @@
 		\begin{tabular}{l*{4}{r}}
 		Methode           & Preprocessing & Rendering & Render Speedup \\%& Total  \\
 		\hline
-		Rein Sequentiell  & /      & $>$10min & /        \\
+		rein sequentiell  & /      & $>$10min & /        \\
 		OpenMP + BiH      & 39ms   & 41.3s    & $>$ 14.5 \\
 		OpenMP + BiH + Sub  & 39ms   & 21.0s    & $>$ 29 \\
 		OpenMP + SSE      & /      & 150s     & $>$ 4    \\
@@ -43,7 +43,7 @@
 		\center
 		\includegraphics[height=0.8\textheight]{images/cropped_diff_ref.png}
 	\end{frame}
-	\begin{frame}{Abweichung schnellerem Runden}
+	\begin{frame}{Abweichung mit schnellerem Runden}
 		\center
 		\includegraphics[height=0.8\textheight]{images/cropped_diff_round.png}
 	\end{frame}
