@@ -44,7 +44,7 @@ namespace simd {
     return _mm256_cmp_ps(a, b, _CMP_LT_OS);
   }
   inline intty cmpeq_epi32(intty a, intty b) {
-    return castps_si(_mm256_cmp_ps(xor_ps(castsi_ps(a), castsi_ps(b)), _mm256_set1_ps(0.f), _CMP_EQ_UQ));
+    return castps_si(_mm256_cmp_ps(xor_ps(castsi_ps(a), castsi_ps(b)), _mm256_setzero_ps(), _CMP_EQ_OS));
   }
 
   // setting
