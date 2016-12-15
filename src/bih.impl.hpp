@@ -42,7 +42,7 @@ struct BihBuilder
 		buildNode(bih.nodes.back(), bih.scene_aabb, bih.triangles.begin(), bih.triangles.end());
 	}
 
-	void buildNode(typename bih_t::Node &current_node, const AABox3 &initial_aabb, TrianglesIt triangles_begin, TrianglesIt triangles_end)
+	void buildNode(typename bih_t::Node &current_node, const AABox3 &initial_aabb, TrianglesIt triangles_begin, TrianglesIt triangles_end, const unsigned retry_depth = 0u)
 	{
 		ASSERT(initial_aabb.isValid());
 
@@ -53,10 +53,24 @@ struct BihBuilder
 
 		auto children_count = std::distance(triangles_begin, triangles_end);
 
-		//TODO: if two triangles happen to have the same centroid, this recursion never ends...
+		const bool leaf_children_count_reached = children_count <= 4u; //TODO: how to pass this constant as a parameter? (pls not template...)
 
-		//TODO: how to pass this constant as a parameter? (pls not template...)
-		if(children_count > 4)
+		/* retry_depth counts how often we retried to split a node with a smaller aabb. If is is too great (magic number), the triangles are very close to each
+		   other and a split will most likely never be found (due to float inprecision). The speedup wouldn't be to great anyways... */
+		const bool maximum_retry_depth_reached = retry_depth == 16u; //TODO: tweak this parameter? or find a better criterium (floating point inaccuracy reached (nextafter(aabb.min, +1.f) == aabb.max or something like that...))?
+
+		if(leaf_children_count_reached || maximum_retry_depth_reached)
+		{
+			// build a leaf
+
+			auto children_index = std::distance(bih.triangles.begin(), triangles_begin);
+			current_node.makeLeafNode(children_index, children_count);
+
+#ifdef DEBUG
+			current_node.child1 = current_node.child2 = nullptr;
+#endif
+		}
+		else
 		{
 			// build a node
 
@@ -78,11 +92,13 @@ struct BihBuilder
 
 			if(split_element == triangles_begin || split_element == triangles_end)
 			{
+				// one side of the partition is empty, so retry with a smaller aabb
+
 				AABox3 new_initial_aabb = initial_aabb;
 				if(split_element == triangles_begin) new_initial_aabb.min[split_axis] = pivot;
 				else                                 new_initial_aabb.max[split_axis] = pivot;
 
-				return buildNode(current_node, new_initial_aabb, triangles_begin, triangles_end);
+				return buildNode(current_node, new_initial_aabb, triangles_begin, triangles_end, retry_depth + 1u);
 			}
 
 			// allocate child nodes (this is a critical section)
@@ -107,19 +123,9 @@ struct BihBuilder
 			child1_initial_aabb.max[split_axis] = pivot; // we could also insert the calculated planes here, let's try sometime whether this works better
 			child2_initial_aabb.min[split_axis] = pivot;
 
+			// recursion
 			buildNode(child1, child1_initial_aabb, triangles_begin, split_element);
 			buildNode(child2, child2_initial_aabb, split_element, triangles_end);
-		}
-		else
-		{
-			// build a leaf
-
-			auto children_index = std::distance(bih.triangles.begin(), triangles_begin);
-			current_node.makeLeafNode(children_index, children_count);
-
-#ifdef DEBUG
-			current_node.child1 = current_node.child2 = nullptr;
-#endif
 		}
 	}
 
