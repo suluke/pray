@@ -128,7 +128,7 @@ namespace simd {
     Vec3Pack(Vector3 v) : x(set1_ps(v.x)), y(set1_ps(v.y)), z(set1_ps(v.z)) {}
     Vec3Pack(float x, float y, float z) : x(set1_ps(x)), y(set1_ps(y)), z(set1_ps(z)) {}
     
-    template<class T> component_t &operator[](T index) {
+    template<class T> const component_t &operator[](T index) const {
       ASSERT(index < 3);
       
       switch (index)
@@ -137,9 +137,10 @@ namespace simd {
         case 1: return y; break;
         case 2: return z; break;
       }
+      std::abort();
     }
-    template<class T> const component_t &operator[](T index) const {
-      return (*this)[index];
+    template<class T> component_t &operator[](T index) {
+      return const_cast<component_t &>(static_cast<const Vec3Pack &>(*this)[index]);
     }
     
     Vec3Pack operator-() const {
