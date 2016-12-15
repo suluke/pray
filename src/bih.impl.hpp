@@ -173,15 +173,15 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 			//TODO: remove double indirection (reorder scene.triangles)
 			const TriangleIndex triangle_index = bih.triangles[node.getChildrenIndex() + i];
 			const Triangle &triangle = scene.triangles[triangle_index];
+      
+      // TODO: currently needed for updateIntersections() but not further used here
+      typename ray_t::intersect_t intersected_triangle = ray_t::getNoIntersection();;
+      auto minimum_distance = ray_t::max_distance();
 
 			typename ray_t::distance_t distance;
-			if(ray.intersectTriangle(triangle, &distance))
+      if(ray_t::isAny(ray.intersectTriangle(triangle, &distance)))
 			{
-				if(distance < intersection.distance)
-				{
-					intersection.triangle = triangle_index;
-					intersection.distance = distance;
-				}
+				ray_t::updateIntersections(&intersected_triangle, triangle_index, &minimum_distance, distance);
 			}
 		}
 	}
@@ -199,11 +199,14 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 		left_aabb.max[split_axis] = left_plane;
 		right_aabb.min[split_axis] = right_plane;
 
+    // if ray_t are several rays and at least one ray has an intersection, the complete pack is checked
+
 		//TODO: this can be done smarter!
 		auto intersect_left = ray.intersectAABB(left_aabb);
-		if(intersect_left) intersectBihNode(left_child, left_aabb, bih, scene, ray, intersection);
+		if(ray_t::isAny(intersect_left)) intersectBihNode(left_child, left_aabb, bih, scene, ray, intersection);
+    
 		auto intersect_right = ray.intersectAABB(right_aabb);
-		if(intersect_right) intersectBihNode(right_child, right_aabb, bih, scene, ray, intersection);
+		if(ray_t::isAny(intersect_right)) intersectBihNode(right_child, right_aabb, bih, scene, ray, intersection);
 	}
 }
 

@@ -16,7 +16,7 @@ struct DummyAcceleration
 			const Triangle &triangle = scene.triangles[triangle_index];
 
 			typename ray_t::distance_t distance;
-			if(ray.intersectTriangle(triangle, &distance))
+			if(ray_t::isAny(ray.intersectTriangle(triangle, &distance)))
 			{
 				ray_t::updateIntersections(&intersected_triangle, triangle_index, &minimum_distance, distance);
 			}

@@ -14,6 +14,9 @@ struct SSERay {
   using location_t = simd::Vec3Pack;
   using distance_t = simd::floatty;
   using bool_t = simd::intty;
+  
+  const bool_t b_true = simd::set1_epi32(-1);
+  const bool_t b_false = simd::set1_epi32(0);
 
   static constexpr IntDimension2 dim = {simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2};
 
@@ -53,7 +56,7 @@ struct SSERay {
     direction.normalize();
   }
 
-  inline bool intersectTriangle(const Triangle &triangle, distance_t *out_distance) const {
+  inline bool_t intersectTriangle(const Triangle &triangle, distance_t *out_distance) const {
     // http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
     const Vector3 &t_v1 = triangle.vertices[0];
     const Vector3 &t_v2 = triangle.vertices[1];
@@ -61,6 +64,8 @@ struct SSERay {
 
     const Vector3 e1 = t_v2 - t_v1;
     const Vector3 e2 = t_v3 - t_v1;
+    
+    bool_t result = b_true;
 
     const auto p = direction.cross(e2);
 
@@ -83,6 +88,8 @@ struct SSERay {
     MASK = simd::and_ps(MASK, simd::cmple_ps(zero, v));
     MASK = simd::and_ps(MASK, simd::cmple_ps(simd::add_ps(u, v), one));
     
+    result = simd::castps_si(MASK); // add all intersections to result
+    
     auto distance = simd::and_ps(simd::div_ps(q.dot(e2), det), MASK);
     const auto max = simd::and_ps(simd::not_ps(MASK), max_distance());
     distance = simd::or_ps(distance, max); // We need to set all places that have no intersection to max
@@ -91,34 +98,21 @@ struct SSERay {
     MASK = simd::cmplt_ps(distance, simd::setzero_ps());
     distance = simd::or_ps(simd::and_ps(simd::not_ps(MASK), distance), simd::and_ps(MASK, max_distance()));
     
+    result = simd::and_si(result, simd::not_si(simd::castps_si(MASK))); // remove intersections with negative distance from result
+    
     *out_distance = distance;
     // TODO
     //~ return distance >= 0.f;
-    return true;
+    return result;
   }
   
   inline bool_t intersectAABB(const AABox3 &aabb) const
   {
-    /*
     // http://psgraphics.blogspot.de/2016/02/new-simple-ray-box-test-from-andrew.html
-
-    float t_min = std::numeric_limits<float>::lowest(), t_max = std::numeric_limits<float>::max();
-
-    for(int i=0; i<3; ++i)
-    {
-      float i_d = 1.f / r_d[i];
-      float t0 = (aabb.min[i] - origin[i]) * direction;
-      float t1 = (aabb.max[i] - origin[i]) * direction;
-      if(i_d < 0.f) std::swap(t0, t1);
-      t_min = std::max(t_min, t0);
-      t_max = std::min(t_max, t1);
-      if(t_max < t_min) return false;
-    }
-    */
     
-    auto result = simd::set1_epi32(std::numeric_limits<int>::max());
     auto zero = simd::setzero_ps();
     auto one = simd::set1_ps(1.f);
+    bool_t result = b_true;
     
     auto t_min = simd::set1_ps(std::numeric_limits<float>::lowest());
     auto t_max = simd::set1_ps(std::numeric_limits<float>::max());
@@ -147,7 +141,8 @@ struct SSERay {
       t_min = simd::min_ps(t_min, t0);
       t_max = simd::min_ps(t_max, t1);
       
-      result = simd::castps_si(simd::or_ps(simd::castsi_ps(result), simd::cmplt_ps(t_max, t_min)));
+      result = simd::or_si(result, simd::castps_si(simd::cmplt_ps(t_max, t_min)));
+      
     }
     
     return result;
