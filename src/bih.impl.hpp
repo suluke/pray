@@ -174,14 +174,10 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 			const TriangleIndex triangle_index = bih.triangles[node.getChildrenIndex() + i];
 			const Triangle &triangle = scene.triangles[triangle_index];
       
-      // TODO: currently needed for updateIntersections() but not further used here
-      typename ray_t::intersect_t intersected_triangle = ray_t::getNoIntersection();;
-      auto minimum_distance = ray_t::max_distance();
-
 			typename ray_t::distance_t distance;
       if(ray_t::isAny(ray.intersectTriangle(triangle, &distance)))
 			{
-				ray_t::updateIntersections(&intersected_triangle, triangle_index, &minimum_distance, distance);
+				ray_t::updateIntersections(&intersection.triangle, triangle_index, &intersection.distance, distance);
 			}
 		}
 	}
