@@ -13,51 +13,50 @@ namespace simd {
   using floatty = __m256;
   using intty = __m256i;
 
+  // casts
+  constexpr auto castps_si = _mm256_castps_si256;
+  constexpr auto castsi_ps = _mm256_castsi256_ps;
+
+  // binary
+  constexpr auto and_ps = _mm256_and_ps;
+  constexpr auto or_ps = _mm256_or_ps;
+  constexpr auto xor_ps = _mm256_xor_ps;
+  inline floatty not_ps (floatty x) {
+    return _mm256_xor_ps(x, _mm256_castsi256_ps(_mm256_set1_epi32(-1)));
+  }
+
+  // basic arithmetic
   constexpr auto add_ps = _mm256_add_ps;
   constexpr auto sub_ps = _mm256_sub_ps;
   constexpr auto mul_ps = _mm256_mul_ps;
   constexpr auto div_ps = _mm256_div_ps;
-  constexpr auto and_ps = _mm256_and_ps;
-  constexpr auto or_ps = _mm256_or_ps;
-  constexpr auto xor_ps = _mm256_xor_ps;
+
+  // advanced arithmetic
   constexpr auto min_ps = _mm256_min_ps;
   constexpr auto max_ps = _mm256_max_ps;
-  constexpr auto set1_ps = _mm256_set1_ps;
   constexpr auto sqrt_ps = _mm256_sqrt_ps;
-  constexpr auto set_ps = _mm256_set_ps;
-  constexpr auto set1_epi32 = _mm256_set1_epi32;
-  constexpr auto setzero_ps = _mm256_setzero_ps;
-  constexpr auto load_ps = _mm256_load_ps;
-  constexpr auto store_ps = _mm256_store_ps;
-  constexpr auto store_si = _mm256_store_si256;
+
+  // comparisons
   inline floatty cmplt_ps(floatty a, floatty b) {
     return _mm256_cmp_ps(a, b, _CMP_LT_OS);
   }
   inline floatty cmple_ps(floatty a, floatty b) {
     return _mm256_cmp_ps(a, b, _CMP_LT_OS);
   }
-  inline bool cmpeq_all_epi32(intty a, intty b) {
-    alignas(16) std::array<int, REGISTER_CAPACITY_I32> A, B;
-    store_si((intty *) &A[0], a);
-    store_si((intty *) &B[0], b);
-    auto itA = A.begin();
-    auto itB = B.begin();
-    while(itA != A.end()) {
-      if (*itA != approx(*itB))
-        return false;
-      ++itA;
-      ++itB;
-    }
-    return true;
-  }
-  inline floatty not_ps (floatty x) {
-    return _mm256_xor_ps(x, _mm256_castsi256_ps(_mm256_set1_epi32(-1)));
+  inline intty cmpeq_epi32(intty a, intty b) {
+    return castps_si(_mm256_cmp_ps(xor_ps(castsi_ps(a), castsi_ps(b)), _mm256_set1_ps(0.f), _CMP_EQ_UQ));
   }
 
-  // casts
-  constexpr auto castps_si = _mm256_castps_si256;
-  constexpr auto castsi_ps = _mm256_castsi256_ps;
-  
+  // setting
+  constexpr auto set1_ps = _mm256_set1_ps;
+  constexpr auto set_ps = _mm256_set_ps;
+  constexpr auto set1_epi32 = _mm256_set1_epi32;
+  constexpr auto setzero_ps = _mm256_setzero_ps;
+
+  // memory
+  constexpr auto load_ps = _mm256_load_ps;
+  constexpr auto store_ps = _mm256_store_ps;
+  constexpr auto store_si = _mm256_store_si256;
 }
 
 #elif defined(__SSE2__)
@@ -72,42 +71,44 @@ namespace simd {
   using floatty = __m128;
   using intty = __m128i;
 
-  constexpr auto add_ps = _mm_add_ps;
-  constexpr auto sub_ps = _mm_sub_ps;
-  constexpr auto mul_ps = _mm_mul_ps;
-  constexpr auto div_ps = _mm_div_ps;
+  // casts
+  constexpr auto castps_si = _mm_castps_si128;
+  constexpr auto castsi_ps = _mm_castsi128_ps;
+
+  // binary
   constexpr auto and_ps = _mm_and_ps;
   constexpr auto or_ps = _mm_or_ps;
   constexpr auto xor_ps = _mm_xor_ps;
-  constexpr auto min_ps = _mm_min_ps;
-  constexpr auto max_ps = _mm_max_ps;
-  constexpr auto set1_ps = _mm_set1_ps;
-  constexpr auto sqrt_ps = _mm_sqrt_ps;
-  constexpr auto set_ps = _mm_set_ps;
-  constexpr auto set1_epi32 = _mm_set1_epi32;
-  constexpr auto setzero_ps = _mm_setzero_ps;
-  constexpr auto load_ps = _mm_load_ps;
-  constexpr auto store_ps = _mm_store_ps;
-  constexpr auto store_si = _mm_store_si128;
-  constexpr auto cmplt_ps = _mm_cmplt_ps;
-  constexpr auto cmple_ps = _mm_cmple_ps;
-  inline bool cmpeq_all_epi32(intty a, intty b) {
-    const auto eq_vec = _mm_cmpeq_epi32(a, b);
-    alignas(16) std::array<int, REGISTER_CAPACITY_I32> E;
-    simd::store_si((intty *) &E[0], eq_vec);
-    for (int i : E) {
-      if (i == 0)
-        return false;
-    }
-    return true;
-  }
   inline floatty not_ps (floatty x) {
     return _mm_xor_ps(x, _mm_castsi128_ps(_mm_set1_epi32(-1)));
   }
 
-  // casts
-  constexpr auto castps_si = _mm_castps_si128;
-  constexpr auto castsi_ps = _mm_castsi128_ps;
+  // basic arithmetic
+  constexpr auto add_ps = _mm_add_ps;
+  constexpr auto sub_ps = _mm_sub_ps;
+  constexpr auto mul_ps = _mm_mul_ps;
+  constexpr auto div_ps = _mm_div_ps;
+
+  // advanced arithmetic
+  constexpr auto min_ps = _mm_min_ps;
+  constexpr auto max_ps = _mm_max_ps;
+  constexpr auto sqrt_ps = _mm_sqrt_ps;
+
+  // comparisons
+  constexpr auto cmplt_ps = _mm_cmplt_ps;
+  constexpr auto cmple_ps = _mm_cmple_ps;
+  constexpr auto cmpeq_epi32 = _mm_cmpeq_epi32;
+
+  // setting
+  constexpr auto set1_ps = _mm_set1_ps;
+  constexpr auto set_ps = _mm_set_ps;
+  constexpr auto set1_epi32 = _mm_set1_epi32;
+  constexpr auto setzero_ps = _mm_setzero_ps;
+
+  // memory
+  constexpr auto load_ps = _mm_load_ps;
+  constexpr auto store_ps = _mm_store_ps;
+  constexpr auto store_si = _mm_store_si128;
 }
 
 #else
@@ -119,7 +120,6 @@ namespace simd {
 namespace simd {
   struct Vec3Pack {
     using component_t = floatty;
-    using bool_t = intty;
     
     component_t x, y, z;
 
