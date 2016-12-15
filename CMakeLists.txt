@@ -21,17 +21,49 @@ if (NOT SIMD_FOUND)
   set(WITH_SSE OFF CACHE BOOL "Build with SIMD (SSE) support" FORCE)
 endif()
 
+option(WITH_SUBSAMPLING "Build with adaptive subsampling enabled" OFF)
+option(WITH_BIH "Build with BIH acceleration structure" OFF)
+option(WITH_TIMING "Build with logging of processing time enabled" OFF)
+option(DISABLE_OUTPUT "Disable writing out the image. Useful for profiling" OFF)
+
+option(WITH_DEBUG_TOOL "Build the debug tool" OFF)
+if  (WITH_DEBUG_TOOL)
+  find_package(OpenGL)
+  find_package(GLUT)
+endif()
+
+macro(print_opt OPT)
+  if(${OPT})
+    message(STATUS "${OPT} is ON")
+  else()
+    message(STATUS "${OPT} is OFF")
+  endif()
+endmacro()
+
+message(STATUS "")
+message(STATUS "##### CONFIG #####")
+print_opt(WITH_OMP)
+print_opt(WITH_CUDA)
+print_opt(WITH_SSE)
+print_opt(WITH_BIH)
+print_opt(WITH_SUBSAMPLING)
+print_opt(WITH_TIMING)
+print_opt(WITH_DEBUG_TOOL)
+print_opt(DISABLE_OUTPUT)
+message(STATUS "##################\n")
+
 include_directories(
   "${PROJECT_SOURCE_DIR}/include"
+  "${PROJECT_BINARY_DIR}/include"
   "${PROJECT_SOURCE_DIR}/ext"
   )
 
 if(MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_CRT_SECURE_NO_WARNINGS")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_CRT_SECURE_NO_WARNINGS /arch:SSE2 /D__SSE2__")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Ox /fp:fast")
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -std=c++14 -Wall -Werror -march=native")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Werror -march=native -Og")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast")
 endif()
 
 set(CUDA_NVCC_FLAGS
@@ -43,6 +75,10 @@ set(CUDA_NVCC_FLAGS
 set(CUDA_PROPAGATE_HOST_FLAGS off)
 
 add_subdirectory(src)
+
+if(WITH_DEBUG_TOOL)
+  add_subdirectory(debug_tool)
+endif()
 
 configure_file(
   "${PROJECT_SOURCE_DIR}/include/pray/Config.h.in"

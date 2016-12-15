@@ -5,5 +5,9 @@
 #cmakedefine WITH_OMP
 #cmakedefine WITH_CUDA
 #cmakedefine WITH_SSE
+#cmakedefine WITH_SUBSAMPLING
+#cmakedefine WITH_BIH
+#cmakedefine WITH_TIMING
+#cmakedefine DISABLE_OUTPUT
 
 #endif

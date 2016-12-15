@@ -1,0 +1,12 @@
+{
+	"obj_file": "empty.obj",
+	"resolution_x": 512,
+	"resolution_y": 512,
+	"camera_position": [-4.0, 2.0, 0.0],
+	"camera_look": [1.0, 0.0, 0.0],
+	"fov": 90,
+	"lights" : [
+		{"position": [2.0, 2.0, 0.0], "color": [10.0, 10.0, 10.0]}
+	],
+	"background": [0.0, 0.0, 1.0]
+}
