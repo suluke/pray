@@ -6,6 +6,7 @@ struct Ray {
   using color_t = Color;
   using location_t = Vector3;
   using distance_t = float;
+  using bool_t = bool;
   
   static constexpr IntDimension2 dim = {1, 1};
   
@@ -48,7 +49,7 @@ struct Ray {
     return false;
   }
   
-  inline bool intersectAABB(const AABox3 &aabb) const
+  inline bool_t intersectAABB(const AABox3 &aabb) const
   {
     // http://psgraphics.blogspot.de/2016/02/new-simple-ray-box-test-from-andrew.html
 
@@ -102,11 +103,11 @@ public:
     return scene.materials[material_index].color * light.color * (std::max(L.dot(N), 0.f) / (light_distance * light_distance));
   }
 
-  static distance_t max_distance() {
+  static inline distance_t max_distance() {
     return std::numeric_limits<distance_t>::max();
   }
 
-  static void updateIntersections(intersect_t *intersected_triangle, TriangleIndex triangle_index, distance_t *minimum_distance, distance_t distance) {
+  static inline void updateIntersections(intersect_t *intersected_triangle, TriangleIndex triangle_index, distance_t *minimum_distance, distance_t distance) {
     if(distance < *minimum_distance)
     {
       *intersected_triangle = triangle_index;
@@ -114,12 +115,20 @@ public:
     }
   }
 
-  static bool isNoIntersection(intersect_t intersect) {
+  static inline bool isNoIntersection(intersect_t intersect) {
     return intersect == TriangleIndex_Invalid;
   }
 
-  static intersect_t getNoIntersection() {
+  static inline intersect_t getNoIntersection() {
     return TriangleIndex_Invalid;
+  }
+
+  static inline bool isAll(bool_t b) {
+    return b;
+  }
+
+  static inline bool isAny(bool_t b) {
+    return b;
   }
 };
 

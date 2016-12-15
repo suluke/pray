@@ -214,8 +214,7 @@ typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_
 	bih_intersected_nodes.clear();
 #endif
 
-  // TODO: Marcel
-  if(!ray.intersectAABB(scene_aabb)) return ray_t::getNoIntersection();
+  if(!ray_t::isAny(ray.intersectAABB(scene_aabb))) return ray_t::getNoIntersection();
 
 	IntersectionResult<ray_t> intersection_result;
 	intersectBihNode(nodes[0u], scene_aabb, *this, scene, ray, intersection_result);

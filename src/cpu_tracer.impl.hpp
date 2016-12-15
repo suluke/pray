@@ -13,7 +13,7 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 	typename ray_t::distance_t intersection_distance;
 	const auto intersected_triangle = acceleration_structure.intersect(scene, ray, &intersection_distance);
 
-	if (ray_t::isNoIntersection(intersected_triangle)) return scene.background_color;
+	if (ray_t::isAll(ray_t::isNoIntersection(intersected_triangle))) return scene.background_color;
 
 	//~ // optimization: back faces are never lit
 	//~ if(ray.direction.dot(N) >= 0.f) return Color(0.f, 0.f, 0.f);
@@ -26,9 +26,8 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 	{
 		typename ray_t::distance_t light_distance;
 		const ray_t shadow_ray = ray_t::getShadowRay(light, P, &light_distance);
-		// TODO isNoIntersection is too strict because it is only true if ALL rays don't have an intersection
-		/* const auto shadow_intersect = */ acceleration_structure.intersect(scene, shadow_ray, &intersection_distance);
-		//if (ray_t::isNoIntersection(shadow_intersect))
+		const auto shadow_intersect = acceleration_structure.intersect(scene, shadow_ray, &intersection_distance);
+		if (ray_t::isAny(ray_t::isNoIntersection(shadow_intersect)))
 		{
 			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance);
 			result_color += shading_color;

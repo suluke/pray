@@ -13,6 +13,7 @@ struct SSERay {
   using color_t = SSEColor;
   using location_t = simd::Vec3Pack;
   using distance_t = simd::floatty;
+  using bool_t = simd::intty;
 
   static constexpr IntDimension2 dim = {simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2};
 
@@ -96,7 +97,7 @@ struct SSERay {
     return true;
   }
   
-  inline typename simd::Vec3Pack::bool_t intersectAABB(const AABox3 &aabb) const
+  inline bool_t intersectAABB(const AABox3 &aabb) const
   {
     /*
     // http://psgraphics.blogspot.de/2016/02/new-simple-ray-box-test-from-andrew.html
@@ -250,12 +251,34 @@ public:
     *intersect = simd::castps_si(simd::or_ps(simd::and_ps(DIST_MASK, trianglevec_float), simd::and_ps(DIST_MASK_INV, intersect_float)));
   }
 
-  static bool isNoIntersection(intersect_t intersect) {
-    return simd::cmpeq_all_epi32(intersect, simd::set1_epi32(TriangleIndex_Invalid));
+  static bool_t isNoIntersection(intersect_t intersect) {
+    return simd::cmpeq_epi32(intersect, simd::set1_epi32(TriangleIndex_Invalid));
   }
   
   static intersect_t getNoIntersection() {
     return simd::set1_epi32(TriangleIndex_Invalid);
+  }
+
+  static inline bool isAll(bool_t b) {
+    alignas(16) std::array<int32_t, simd::REGISTER_CAPACITY_I32> B;
+    simd::store_si((simd::intty *) &B[0], b);
+    for (auto i : B) {
+      if (!i) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static inline bool isAny(bool_t b) {
+    alignas(16) std::array<int32_t, simd::REGISTER_CAPACITY_I32> B;
+    simd::store_si((simd::intty *) &B[0], b);
+    for (auto i : B) {
+      if (i) {
+        return true;
+      }
+    }
+    return false;
   }
 };
 
