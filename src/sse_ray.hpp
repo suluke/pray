@@ -65,7 +65,7 @@ struct SSERay {
     const Vector3 e1 = t_v2 - t_v1;
     const Vector3 e2 = t_v3 - t_v1;
     
-    bool_t result = b_true;
+    bool_t result;
 
     const auto p = direction.cross(e2);
 
@@ -98,7 +98,7 @@ struct SSERay {
     MASK = simd::cmplt_ps(distance, simd::setzero_ps());
     distance = simd::or_ps(simd::and_ps(simd::not_ps(MASK), distance), simd::and_ps(MASK, max_distance()));
     
-    result = simd::and_si(result, simd::not_si(simd::castps_si(MASK))); // remove intersections with negative distance from result
+    result = simd::castps_si(simd::and_ps(simd::castsi_ps(result), simd::not_ps(MASK))); // remove intersections with negative distance from result
     
     *out_distance = distance;
     // TODO
@@ -141,7 +141,7 @@ struct SSERay {
       t_min = simd::min_ps(t_min, t0);
       t_max = simd::min_ps(t_max, t1);
       
-      result = simd::or_si(result, simd::castps_si(simd::cmplt_ps(t_max, t_min)));
+      result = simd::castps_si(simd::or_ps(simd::castsi_ps(result), simd::cmplt_ps(t_max, t_min)));
       
     }
     
