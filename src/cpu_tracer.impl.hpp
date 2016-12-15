@@ -26,8 +26,8 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 	{
 		typename ray_t::distance_t light_distance;
 		const ray_t shadow_ray = ray_t::getShadowRay(light, P, &light_distance);
-		const auto shadow_intersect = acceleration_structure.intersect(scene, shadow_ray, &intersection_distance);
-		if (ray_t::isAny(ray_t::isNoIntersection(shadow_intersect)))
+		/* const auto shadow_intersect = */acceleration_structure.intersect(scene, shadow_ray, &intersection_distance);
+		//~ if (ray_t::isAny(ray_t::isNoIntersection(shadow_intersect)))
 		{
 			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance);
 			result_color += shading_color;
