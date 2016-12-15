@@ -71,9 +71,9 @@ static void keyboard(unsigned char key, int x, int y)
 
 			if(old_current_node != bih_current_node)
 			{
-				if(bih_current_node->type == Bih_t::Node::Leaf)
+				if(bih_current_node->getType() == Bih_t::Node::Leaf)
 				{
-					std::cout << "current: " << bih_current_node->index << " p: " << bih_current_node->parent->index << " Leaf with " << bih_current_node->data.leaf.children_count << " children" << "\n";
+					std::cout << "current: " << bih_current_node->index << " p: " << bih_current_node->parent->index << " Leaf with " << bih_current_node->getLeafData().children_count << " children" << "\n";
 				}
 				else
 				{
@@ -143,14 +143,14 @@ static void draw_box(const AABox3 &box)
 
 static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, int depth)
 {
-	if(node.type == Bih_t::Node::Leaf)
+	if(node.getType() == Bih_t::Node::Leaf)
 	{
 		if(debug_mode_parameter == "draw_all")
 		{
 			if(bih_depth == depth)
 			{
 				glColor3f(0.f, 1.f, 0.f);
-				draw_triangle(scene.triangles[bih.triangles[node.data.leaf.children_index]]);
+				draw_triangle(scene.triangles[bih.triangles[node.getChildrenIndex()]]);
 			}
 		}
 		else if(debug_mode_parameter == "draw_single")
@@ -158,7 +158,7 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 			if(depth == 1 || &node == bih_current_node)
 			{
 				glColor3f(0.f, 1.f, 0.f);
-				draw_triangle(scene.triangles[bih.triangles[node.data.leaf.children_index]]);
+				draw_triangle(scene.triangles[bih.triangles[node.getChildrenIndex()]]);
 			}
 		}
 		else if(debug_mode_parameter == "intersect")
@@ -166,16 +166,16 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.nodes[0]) != bih_intersected_nodes.end())
 			{
 				glColor3f(0.f, 1.f, 0.f);
-				draw_triangle(scene.triangles[bih.triangles[node.data.leaf.children_index]]);
+				draw_triangle(scene.triangles[bih.triangles[node.getChildrenIndex()]]);
 			}
 		}
 	}
 	else
 	{
 		auto child1_box = deduced_box;
-		child1_box.max[node.type] = node.data.split.left_plane;
+		child1_box.max[node.getType()] = node.getSplitData().left_plane;
 		auto child2_box = deduced_box;
-		child2_box.min[node.type] = node.data.split.right_plane;
+		child2_box.min[node.getType()] = node.getSplitData().right_plane;
 
 		if(debug_mode_parameter == "draw_all")
 		{
@@ -187,8 +187,8 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 				draw_box(child2_box);
 			}
 
-			draw_bih_node(bih.nodes[node.data.split.children_index+0], child1_box, depth+1);
-			draw_bih_node(bih.nodes[node.data.split.children_index+1], child2_box, depth+2);
+			draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
+			draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, depth+2);
 		}
 		else if(debug_mode_parameter == "draw_single")
 		{
@@ -202,17 +202,17 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 				glColor3f(1.f, 1.f, 1.f);
 				glBegin(GL_POINTS);
 				Vector3 v(0.f, 0.f, 0.f);
-				v[node.type] = node.split_point;
+				v[node.getType()] = node.split_point;
 				glVertex3fv(&v.x);
 				glEnd();
 
-				draw_bih_node(bih.nodes[node.data.split.children_index+0], child1_box, 1);
-				draw_bih_node(bih.nodes[node.data.split.children_index+1], child2_box, 1);
+				draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, 1);
+				draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, 1);
 			}
 			else
 			{
-				draw_bih_node(bih.nodes[node.data.split.children_index+0], child1_box, depth);
-				draw_bih_node(bih.nodes[node.data.split.children_index+1], child2_box, depth);
+				draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, depth);
+				draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, depth);
 			}
 		}
 		else if(debug_mode_parameter == "intersect")
@@ -222,8 +222,8 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 				glColor3f(1.f, 0.f, 0.f);
 				draw_box(deduced_box);
 
-				draw_bih_node(bih.nodes[node.data.split.children_index+0], child1_box, depth+1);
-				draw_bih_node(bih.nodes[node.data.split.children_index+1], child2_box, depth+2);
+				draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
+				draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, depth+2);
 			}
 		}
 	}

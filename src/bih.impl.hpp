@@ -62,8 +62,6 @@ struct BihBuilder
 
 			auto split_axis = getSplitAxis(initial_aabb);
 
-			current_node.type = static_cast<typename bih_t::Node::Type>(split_axis);
-
 			float left_plane = std::numeric_limits<float>::lowest(), right_plane = std::numeric_limits<float>::max();
 
 			auto pivot = (initial_aabb.min[split_axis] + initial_aabb.max[split_axis]) / 2.f;
@@ -87,15 +85,15 @@ struct BihBuilder
 				return buildNode(current_node, new_initial_aabb, triangles_begin, triangles_end);
 			}
 
-			current_node.data.split.left_plane = left_plane;
-			current_node.data.split.right_plane = right_plane;
-
 			// allocate child nodes (this is a critical section)
-			current_node.data.split.children_index = bih.nodes.size();
+			auto children_index = bih.nodes.size();
 			ASSERT(bih.nodes.capacity() - bih.nodes.size() >= 2u); // we don't want relocation (breaks references)
 			bih.nodes.emplace_back(); bih.nodes.emplace_back();
-			auto &child1 = bih.nodes[current_node.data.split.children_index+0];
-			auto &child2 = bih.nodes[current_node.data.split.children_index+1];
+
+			current_node.makeSplitNode(split_axis, children_index, left_plane, right_plane);
+
+			auto &child1 = bih.nodes[children_index+0];
+			auto &child2 = bih.nodes[children_index+1];
 
 #ifdef DEBUG
 			current_node.index = node_index;
@@ -116,9 +114,8 @@ struct BihBuilder
 		{
 			// build a leaf
 
-			current_node.type = bih_t::Node::Leaf;
-			current_node.data.leaf.children_index = std::distance(bih.triangles.begin(), triangles_begin);
-			current_node.data.leaf.children_count = children_count;
+			auto children_index = std::distance(bih.triangles.begin(), triangles_begin);
+			current_node.makeLeafNode(children_index, children_count);
 
 #ifdef DEBUG
 			current_node.child1 = current_node.child2 = nullptr;
@@ -162,12 +159,12 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 	bih_intersected_nodes.push_back(&node - &bih.nodes[0]);
 #endif
 
-	if(node.type == Bih<ray_t>::Node::Leaf)
+	if(node.getType() == Bih<ray_t>::Node::Leaf)
 	{
-		for(unsigned i = 0u; i < node.data.leaf.children_count; ++i)
+		for(unsigned i = 0u; i < node.getLeafData().children_count; ++i)
 		{
 			//TODO: remove double indirection (reorder scene.triangles)
-			const TriangleIndex triangle_index = bih.triangles[node.data.leaf.children_index + i];
+			const TriangleIndex triangle_index = bih.triangles[node.getChildrenIndex() + i];
 			const Triangle &triangle = scene.triangles[triangle_index];
 
 			float distance;
@@ -183,13 +180,13 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 	}
 	else
 	{
-		auto split_axis = node.type;
+		auto split_axis = node.getType();
 
-		auto left_plane = node.data.split.left_plane;
-		auto right_plane = node.data.split.right_plane;
+		auto &left_child = bih.nodes[node.getChildrenIndex()+0];
+		auto &right_child = bih.nodes[node.getChildrenIndex()+1];
 
-		auto &left_child = bih.nodes[node.data.split.children_index+0];
-		auto &right_child = bih.nodes[node.data.split.children_index+1];
+		auto left_plane = node.getSplitData().left_plane;
+		auto right_plane = node.getSplitData().right_plane;
 
 		AABox3 left_aabb = aabb, right_aabb = aabb;
 		left_aabb.max[split_axis] = left_plane;
