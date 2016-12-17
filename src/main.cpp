@@ -4,6 +4,57 @@
 #include "bih.hpp"
 #include "cpu_tracer.hpp"
 
+#ifdef WITH_TIMING
+ #include <chrono>
+#endif
+struct StageLogger {
+#ifdef WITH_TIMING
+	using timepoint_t = std::chrono::time_point<std::chrono::high_resolution_clock>;
+	timepoint_t begin;
+	timepoint_t preprocess_begin;
+	timepoint_t render_begin;
+	timepoint_t output_begin;
+	timepoint_t end;
+#endif
+	void start() {
+#ifdef WITH_TIMING
+		begin = std::chrono::high_resolution_clock::now();
+#endif
+	}
+	void finish() {
+#ifdef WITH_TIMING
+		end = std::chrono::high_resolution_clock::now();
+#endif
+	}
+	void startPreprocessing() {
+		std::cout << "Preprocessing..." << std::endl;
+#ifdef WITH_TIMING
+		preprocess_begin = std::chrono::high_resolution_clock::now();
+#endif
+	}
+	void startRendering() {
+		std::cout << "Rendering..." << std::endl;
+#ifdef WITH_TIMING
+		render_begin = std::chrono::high_resolution_clock::now();
+#endif
+	}
+	void startOutput() {
+#ifndef DISABLE_OUTPUT
+		std::cout << "Saving..." << std::endl;
+#endif
+#ifdef WITH_TIMING
+		output_begin = std::chrono::high_resolution_clock::now();
+#endif
+	}
+	void log() {
+#ifdef WITH_TIMING
+		std::cout << "Preprocess Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(render_begin - preprocess_begin).count() << "ms\n";
+		std::cout << "Render Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(output_begin - render_begin).count() << "ms\n";
+		std::cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms\n";
+#endif
+	}
+};
+
 #ifdef WITH_SSE
 	#include "sse_ray.hpp"
 	using ray_t = SSERay;
@@ -17,9 +68,6 @@
 	using accel_t = DummyAcceleration<ray_t>;
 #endif
 
-#ifdef WITH_TIMING
- #include <chrono>
-#endif
 using namespace std;
 int main(int argc, char *argv[])
 {
@@ -49,38 +97,25 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-#ifdef WITH_TIMING
-	auto start1 = chrono::high_resolution_clock::now();
-#endif
+	StageLogger logger;
+	logger.start();
 
 	ImageView img(image, 0, image_resolution.h);
-
 	CpuTracer<ray_t, accel_t> tracer(scene);
 
-#ifdef WITH_TIMING
-	auto start2 = chrono::high_resolution_clock::now();
-#endif
-	cout << "Preprocessing..." << endl;
+	logger.startPreprocessing();
 	tracer.preprocess();
-#ifdef WITH_TIMING
-	auto point1 = chrono::high_resolution_clock::now();
-#endif
-	cout << "Rendering..." << endl;
+
+	logger.startRendering();
 	tracer.render(img);
-#ifdef WITH_TIMING
-	auto end1 = chrono::high_resolution_clock::now();
-#endif
+
+	logger.startOutput();
 #ifndef DISABLE_OUTPUT
-	cout << "Saving..." << endl;
 	image.save(argv[2]);
 #endif
 
-#ifdef WITH_TIMING
-	auto end2 = chrono::high_resolution_clock::now();
-	cout <<"Preprocess Time: "<< chrono::duration_cast<chrono::milliseconds>(point1-start2).count() << "ms\n";
-	cout <<"Render Time: "<< chrono::duration_cast<chrono::milliseconds>(end1-point1).count() << "ms\n";
-	cout <<"Total Time: "<< chrono::duration_cast<chrono::milliseconds>(end2-start1).count() << "ms\n";
-#endif
+	logger.finish();
+	logger.log();
 
 	return 0;
 }
