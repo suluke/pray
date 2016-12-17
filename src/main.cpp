@@ -3,6 +3,8 @@
 #include "dummy_acceleration.hpp"
 #include "bih.hpp"
 #include "cpu_tracer.hpp"
+#include "ray.hpp"
+#include "sse_ray.hpp"
 
 #ifdef WITH_TIMING
  #include <chrono>
@@ -55,17 +57,44 @@ struct StageLogger {
 	}
 };
 
-#ifdef WITH_SSE
-	#include "sse_ray.hpp"
-	using ray_t = SSERay;
-#else
-	#include "ray.hpp"
-	using ray_t = Ray;
-#endif
+// Sorry for this...
 #ifdef WITH_BIH
-	using accel_t = Bih<ray_t>;
+#define accel_t Bih
 #else
-	using accel_t = DummyAcceleration<ray_t>;
+#define accel_t DummyAcceleration
+#endif
+
+#ifdef WITH_SSE
+static void trace(const Scene &scene, ImageView &img, StageLogger &logger) {
+	if (scene.lights.size() < 2) {
+		CpuTracer<SSERay, accel_t<SSERay>> tracer(scene);
+
+		logger.startPreprocessing();
+		tracer.preprocess();
+
+		logger.startRendering();
+		tracer.render(img);
+	} else {
+		CpuTracer<Ray, accel_t<Ray>> tracer(scene);
+
+		logger.startPreprocessing();
+		tracer.preprocess();
+
+		logger.startRendering();
+		tracer.render(img);
+	}
+}
+#else
+using ray_t = Ray;
+static void trace(const Scene &scene, ImageView &img, StageLogger &logger) {
+	CpuTracer<ray_t, accel_t<ray_t>> tracer(scene);
+
+	logger.startPreprocessing();
+	tracer.preprocess();
+
+	logger.startRendering();
+	tracer.render(img);
+}
 #endif
 
 using namespace std;
@@ -101,13 +130,8 @@ int main(int argc, char *argv[])
 	logger.start();
 
 	ImageView img(image, 0, image_resolution.h);
-	CpuTracer<ray_t, accel_t> tracer(scene);
 
-	logger.startPreprocessing();
-	tracer.preprocess();
-
-	logger.startRendering();
-	tracer.render(img);
+	trace(scene, img, logger);
 
 	logger.startOutput();
 #ifndef DISABLE_OUTPUT
