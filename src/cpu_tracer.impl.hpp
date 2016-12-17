@@ -15,8 +15,9 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 
 	if (ray_t::isAll(ray_t::isNoIntersection(intersected_triangle))) return scene.background_color;
 
-	//~ // optimization: back faces are never lit
-	//~ if(ray.direction.dot(N) >= 0.f) return Color(0.f, 0.f, 0.f);
+	// optimization: back faces are never lit
+	const auto N = ray_t::getNormals(scene, intersected_triangle);
+	if(!ray_t::isAny(ray_t::isOppositeDirection(ray.direction, N))) return Color(0.f, 0.f, 0.f);
 
 	const auto P = ray.getIntersectionPoint(intersection_distance);
 
@@ -26,10 +27,12 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 	{
 		typename ray_t::distance_t light_distance;
 		const ray_t shadow_ray = ray_t::getShadowRay(light, P, &light_distance);
+		// optimization: don't consider lights behind the triangle
+		if (ray_t::isAll(ray_t::isOppositeDirection(shadow_ray.direction, N))) continue;
 		/* const auto shadow_intersect = */acceleration_structure.intersect(scene, shadow_ray, &intersection_distance);
 		//~ if (ray_t::isAny(ray_t::isNoIntersection(shadow_intersect)))
 		{
-			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance);
+			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance, N);
 			result_color += shading_color;
 		}
 	}

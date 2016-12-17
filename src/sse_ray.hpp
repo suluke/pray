@@ -12,7 +12,9 @@ struct SSERay {
   using intersect_t = simd::intty;
   using color_t = SSEColor;
   using location_t = simd::Vec3Pack;
+  using vec3_t = simd::Vec3Pack;
   using distance_t = simd::floatty;
+  using angle_t = simd::floatty;
   using bool_t = simd::intty;
   
   const bool_t b_true = simd::set1_epi32(-1);
@@ -155,30 +157,6 @@ struct SSERay {
 private:
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction) {}
 
-  static simd::Vec3Pack getNormals(const Scene &scene, intersect_t intersects) {
-    alignas(16) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
-    simd::store_si((simd::intty *) &int_ersects[0], intersects);
-    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
-    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
-    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
-    for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
-      auto triangle = int_ersects[i];
-      if (triangle != TriangleIndex_Invalid) {
-        // TODO we could also load the triangles into a Vec3Pack and calculate normals with SIMD code
-        const auto N = scene.triangles[triangle].calculateNormal();
-        X[i] = N.x;
-        Y[i] = N.y;
-        Z[i] = N.z;
-      } else {
-        // TODO is this necessary or default initialized?
-        X[i] = 0;
-        Y[i] = 0;
-        Z[i] = 0;
-      }
-    }
-    return {simd::load_ps(&X[0]), simd::load_ps(&Y[0]), simd::load_ps(&Z[0])};
-  }
-
   static color_t getMaterialColors(const Scene &scene, intersect_t intersects) {
     alignas(16) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
     simd::store_si((simd::intty *) &int_ersects[0], intersects);
@@ -215,7 +193,31 @@ public:
     return {P + L * simd::set1_ps(0.001f), L};
   }
 
-  static color_t shade(const Scene &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance) {
+  static vec3_t getNormals(const Scene &scene, intersect_t intersects) {
+    alignas(16) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
+    simd::store_si((simd::intty *) &int_ersects[0], intersects);
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
+    for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
+      auto triangle = int_ersects[i];
+      if (triangle != TriangleIndex_Invalid) {
+        // TODO we could also load the triangles into a Vec3Pack and calculate normals with SIMD code
+        const auto N = scene.triangles[triangle].calculateNormal();
+        X[i] = N.x;
+        Y[i] = N.y;
+        Z[i] = N.z;
+      } else {
+        // TODO is this necessary or default initialized?
+        X[i] = 0;
+        Y[i] = 0;
+        Z[i] = 0;
+      }
+    }
+    return {simd::load_ps(&X[0]), simd::load_ps(&Y[0]), simd::load_ps(&Z[0])};
+  }
+
+  static color_t shade(const Scene &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance, vec3_t N) {
     // TODO duplicated code
     const auto light_vector = location_t(light.position) - P;
 		const auto light_distance = light_vector.length();
@@ -223,7 +225,6 @@ public:
 
     const auto MASK = simd::cmplt_ps(light_distance, intersection_distance);
 
-    const auto N = getNormals(scene, intersects);
     const auto materialColors = getMaterialColors(scene, intersects);
 
     const auto light_dist_squared = simd::mul_ps(light_distance, light_distance);
@@ -274,6 +275,10 @@ public:
       }
     }
     return false;
+  }
+
+  static inline bool_t isOppositeDirection(const vec3_t v1, const vec3_t v2) {
+    return simd::castps_si(simd::cmple_ps(v1.dot(v2), simd::setzero_ps()));
   }
 };
 

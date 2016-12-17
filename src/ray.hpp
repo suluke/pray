@@ -5,7 +5,9 @@ struct Ray {
   using intersect_t = TriangleIndex;
   using color_t = Color;
   using location_t = Vector3;
+  using vec3_t = Vector3;
   using distance_t = float;
+  using angle_t = float;
   using bool_t = bool;
   
   static constexpr IntDimension2 dim = {1, 1};
@@ -83,8 +85,12 @@ public:
     *ld = light_distance;
     return {P + L * 0.001f, L};
   }
+
+  static vec3_t getNormals(const Scene &scene, intersect_t triangle) {
+    return scene.triangles[triangle].calculateNormal();
+  }
   
-  static color_t shade(const Scene &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance) {
+  static color_t shade(const Scene &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance, vec3_t N) {
     // TODO duplicated code
     const Vector3 light_vector = light.position - P;
 		const float light_distance = light_vector.length();
@@ -93,7 +99,6 @@ public:
     if (intersection_distance < light_distance)
       return {0.f, 0.f, 0.f};
 
-    const auto N = scene.triangles[triangle].calculateNormal();
     const auto material_index = scene.triangles[triangle].material_index;
     ASSERT(material_index != MaterialIndex_Invalid);
     
@@ -126,6 +131,13 @@ public:
 
   static inline bool isAny(bool_t b) {
     return b;
+  }
+
+  /**
+   * True if angle between v1 and v2 is larger than 90 degrees
+   */
+  static inline bool_t isOppositeDirection(const vec3_t v1, const vec3_t v2) {
+    return v1.dot(v2) <= 0.f;
   }
 };
 
