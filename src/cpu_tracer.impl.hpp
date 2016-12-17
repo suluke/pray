@@ -31,8 +31,8 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 		if (ray_t::isAll(ray_t::isOppositeDirection(shadow_ray.direction, N))) continue;
 		// This check does not work because shadow rays are actually allowed to intersect triangles
 		// - just not those BETWEEN hitpoint and light. See `MASK` in SSERay::shade
-		const auto shadow_intersect = acceleration_structure.intersect(scene, shadow_ray, &intersection_distance);
-		if (ray_t::isAny(ray_t::isNoIntersection(shadow_intersect)))
+		/* const auto shadow_intersect = */ acceleration_structure.intersect(scene, shadow_ray, &intersection_distance);
+		//~ if (ray_t::isAny(ray_t::isNoIntersection(shadow_intersect)))
 		{
 			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance, N);
 			result_color += shading_color;
