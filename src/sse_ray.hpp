@@ -107,22 +107,38 @@ struct SSERay {
   {
     auto aabb_min = location_t(aabb.min);
     auto aabb_max = location_t(aabb.max);
-    // https://tavianator.com/fast-branchless-raybounding-box-intersections-part-2-nans/
-    auto t1 = simd::mul_ps(simd::sub_ps(aabb_min.x, origin.x), dir_inv.x);
-    auto t2 = simd::mul_ps(simd::sub_ps(aabb_max.x, origin.x), dir_inv.x);
- 
-    auto tmin = simd::min_ps(t1, t2);
-    auto tmax = simd::max_ps(t1, t2);
- 
-    for (int i = 1; i < 3; ++i) {
-      t1 = simd::mul_ps(simd::sub_ps(aabb_min[i], origin[i]), dir_inv[i]);
-      t2 = simd::mul_ps(simd::sub_ps(aabb_max[i], origin[i]), dir_inv[i]);
 
-      tmin = simd::max_ps(tmin, simd::min_ps(t1, t2));
-      tmax = simd::min_ps(tmax, simd::max_ps(t1, t2));
-    }
+    // https://tavianator.com/fast-branchless-raybounding-box-intersections/
+    auto tx1 = simd::mul_ps(simd::sub_ps(aabb_min.x, origin.x), dir_inv.x);
+    auto tx2 = simd::mul_ps(simd::sub_ps(aabb_max.x, origin.x), dir_inv.x);
  
-    return simd::castps_si(simd::cmple_ps(simd::max_ps(tmin, simd::setzero_ps()), tmax));
+    auto tmin = simd::min_ps(tx1, tx2);
+    auto tmax = simd::max_ps(tx1, tx2);
+ 
+    auto ty1 = simd::mul_ps(simd::sub_ps(aabb_min.y, origin.y), dir_inv.y);
+    auto ty2 = simd::mul_ps(simd::sub_ps(aabb_max.y, origin.y), dir_inv.y);
+ 
+    tmin = simd::max_ps(tmin, simd::min_ps(ty1, ty2));
+    tmax = simd::min_ps(tmax, simd::max_ps(ty1, ty2));
+ 
+    return simd::castps_si(simd::cmple_ps(tmin, tmax));
+    
+    //~ // https://tavianator.com/fast-branchless-raybounding-box-intersections-part-2-nans/
+    //~ auto t1 = simd::mul_ps(simd::sub_ps(aabb_min.x, origin.x), dir_inv.x);
+    //~ auto t2 = simd::mul_ps(simd::sub_ps(aabb_max.x, origin.x), dir_inv.x);
+ 
+    //~ auto tmin = simd::min_ps(t1, t2);
+    //~ auto tmax = simd::max_ps(t1, t2);
+ 
+    //~ for (int i = 1; i < 3; ++i) {
+      //~ t1 = simd::mul_ps(simd::sub_ps(aabb_min[i], origin[i]), dir_inv[i]);
+      //~ t2 = simd::mul_ps(simd::sub_ps(aabb_max[i], origin[i]), dir_inv[i]);
+
+      //~ tmin = simd::max_ps(tmin, simd::min_ps(t1, t2));
+      //~ tmax = simd::min_ps(tmax, simd::max_ps(t1, t2));
+    //~ }
+ 
+    //~ return simd::castps_si(simd::cmple_ps(simd::max_ps(tmin, simd::setzero_ps()), tmax));
 
     // http://psgraphics.blogspot.de/2016/02/new-simple-ray-box-test-from-andrew.html
     
