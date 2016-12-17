@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 
 #ifdef WITH_TIMING
 	auto end2 = chrono::high_resolution_clock::now();
-	cout <<"Preprocess Time: "<< chrono::duration_cast<chrono::nanoseconds>(point1-start2).count() << "ns\n";
+	cout <<"Preprocess Time: "<< chrono::duration_cast<chrono::milliseconds>(point1-start2).count() << "ms\n";
 	cout <<"Render Time: "<< chrono::duration_cast<chrono::milliseconds>(end1-point1).count() << "ms\n";
 	cout <<"Total Time: "<< chrono::duration_cast<chrono::milliseconds>(end2-start1).count() << "ms\n";
 #endif
