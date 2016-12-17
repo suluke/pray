@@ -71,7 +71,7 @@ struct Bih
 		void setTypeAndChildrenIndex(Type type, uint32_t children_index)
 		{
 			ASSERT(type >= 0 && type <= 3);
-			ASSERT(children_index < (2 << 30));
+			ASSERT(children_index < (2u << 30));
 			type_and_children_index = type << 30 | children_index;
 		}
 
