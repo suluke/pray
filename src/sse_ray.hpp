@@ -153,6 +153,19 @@ struct SSERay {
 private:
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction) {}
 
+  static distance_t getLambert(simd::Vec3Pack L, simd::Vec3Pack N, distance_t light_dist_squared) {
+    return simd::div_ps(simd::max_ps(L.dot(N), simd::set1_ps(0.f)), light_dist_squared);
+  }
+
+public:
+  static SSERay getShadowRay(Light light, location_t P, distance_t *ld) {
+    const auto light_vector = location_t(light.position) - P;
+		const auto light_distance = light_vector.length();
+		const auto L = light_vector / light_distance;
+    *ld = light_distance;
+    return {P + L * simd::set1_ps(0.001f), L};
+  }
+
   static color_t getMaterialColors(const Scene &scene, intersect_t intersects) {
     alignas(16) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
     simd::store_si((simd::intty *) &int_ersects[0], intersects);
@@ -174,19 +187,6 @@ private:
       }
     }
     return {simd::load_ps(&R[0]), simd::load_ps(&G[0]), simd::load_ps(&B[0])};
-  }
-
-  static distance_t getLambert(simd::Vec3Pack L, simd::Vec3Pack N, distance_t light_dist_squared) {
-    return simd::div_ps(simd::max_ps(L.dot(N), simd::set1_ps(0.f)), light_dist_squared);
-  }
-
-public:
-  static SSERay getShadowRay(Light light, location_t P, distance_t *ld) {
-    const auto light_vector = location_t(light.position) - P;
-		const auto light_distance = light_vector.length();
-		const auto L = light_vector / light_distance;
-    *ld = light_distance;
-    return {P + L * simd::set1_ps(0.001f), L};
   }
 
   static vec3_t getNormals(const Scene &scene, intersect_t intersects) {
@@ -213,7 +213,7 @@ public:
     return {simd::load_ps(&X[0]), simd::load_ps(&Y[0]), simd::load_ps(&Z[0])};
   }
 
-  static color_t shade(const Scene &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance, vec3_t N) {
+  static color_t shade(const Scene &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_colors) {
     // TODO duplicated code
     const auto light_vector = location_t(light.position) - P;
 		const auto light_distance = light_vector.length();
@@ -221,12 +221,10 @@ public:
 
     const auto MASK = simd::cmplt_ps(light_distance, intersection_distance);
 
-    const auto materialColors = getMaterialColors(scene, intersects);
-
     const auto light_dist_squared = simd::mul_ps(light_distance, light_distance);
     const auto lambert = getLambert(L, N, light_dist_squared);
     
-    const auto res = materialColors * color_t(light.color) * lambert;
+    const auto res = mat_colors * color_t(light.color) * lambert;
     return {simd::and_ps(MASK, res.x), simd::and_ps(MASK, res.y), simd::and_ps(MASK, res.z)};
   }
 

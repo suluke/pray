@@ -86,11 +86,17 @@ public:
     return {P + L * 0.001f, L};
   }
 
-  static vec3_t getNormals(const Scene &scene, intersect_t triangle) {
+  static inline color_t getMaterialColors(const Scene &scene, intersect_t triangle) {
+    const auto material_index = scene.triangles[triangle].material_index;
+    ASSERT(material_index != MaterialIndex_Invalid);
+    return scene.materials[material_index].color;
+  }
+
+  static inline vec3_t getNormals(const Scene &scene, intersect_t triangle) {
     return scene.triangles[triangle].calculateNormal();
   }
   
-  static color_t shade(const Scene &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance, vec3_t N) {
+  static color_t shade(const Scene &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_color) {
     // TODO duplicated code
     const Vector3 light_vector = light.position - P;
 		const float light_distance = light_vector.length();
@@ -99,10 +105,7 @@ public:
     if (intersection_distance < light_distance)
       return {0.f, 0.f, 0.f};
 
-    const auto material_index = scene.triangles[triangle].material_index;
-    ASSERT(material_index != MaterialIndex_Invalid);
-    
-    return scene.materials[material_index].color * light.color * (std::max(L.dot(N), 0.f) / (light_distance * light_distance));
+    return mat_color * light.color * (std::max(L.dot(N), 0.f) / (light_distance * light_distance));
   }
 
   static inline distance_t max_distance() {

@@ -21,6 +21,8 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 
 	const auto P = ray.getIntersectionPoint(intersection_distance);
 
+	const auto mat_colors = ray_t::getMaterialColors(scene, intersected_triangle);
+
 	typename ray_t::color_t result_color(Color(0.f, 0.f, 0.f));
 
 	for (auto &light : scene.lights)
@@ -34,7 +36,7 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 		/* const auto shadow_intersect = */ acceleration_structure.intersect(scene, shadow_ray, &intersection_distance);
 		//~ if (ray_t::isAny(ray_t::isNoIntersection(shadow_intersect)))
 		{
-			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance, N);
+			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance, N, mat_colors);
 			result_color += shading_color;
 		}
 	}
