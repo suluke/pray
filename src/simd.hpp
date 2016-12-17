@@ -47,6 +47,14 @@ namespace simd {
     return castps_si(_mm256_cmp_ps(xor_ps(castsi_ps(a), castsi_ps(b)), _mm256_setzero_ps(), _CMP_EQ_OS));
   }
 
+  // http://stackoverflow.com/a/16018927/1468532
+  static inline bool isAll(intty b) {
+    return _mm256_movemask_ps(simd::castsi_ps(b)) == 0xff;
+  }
+  static inline bool isAny(intty b) {
+    return _mm256_movemask_ps(simd::castsi_ps(b)) != 0x0;
+  }
+
   // setting
   constexpr auto set1_ps = _mm256_set1_ps;
   constexpr auto set_ps = _mm256_set_ps;
@@ -98,6 +106,13 @@ namespace simd {
   constexpr auto cmplt_ps = _mm_cmplt_ps;
   constexpr auto cmple_ps = _mm_cmple_ps;
   constexpr auto cmpeq_epi32 = _mm_cmpeq_epi32;
+  
+  static inline bool isAll(intty b) {
+    return _mm_movemask_epi8(b) == 0xffff;
+  }
+  static inline bool isAny(intty b) {
+    return _mm_movemask_epi8(b) != 0x0;
+  }
 
   // setting
   constexpr auto set1_ps = _mm_set1_ps;

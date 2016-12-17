@@ -256,25 +256,11 @@ public:
   }
 
   static inline bool isAll(bool_t b) {
-    alignas(16) std::array<int32_t, simd::REGISTER_CAPACITY_I32> B;
-    simd::store_si((simd::intty *) &B[0], b);
-    for (auto i : B) {
-      if (!i) {
-        return false;
-      }
-    }
-    return true;
+    return simd::isAll(b);
   }
 
   static inline bool isAny(bool_t b) {
-    alignas(16) std::array<int32_t, simd::REGISTER_CAPACITY_I32> B;
-    simd::store_si((simd::intty *) &B[0], b);
-    for (auto i : B) {
-      if (i) {
-        return true;
-      }
-    }
-    return false;
+    return simd::isAny(b);
   }
 
   static inline bool_t isOppositeDirection(const vec3_t v1, const vec3_t v2) {
