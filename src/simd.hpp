@@ -177,6 +177,9 @@ namespace simd {
     Vec3Pack operator/(component_t a) const {
       return Vec3Pack(div_ps(x, a), div_ps(y, a), div_ps(z, a));
     }
+    Vec3Pack operator/(Vec3Pack v) const {
+      return Vec3Pack(div_ps(x, v.x), div_ps(y, v.y), div_ps(z, v.z));
+    }
 
     Vec3Pack &operator+=(const Vec3Pack &a) { return *this = *this + a; }
     Vec3Pack &operator*=(component_t a) { return *this = *this * a; }

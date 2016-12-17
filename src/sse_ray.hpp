@@ -17,13 +17,11 @@ struct SSERay {
   using angle_t = simd::floatty;
   using bool_t = simd::intty;
   
-  const bool_t b_true = simd::set1_epi32(-1);
-  const bool_t b_false = simd::set1_epi32(0);
-
   static constexpr IntDimension2 dim = {simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2};
 
   const location_t origin;
   simd::Vec3Pack direction;
+  simd::Vec3Pack dir_inv;
 
   SSERay(const Camera &cam, const Vector3 &left, const Vector3 &top, const dim_t x, const dim_t y, float max_x, float max_y) : origin(cam.position) {
     alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
@@ -56,6 +54,7 @@ struct SSERay {
     direction.y = simd::load_ps(&Y[0]);
     direction.z = simd::load_ps(&Z[0]);
     direction.normalize();
+    dir_inv = vec3_t(1.f, 1.f, 1.f) / direction;
   }
 
   inline bool_t intersectTriangle(const Triangle &triangle, distance_t *out_distance) const {
@@ -106,44 +105,61 @@ struct SSERay {
   
   inline bool_t intersectAABB(const AABox3 &aabb) const
   {
+    auto aabb_min = location_t(aabb.min);
+    auto aabb_max = location_t(aabb.max);
+    // https://tavianator.com/fast-branchless-raybounding-box-intersections-part-2-nans/
+    auto t1 = simd::mul_ps(simd::sub_ps(aabb_min.x, origin.x), dir_inv.x);
+    auto t2 = simd::mul_ps(simd::sub_ps(aabb_max.x, origin.x), dir_inv.x);
+ 
+    auto tmin = simd::min_ps(t1, t2);
+    auto tmax = simd::max_ps(t1, t2);
+ 
+    for (int i = 1; i < 3; ++i) {
+      t1 = simd::mul_ps(simd::sub_ps(aabb_min[i], origin[i]), dir_inv[i]);
+      t2 = simd::mul_ps(simd::sub_ps(aabb_max[i], origin[i]), dir_inv[i]);
+
+      tmin = simd::max_ps(tmin, simd::min_ps(t1, t2));
+      tmax = simd::min_ps(tmax, simd::max_ps(t1, t2));
+    }
+ 
+    return simd::castps_si(simd::cmple_ps(simd::max_ps(tmin, simd::setzero_ps()), tmax));
+
     // http://psgraphics.blogspot.de/2016/02/new-simple-ray-box-test-from-andrew.html
     
-    auto zero = simd::setzero_ps();
-    auto one = simd::set1_ps(1.f);
-    bool_t result = b_true;
+    //~ auto zero = simd::setzero_ps();
+    //~ bool_t result = simd::set1_epi32(-1);
     
-    auto t_min = simd::set1_ps(std::numeric_limits<float>::lowest());
-    auto t_max = simd::set1_ps(std::numeric_limits<float>::max());
+    //~ auto t_min = simd::set1_ps(std::numeric_limits<float>::lowest());
+    //~ auto t_max = simd::set1_ps(std::numeric_limits<float>::max());
     
-    for(int i=0; i<3; ++i)
-    {
-      auto i_d = simd::div_ps(one, direction[i]);
-      auto t0 = simd::mul_ps(simd::sub_ps(simd::set1_ps(aabb.min[i]), origin[i]), direction[i]);
-      auto t1 = simd::mul_ps(simd::sub_ps(simd::set1_ps(aabb.max[i]), origin[i]), direction[i]);
+    //~ for(int i=0; i<3; ++i)
+    //~ {
+      //~ auto t0 = simd::mul_ps(simd::sub_ps(simd::set1_ps(aabb.min[i]), origin[i]), direction[i]);
+      //~ auto t1 = simd::mul_ps(simd::sub_ps(simd::set1_ps(aabb.max[i]), origin[i]), direction[i]);
       
-      // if(i_d < 0.f) std::swap(t0, t1);
-      auto mask = simd::cmplt_ps(i_d, zero);
+      //~ // if(i_d < 0.f) std::swap(t0, t1);
+      //~ auto mask = simd::cmplt_ps(dir_inv[i], zero);
       
-      // create copies of fields to swap
-      auto t0_c = simd::and_ps(t0, mask);
-      auto t1_c = simd::and_ps(t1, mask);
+      //~ // create copies of fields to swap
+      //~ auto t0_c = simd::and_ps(t0, mask);
+      //~ auto t1_c = simd::and_ps(t1, mask);
       
-      // clear old values of those fields
-      t0 = simd::and_ps(t0, simd::not_ps(mask));
-      t1 = simd::and_ps(t1, simd::not_ps(mask));
+      //~ // clear old values of those fields
+      //~ t0 = simd::and_ps(t0, simd::not_ps(mask));
+      //~ t1 = simd::and_ps(t1, simd::not_ps(mask));
       
-      // copy values -> swap
-      t0 = simd::or_ps(t0, t1_c);
-      t1 = simd::or_ps(t0, t0_c);
+      //~ // copy values -> swap
+      //~ t0 = simd::or_ps(t0, t1_c);
+      //~ t1 = simd::or_ps(t0, t0_c);
       
-      t_min = simd::min_ps(t_min, t0);
-      t_max = simd::min_ps(t_max, t1);
+      //~ t_min = simd::min_ps(t_min, t0);
+      //~ t_max = simd::min_ps(t_max, t1);
       
-      result = simd::castps_si(simd::or_ps(simd::castsi_ps(result), simd::cmplt_ps(t_max, t_min)));
+      //~ result = simd::castps_si(simd::or_ps(simd::castsi_ps(result), simd::cmplt_ps(t_max, t_min)));
       
-    }
+    //~ }
     
-    return result;
+    //~ return result;
   }
 
   location_t getIntersectionPoint(distance_t intersection_distance) const {
@@ -151,7 +167,7 @@ struct SSERay {
   }
 
 private:
-  SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction) {}
+  SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 
   static distance_t getLambert(simd::Vec3Pack L, simd::Vec3Pack N, distance_t light_dist_squared) {
     return simd::div_ps(simd::max_ps(L.dot(N), simd::set1_ps(0.f)), light_dist_squared);
