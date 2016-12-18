@@ -217,20 +217,20 @@ namespace simd {
 }
 
 inline std::ostream &operator<<(std::ostream &o, const simd::floatty &f) {
-  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> F;
-  simd::store_ps(&F[0], f);
+  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> F;
+  simd::store_ps(F.data(), f);
   for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
     o << F[i] << ", ";
   }
   return o;
 }
 inline std::ostream &operator<<(std::ostream &o, const simd::Vec3Pack &v) {
-  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
-  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
-  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
-  simd::store_ps(&X[0], v.x);
-  simd::store_ps(&Y[0], v.y);
-  simd::store_ps(&Z[0], v.z);
+  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
+  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
+  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
+  simd::store_ps(X.data(), v.x);
+  simd::store_ps(Y.data(), v.y);
+  simd::store_ps(Z.data(), v.z);
   for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
     o << "(" << X[i] << ", " << Y[i] << ", " << Z[i] << ")";
   }

@@ -16,7 +16,8 @@
 
 #ifdef WITH_SSE
 static void trace(const Scene &scene, ImageView &img, StageLogger &logger) {
-	if (scene.lights.size() < 2) {
+	//~ if (scene.lights.size() < 2)
+	{
 		CpuTracer<SSERay, accel_t<SSERay>> tracer(scene);
 
 		logger.startPreprocessing();
@@ -24,15 +25,16 @@ static void trace(const Scene &scene, ImageView &img, StageLogger &logger) {
 
 		logger.startRendering();
 		tracer.render(img);
-	} else {
-		CpuTracer<Ray, accel_t<Ray>> tracer(scene);
-
-		logger.startPreprocessing();
-		tracer.preprocess();
-
-		logger.startRendering();
-		tracer.render(img);
 	}
+	//~ else {
+		//~ CpuTracer<Ray, accel_t<Ray>> tracer(scene);
+
+		//~ logger.startPreprocessing();
+		//~ tracer.preprocess();
+
+		//~ logger.startRendering();
+		//~ tracer.render(img);
+	//~ }
 }
 #else
 using ray_t = Ray;
