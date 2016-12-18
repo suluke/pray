@@ -71,7 +71,10 @@ struct SSERay {
     const auto det = p.dot(e1);
 
     // if the ray is parallel to the triangle, there is no hit :)
-    //~ if(det == approx(0.f)) return false;
+    if (simd::isAll(simd::castps_si(simd::cmplt_ps(simd::abs_ps(det), simd::set1_ps(0.0001f))))) {
+      *out_distance = max_distance();
+      return simd::set1_epi32(0);
+    }
 
     const auto t = origin - t_v1;
 
@@ -192,6 +195,11 @@ public:
   }
 
   static vec3_t getNormals(const Scene &scene, intersect_t intersects) {
+    // I tested implementing vectorized calculateNormal() with scalar
+    // edge calculation and it was slower. Pseudocode:
+    // vec E1 = for each triangle: load(vertex1 - vertex0)
+    // vec E2 = for each triangle: load(vertex2 - vertex0)
+    // return E1.cross(E2)
     alignas(16) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
     simd::store_si((simd::intty *) &int_ersects[0], intersects);
     alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
@@ -200,7 +208,6 @@ public:
     for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
       auto triangle = int_ersects[i];
       if (triangle != TriangleIndex_Invalid) {
-        // TODO we could also load the triangles into a Vec3Pack and calculate normals with SIMD code
         const auto N = scene.triangles[triangle].calculateNormal();
         X[i] = N.x;
         Y[i] = N.y;

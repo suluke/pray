@@ -133,6 +133,12 @@ namespace simd {
 #endif
 
 namespace simd {
+  inline floatty abs_ps(floatty f) {
+    return and_ps(f, castsi_ps(set1_epi32(0x7fffffff)));
+  }
+}
+
+namespace simd {
   struct Vec3Pack {
     using component_t = floatty;
     
