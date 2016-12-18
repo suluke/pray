@@ -9,6 +9,7 @@
 #ifdef WITH_TIMING
  #include <chrono>
 #endif
+
 struct StageLogger {
 #ifdef WITH_TIMING
 	using timepoint_t = std::chrono::time_point<std::chrono::high_resolution_clock>;
@@ -56,6 +57,35 @@ struct StageLogger {
 #endif
 	}
 };
+#ifdef WITH_CONFDUMP
+#include <iomanip>
+#include <cstring>
+#define STR(x)   #x
+#define print_opt(x) do {\
+		auto f(std::cout.flags());\
+		std::cout << std::left << std::setw(18) << #x ": ";\
+		strcmp(#x, STR(x)) ? std::cout << "ON\n" : std::cout << "OFF\n";\
+		std::cout.flags(f);\
+	} while(false)
+	
+	static void dump_config() {
+		std::cout << "#### Configuration: ####\n";
+		print_opt(WITH_OMP);
+		print_opt(WITH_CUDA);
+		print_opt(WITH_SSE);
+		print_opt(WITH_BIH);
+		print_opt(WITH_SUBSAMPLING);
+		print_opt(WITH_TIMING);
+		print_opt(WITH_DEBUG_TOOL);
+		print_opt(WITH_CONFDUMP);
+		print_opt(DISABLE_OUTPUT);
+		std::cout << "########################\n";
+	}
+#undef STR
+#undef print_opt
+#else
+	static void dump_config() {}
+#endif
 
 // Sorry for this...
 #ifdef WITH_BIH
@@ -105,6 +135,7 @@ int main(int argc, char *argv[])
 		cerr << "usage: " << argv[0] << " <input.json> <output.bmp>\n";
 		return 1;
 	}
+	dump_config();
 
 #ifdef DEBUG
 	cout << "Warning: This is a Debug build and might be very slow!\n";
