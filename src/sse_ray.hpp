@@ -159,14 +159,15 @@ private:
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 
   static distance_t getLambert(simd::Vec3Pack L, simd::Vec3Pack N, distance_t light_dist_squared) {
+    // can't remove the simd::max_ps here since the ray_t::isOppositeDirection(shadow_ray.direction, N) in CpuTracer is reduced with isAll
     return simd::div_ps(simd::max_ps(L.dot(N), simd::set1_ps(0.f)), light_dist_squared);
   }
 
 public:
   static SSERay getShadowRay(Light light, location_t P, distance_t *ld) {
     const auto light_vector = location_t(light.position) - P;
-		const auto light_distance = light_vector.length();
-		const auto L = light_vector / light_distance;
+    const auto light_distance = light_vector.length();
+    const auto L = light_vector / light_distance;
     *ld = light_distance;
     return {P + L * simd::set1_ps(0.001f), L};
   }
@@ -225,8 +226,8 @@ public:
   static color_t shade(const Scene &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_colors) {
     // TODO duplicated code
     const auto light_vector = location_t(light.position) - P;
-		const auto light_distance = light_vector.length();
-		const auto L = light_vector / light_distance;
+    const auto light_distance = light_vector.length();
+    const auto L = light_vector / light_distance;
 
     const auto MASK = simd::cmplt_ps(light_distance, intersection_distance);
 

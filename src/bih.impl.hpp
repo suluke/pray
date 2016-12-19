@@ -175,7 +175,7 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 			const Triangle &triangle = scene.triangles[triangle_index];
       
 			typename ray_t::distance_t distance;
-      if(ray_t::isAny(ray.intersectTriangle(triangle, &distance)))
+			if(ray_t::isAny(ray.intersectTriangle(triangle, &distance)))
 			{
 				ray_t::updateIntersections(&intersection.triangle, triangle_index, &intersection.distance, distance);
 			}
@@ -195,7 +195,7 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 		left_aabb.max[split_axis] = left_plane;
 		right_aabb.min[split_axis] = right_plane;
 
-    // if ray_t are several rays and at least one ray has an intersection, the complete pack is checked
+		// if ray_t are several rays and at least one ray has an intersection, the complete pack is checked
 
 		//TODO: this can be done smarter!
 		auto intersect_left = ray.intersectAABB(left_aabb);
@@ -213,7 +213,7 @@ typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_
 	bih_intersected_nodes.clear();
 #endif
 
-  if(!ray_t::isAny(ray.intersectAABB(scene_aabb))) return ray_t::getNoIntersection();
+	if(!ray_t::isAny(ray.intersectAABB(scene_aabb))) return ray_t::getNoIntersection();
 
 	IntersectionResult<ray_t> intersection_result;
 	intersectBihNode(nodes[0u], scene_aabb, *this, scene, ray, intersection_result);
