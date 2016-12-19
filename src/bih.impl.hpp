@@ -42,7 +42,7 @@ struct BihBuilder
 		buildNode(bih.nodes.back(), bih.scene_aabb, bih.triangles.begin(), bih.triangles.end());
 	}
 
-	void buildNode(typename bih_t::Node &current_node, const AABox3 &initial_aabb, TrianglesIt triangles_begin, TrianglesIt triangles_end, const unsigned retry_depth = 0u)
+	void buildNode(typename bih_t::Node &current_node, const AABox3 &initial_aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const unsigned retry_depth = 0u)
 	{
 		ASSERT(initial_aabb.isValid());
 
@@ -51,7 +51,7 @@ struct BihBuilder
 		auto node_index = &current_node - &bih.nodes[0];
 #endif
 
-		auto children_count = std::distance(triangles_begin, triangles_end);
+		const auto children_count = std::distance(triangles_begin, triangles_end);
 
 		const bool leaf_children_count_reached = children_count <= 4u; //TODO: how to pass this constant as a parameter? (pls not template...)
 
@@ -63,7 +63,7 @@ struct BihBuilder
 		{
 			// build a leaf
 
-			auto children_index = std::distance(bih.triangles.begin(), triangles_begin);
+			const auto children_index = std::distance(bih.triangles.begin(), triangles_begin);
 			current_node.makeLeafNode(children_index, children_count);
 
 #ifdef DEBUG
@@ -74,12 +74,12 @@ struct BihBuilder
 		{
 			// build a node
 
-			auto split_axis = getSplitAxis(initial_aabb);
+			const auto split_axis = getSplitAxis(initial_aabb);
 
 			float left_plane = std::numeric_limits<float>::lowest(), right_plane = std::numeric_limits<float>::max();
 
-			auto pivot = (initial_aabb.min[split_axis] + initial_aabb.max[split_axis]) / 2.f;
-			auto split_element = std::partition(triangles_begin, triangles_end,
+			const auto pivot = (initial_aabb.min[split_axis] + initial_aabb.max[split_axis]) / 2.f;
+			const auto split_element = std::partition(triangles_begin, triangles_end,
 			[&](TriangleIndex t)
 			{
 				const bool left = triangle_data[t].centroid[split_axis] <= pivot;
@@ -102,7 +102,7 @@ struct BihBuilder
 			}
 
 			// allocate child nodes (this is a critical section)
-			auto children_index = bih.nodes.size();
+			const auto children_index = bih.nodes.size();
 			ASSERT(bih.nodes.capacity() - bih.nodes.size() >= 2u); // we don't want relocation (breaks references)
 			bih.nodes.emplace_back(); bih.nodes.emplace_back();
 
@@ -183,13 +183,13 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 	}
 	else
 	{
-		auto split_axis = node.getType();
+		const auto split_axis = node.getType();
 
-		auto &left_child = bih.nodes[node.getChildrenIndex()+0];
-		auto &right_child = bih.nodes[node.getChildrenIndex()+1];
+		const auto &left_child = bih.nodes[node.getChildrenIndex()+0];
+		const auto &right_child = bih.nodes[node.getChildrenIndex()+1];
 
-		auto left_plane = node.getSplitData().left_plane;
-		auto right_plane = node.getSplitData().right_plane;
+		const auto left_plane = node.getSplitData().left_plane;
+		const auto right_plane = node.getSplitData().right_plane;
 
 		AABox3 left_aabb = aabb, right_aabb = aabb;
 		left_aabb.max[split_axis] = left_plane;
@@ -198,10 +198,10 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 		// if ray_t are several rays and at least one ray has an intersection, the complete pack is checked
 
 		//TODO: this can be done smarter!
-		auto intersect_left = ray.intersectAABB(left_aabb);
+		const auto intersect_left = ray.intersectAABB(left_aabb);
 		if(ray_t::isAny(intersect_left)) intersectBihNode(left_child, left_aabb, bih, scene, ray, intersection);
     
-		auto intersect_right = ray.intersectAABB(right_aabb);
+		const auto intersect_right = ray.intersectAABB(right_aabb);
 		if(ray_t::isAny(intersect_right)) intersectBihNode(right_child, right_aabb, bih, scene, ray, intersection);
 	}
 }
