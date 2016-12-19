@@ -15,7 +15,7 @@
 #endif
 
 #ifdef WITH_SSE
-static void trace(const Scene &scene, ImageView &img, StageLogger &logger) {
+static void traceWhitted(const Scene &scene, ImageView &img, StageLogger &logger) {
 	//~ if (scene.lights.size() < 2)
 	{
 		CpuTracer<SSERay, accel_t<SSERay>> tracer(scene);
@@ -38,7 +38,7 @@ static void trace(const Scene &scene, ImageView &img, StageLogger &logger) {
 }
 #else
 using ray_t = Ray;
-static void trace(const Scene &scene, ImageView &img, StageLogger &logger) {
+static void traceWhitted(const Scene &scene, ImageView &img, StageLogger &logger) {
 	CpuTracer<ray_t, accel_t<ray_t>> tracer(scene);
 
 	logger.startPreprocessing();
@@ -84,7 +84,18 @@ int main(int argc, char *argv[])
 
 	ImageView img(image, 0, image_resolution.h);
 
-	trace(scene, img, logger);
+	switch (scene.render_method) {
+		case RenderMethod::WHITTED: {
+			traceWhitted(scene, img, logger);
+			break;
+		}
+		case RenderMethod::PATH: {
+			cout << "FIXME: Path tracing not implemented" << endl;
+			break;
+		}
+		default:
+			;// ???
+	}
 
 	logger.startOutput();
 #ifndef DISABLE_OUTPUT

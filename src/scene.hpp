@@ -83,6 +83,10 @@ struct Camera
 	}
 };
 
+enum class RenderMethod {
+	WHITTED, PATH
+};
+
 struct Scene
 {
 	std::vector<Triangle> triangles;
@@ -92,6 +96,8 @@ struct Scene
 
 	Camera camera;
 	Color background_color = Color(0.f, 0.f, 0.f);
+
+	RenderMethod render_method = RenderMethod::WHITTED;
 
 	void clear() { *this = Scene(); }
 

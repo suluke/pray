@@ -103,6 +103,14 @@ bool Scene::load(const string &filename, IntDimension2 *out_image_resolution)
 	camera.fov = json_input["fov"].get<float>() * acos(-1) / 180.f; // convert to radians
 
 	background_color = Color(json_input["background"][0], json_input["background"][1], json_input["background"][2]);
+	if (json_input.find("method") != json_input.end()) {
+		auto method = json_input["method"].get<string>();
+		if (method == "path_tracing") {
+			render_method = RenderMethod::PATH;
+		} else {
+			render_method = RenderMethod::WHITTED;
+		}
+	}
 
 	return true;
 }
