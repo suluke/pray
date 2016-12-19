@@ -142,7 +142,7 @@ namespace simd {
   }
 
   static inline float extract_ps(floatty x, int i) {
-    ASSERT(i >= 0 && i < REGISTER_CAPACITY_FLOAT);
+    ASSERT(i >= 0 && i < (int) REGISTER_CAPACITY_FLOAT);
     alignas(32) std::array<float, REGISTER_CAPACITY_FLOAT> X;
     store_ps(X.data(), x);
     return X[i];
