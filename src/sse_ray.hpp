@@ -111,27 +111,21 @@ struct SSERay {
     const auto aabb_min = location_t(aabb.min);
     const auto aabb_max = location_t(aabb.max);
 
-    // https://tavianator.com/cgit/dimension.git/tree/libdimension/bvh/bvh.c#n196
-    auto tx1 = simd::mul_ps(simd::sub_ps(aabb_min.x, origin.x), dir_inv.x);
-    auto tx2 = simd::mul_ps(simd::sub_ps(aabb_max.x, origin.x), dir_inv.x);
-
-    auto tmin = simd::min_ps(tx1, tx2);
-    auto tmax = simd::max_ps(tx1, tx2);
-
-    auto ty1 = simd::mul_ps(simd::sub_ps(aabb_min.y, origin.y), dir_inv.y);
-    auto ty2 = simd::mul_ps(simd::sub_ps(aabb_max.y, origin.y), dir_inv.y);
-
-    tmin = simd::max_ps(tmin, simd::min_ps(ty1, ty2));
-    tmax = simd::min_ps(tmax, simd::max_ps(ty1, ty2));
-
-    auto tz1 = simd::mul_ps(simd::sub_ps(aabb_min.z, origin.z), dir_inv.z);
-    auto tz2 = simd::mul_ps(simd::sub_ps(aabb_max.z, origin.z), dir_inv.z);
-
-    tmin = simd::max_ps(tmin, simd::min_ps(tz1, tz2));
-    tmax = simd::min_ps(tmax, simd::max_ps(tz1, tz2));
-
-    //~ return simd::castps_si(simd::and_ps(simd::cmple_ps(simd::max_ps(simd::setzero_ps(), tmin), tmax), simd::cmplt_ps(tmin, t)));
-    return simd::castps_si(simd::cmple_ps(simd::max_ps(simd::setzero_ps(), tmin), tmax));
+    // http://psgraphics.blogspot.de/2016/02/new-simple-ray-box-test-from-andrew.html
+    auto t_min = simd::set1_ps(std::numeric_limits<float>::lowest());
+    auto t_max = simd::set1_ps(std::numeric_limits<float>::max());
+    for(int i=0; i<3; ++i)
+    {
+      const auto i_d = dir_inv[i];
+      const auto tmp0 = simd::mul_ps(simd::sub_ps(aabb_min[i], origin[i]), i_d);
+      const auto tmp1 = simd::mul_ps(simd::sub_ps(aabb_max[i], origin[i]), i_d);
+      const auto MASK = simd::cmplt_ps(i_d, simd::setzero_ps());
+      const auto t0 = simd::or_ps(simd::and_ps(MASK, tmp1), simd::and_ps(simd::not_ps(MASK), tmp0));
+      const auto t1 = simd::or_ps(simd::and_ps(MASK, tmp0), simd::and_ps(simd::not_ps(MASK), tmp1));
+      t_min = simd::max_ps(t_min, t0);
+      t_max = simd::min_ps(t_max, t1);
+    }
+    return simd::castps_si(simd::cmplt_ps(t_min, t_max));
   }
 
   location_t getIntersectionPoint(distance_t intersection_distance) const {
