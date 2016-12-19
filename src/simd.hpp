@@ -140,6 +140,13 @@ namespace simd {
   static inline floatty abs_ps(floatty f) {
     return and_ps(f, castsi_ps(set1_epi32(0x7fffffff)));
   }
+
+  static inline float extract_ps(floatty x, int i) {
+    ASSERT(i >= 0 && i < REGISTER_CAPACITY_FLOAT);
+    alignas(32) std::array<float, REGISTER_CAPACITY_FLOAT> X;
+    store_ps(X.data(), x);
+    return X[i];
+  }
 }
 
 namespace simd {
@@ -217,22 +224,14 @@ namespace simd {
 }
 
 inline std::ostream &operator<<(std::ostream &o, const simd::floatty &f) {
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> F;
-  simd::store_ps(F.data(), f);
   for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
-    o << F[i] << ", ";
+    o << simd::extract_ps(f, i) << ", ";
   }
   return o;
 }
 inline std::ostream &operator<<(std::ostream &o, const simd::Vec3Pack &v) {
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
-  simd::store_ps(X.data(), v.x);
-  simd::store_ps(Y.data(), v.y);
-  simd::store_ps(Z.data(), v.z);
   for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
-    o << "(" << X[i] << ", " << Y[i] << ", " << Z[i] << ")";
+    o << "(" << simd::extract_ps(v.x, i) << ", " << simd::extract_ps(v.y, i) << ", " << simd::extract_ps(v.z, i) << ")";
   }
   return o;
 }

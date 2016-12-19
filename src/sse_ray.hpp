@@ -17,7 +17,7 @@ struct SSERay {
   using angle_t = simd::floatty;
   using bool_t = simd::intty;
   
-  static constexpr IntDimension2 dim = {simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2};
+  using dim = ConstDim2<simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2>;
 
   const location_t origin;
   simd::Vec3Pack direction;
@@ -32,22 +32,22 @@ struct SSERay {
       Y[i] = cam.direction.y;
       Z[i] = cam.direction.z;
     }
-    for (unsigned i_x = 0; i_x < dim.w; ++i_x) {
+    for (unsigned i_x = 0; i_x < dim::w; ++i_x) {
       float f_x = 1.f - (2 * (x + i_x) + 1) / max_x;
       auto l = left * f_x;
-      for (unsigned i_y = 0; i_y < dim.h; ++i_y) {
-        X[i_y * dim.w + i_x] += l.x;
-        Y[i_y * dim.w + i_x] += l.y;
-        Z[i_y * dim.w + i_x] += l.z;
+      for (unsigned i_y = 0; i_y < dim::h; ++i_y) {
+        X[i_y * dim::w + i_x] += l.x;
+        Y[i_y * dim::w + i_x] += l.y;
+        Z[i_y * dim::w + i_x] += l.z;
       }
     }
-    for (unsigned i_y = 0; i_y < dim.h; ++i_y) {
+    for (unsigned i_y = 0; i_y < dim::h; ++i_y) {
       float f_y = 1.f - (2 * (y + i_y) + 1) / max_y;
       auto t = top * f_y;
-      for (unsigned i_x = 0; i_x < dim.w; ++i_x) {
-        X[i_y * dim.w + i_x] += t.x;
-        Y[i_y * dim.w + i_x] += t.y;
-        Z[i_y * dim.w + i_x] += t.z;
+      for (unsigned i_x = 0; i_x < dim::w; ++i_x) {
+        X[i_y * dim::w + i_x] += t.x;
+        Y[i_y * dim::w + i_x] += t.y;
+        Z[i_y * dim::w + i_x] += t.z;
       }
     }
     direction.x = simd::load_ps(X.data());
@@ -108,8 +108,8 @@ struct SSERay {
   
   inline bool_t intersectAABB(const AABox3 &aabb) const
   {
-    auto aabb_min = location_t(aabb.min);
-    auto aabb_max = location_t(aabb.max);
+    const auto aabb_min = location_t(aabb.min);
+    const auto aabb_max = location_t(aabb.max);
 
     // https://tavianator.com/cgit/dimension.git/tree/libdimension/bvh/bvh.c#n196
     auto tx1 = simd::mul_ps(simd::sub_ps(aabb_min.x, origin.x), dir_inv.x);
@@ -142,14 +142,15 @@ private:
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 
   static distance_t getLambert(simd::Vec3Pack L, simd::Vec3Pack N, distance_t light_dist_squared) {
+    // can't remove the simd::max_ps here since the ray_t::isOppositeDirection(shadow_ray.direction, N) in CpuTracer is reduced with isAll
     return simd::div_ps(simd::max_ps(L.dot(N), simd::set1_ps(0.f)), light_dist_squared);
   }
 
 public:
   static SSERay getShadowRay(Light light, location_t P, distance_t *ld) {
     const auto light_vector = location_t(light.position) - P;
-		const auto light_distance = light_vector.length();
-		const auto L = light_vector / light_distance;
+    const auto light_distance = light_vector.length();
+    const auto L = light_vector / light_distance;
     *ld = light_distance;
     return {P + L * simd::set1_ps(0.001f), L};
   }
@@ -208,8 +209,8 @@ public:
   static color_t shade(const Scene &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_colors) {
     // TODO duplicated code
     const auto light_vector = location_t(light.position) - P;
-		const auto light_distance = light_vector.length();
-		const auto L = light_vector / light_distance;
+    const auto light_distance = light_vector.length();
+    const auto L = light_vector / light_distance;
 
     const auto MASK = simd::cmplt_ps(light_distance, intersection_distance);
 
@@ -266,9 +267,9 @@ inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::
   simd::store_ps(R.data(), c.x);
   simd::store_ps(G.data(), c.y);
   simd::store_ps(B.data(), c.z);
-  for (unsigned i_y = 0; i_y < SSERay::dim.h && i_y + y < img.resolution.h; ++i_y) {
-    for (unsigned i_x = 0; i_x < SSERay::dim.w && i_x + x < img.resolution.w; ++i_x) {
-      auto idx = i_y * SSERay::dim.w + i_x;
+  for (unsigned i_y = 0; i_y < SSERay::dim::h && i_y + y < img.resolution.h; ++i_y) {
+    for (unsigned i_x = 0; i_x < SSERay::dim::w && i_x + x < img.resolution.w; ++i_x) {
+      auto idx = i_y * SSERay::dim::w + i_x;
       img.setPixel(x + i_x, y + i_y, {R[idx], G[idx], B[idx]});
     }
   }

@@ -62,8 +62,8 @@ void CpuTracer<ray_t, accel_t>::render(ImageView &image) const
 #ifdef WITH_OMP
 	#pragma omp parallel for schedule(guided, 10)
 #endif
-	for(long y = 0; y < image.resolution.h; y += ray_t::dim.h) {
-		for(long x = 0; x < image.resolution.w; x += ray_t::dim.w) {
+	for(long y = 0; y < image.resolution.h; y += ray_t::dim::h) {
+		for(long x = 0; x < image.resolution.w; x += ray_t::dim::w) {
 			if (!subsampling_enabled || (
 					x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y ||
 					(x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)))

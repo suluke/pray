@@ -10,7 +10,7 @@ struct Ray {
   using angle_t = float;
   using bool_t = bool;
   
-  static constexpr IntDimension2 dim = {1, 1};
+  using dim = ConstDim2<1, 1>;
   
   const Vector3 origin;
   const Vector3 direction;
@@ -72,7 +72,7 @@ struct Ray {
     return origin + direction * intersection_distance;
   }
 
-#ifndef DEBUG // for debugging tool...
+#ifndef DEBUG_TOOL
 private:
 #endif
   Ray(location_t origin, Vector3 direction) : origin(origin), direction(direction) {}
@@ -99,13 +99,13 @@ public:
   static color_t shade(const Scene &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_color) {
     // TODO duplicated code
     const Vector3 light_vector = light.position - P;
-		const float light_distance = light_vector.length();
-		const Vector3 L = light_vector / light_distance;
+    const float light_distance = light_vector.length();
+    const Vector3 L = light_vector / light_distance;
 
     if (intersection_distance < light_distance)
       return {0.f, 0.f, 0.f};
 
-    return mat_color * light.color * (std::max(L.dot(N), 0.f) / (light_distance * light_distance));
+    return mat_color * light.color * L.dot(N) / (light_distance * light_distance);
   }
 
   static inline distance_t max_distance() {
