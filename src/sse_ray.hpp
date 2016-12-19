@@ -111,44 +111,21 @@ struct SSERay {
     const auto aabb_min = location_t(aabb.min);
     const auto aabb_max = location_t(aabb.max);
 
-    // https://people.csail.mit.edu/amy/papers/box-jgt.pdf
-    auto signx = simd::cmple_ps(dir_inv.x, simd::setzero_ps());
-    auto signy = simd::cmple_ps(dir_inv.y, simd::setzero_ps());
-    auto signz = simd::cmple_ps(dir_inv.z, simd::setzero_ps());
-
-    using floatty = simd::floatty;
-    auto mix = [](floatty mask, floatty x1, floatty x2) {
-      return simd::or_ps(simd::and_ps(mask, x1), simd::and_ps(simd::not_ps(mask), x2));
-    };
-
-    auto tmin  = simd::mul_ps(simd::sub_ps(mix(signx, aabb_max.x, aabb_min.x), origin.x), dir_inv.x);
-    auto tmax  = simd::mul_ps(simd::sub_ps(mix(signx, aabb_min.x, aabb_max.x), origin.x), dir_inv.x);
-    auto tymin = simd::mul_ps(simd::sub_ps(mix(signy, aabb_max.y, aabb_min.y), origin.y), dir_inv.y);
-    auto tymax = simd::mul_ps(simd::sub_ps(mix(signy, aabb_min.y, aabb_max.y), origin.y), dir_inv.y);
-
-    // Scalar: if ((tmin > tymax) || (tymin > tmax)) return false;
-    auto EARLY = simd::not_ps(simd::or_ps(simd::cmplt_ps(tymax, tmin), simd::cmplt_ps(tmax, tymin))); // TODO logical reordering of NOT
-    // Scalar: if (tymin > tmin) tmin = tymin;
-    auto MASK = simd::cmplt_ps(tmin, tymin);
-    tmin = mix(MASK, tymin, tmin);
-    // Scalar: if (tymax < tmax) tmax = tymax;
-    MASK = simd::cmplt_ps(tymax, tmax);
-    tmax = mix(MASK, tymax, tmax);
-
-    auto tzmin = simd::mul_ps(simd::sub_ps(mix(signz, aabb_max.z, aabb_min.z), origin.z), dir_inv.z);
-    auto tzmax = simd::mul_ps(simd::sub_ps(mix(signz, aabb_min.z, aabb_max.z), origin.z), dir_inv.z);
-
-    // Scalar: if ((tmin > tzmax) || (tzmin > tmax)) return false;
-    auto EARLY2 = simd::not_ps(simd::or_ps(simd::cmplt_ps(tzmax, tmin), simd::cmplt_ps(tmax, tzmin))); // TODO logical reordering of NOT
-    // Scalar: if (tzmin > tmin) tmin = tzmin;
-    MASK = simd::cmplt_ps(tmin, tzmin);
-    tmin = mix(MASK, tzmin, tmin);
-    // Scalar: if (tzmax < tmax) tmax = tzmax;
-    MASK = simd::cmplt_ps(tzmax, tmax);
-    tmax = mix(MASK, tzmax, tmax);
-
-    auto result = simd::castsi_ps(simd::set1_epi32(-1));// simd::and_ps(simd::cmplt_ps(tmin, t1), simd::cmplt_ps(t0, tmax));
-    return simd::castps_si(simd::and_ps(EARLY, simd::and_ps(EARLY2, result)));
+    // http://psgraphics.blogspot.de/2016/02/new-simple-ray-box-test-from-andrew.html
+    auto t_min = simd::set1_ps(std::numeric_limits<float>::lowest());
+    auto t_max = simd::set1_ps(std::numeric_limits<float>::max());
+    for(int i=0; i<3; ++i)
+    {
+      const auto i_d = dir_inv[i];
+      const auto tmp0 = simd::mul_ps(simd::sub_ps(aabb_min[i], origin[i]), i_d);
+      const auto tmp1 = simd::mul_ps(simd::sub_ps(aabb_max[i], origin[i]), i_d);
+      const auto MASK = simd::cmplt_ps(i_d, simd::setzero_ps());
+      const auto t0 = simd::or_ps(simd::and_ps(MASK, tmp1), simd::and_ps(simd::not_ps(MASK), tmp0));
+      const auto t1 = simd::or_ps(simd::and_ps(MASK, tmp0), simd::and_ps(simd::not_ps(MASK), tmp1));
+      t_min = simd::max_ps(t_min, t0);
+      t_max = simd::min_ps(t_max, t1);
+    }
+    return simd::castps_si(simd::cmplt_ps(t_min, t_max));
   }
 
   location_t getIntersectionPoint(distance_t intersection_distance) const {
