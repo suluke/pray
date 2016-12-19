@@ -10,7 +10,7 @@ struct Ray {
   using angle_t = float;
   using bool_t = bool;
   
-  static constexpr IntDimension2 dim = {1, 1};
+  using dim = ConstDim2<1, 1>;
   
   const Vector3 origin;
   const Vector3 direction;

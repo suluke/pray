@@ -112,6 +112,12 @@ struct IntDimension2
 	constexpr IntDimension2(dim_t w, dim_t h) : w(w), h(h) {}
 };
 
+template <unsigned W, unsigned H>
+struct ConstDim2 {
+	static const unsigned w = W;
+	static const unsigned h = H;
+};
+
 struct Color
 {
 	float r, g, b;

@@ -17,7 +17,7 @@ struct SSERay {
   using angle_t = simd::floatty;
   using bool_t = simd::intty;
   
-  static constexpr IntDimension2 dim = {simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2};
+  using dim = ConstDim2<simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2>;
 
   const location_t origin;
   simd::Vec3Pack direction;
@@ -32,22 +32,22 @@ struct SSERay {
       Y[i] = cam.direction.y;
       Z[i] = cam.direction.z;
     }
-    for (unsigned i_x = 0; i_x < dim.w; ++i_x) {
+    for (unsigned i_x = 0; i_x < dim::w; ++i_x) {
       float f_x = 1.f - (2 * (x + i_x) + 1) / max_x;
       auto l = left * f_x;
-      for (unsigned i_y = 0; i_y < dim.h; ++i_y) {
-        X[i_y * dim.w + i_x] += l.x;
-        Y[i_y * dim.w + i_x] += l.y;
-        Z[i_y * dim.w + i_x] += l.z;
+      for (unsigned i_y = 0; i_y < dim::h; ++i_y) {
+        X[i_y * dim::w + i_x] += l.x;
+        Y[i_y * dim::w + i_x] += l.y;
+        Z[i_y * dim::w + i_x] += l.z;
       }
     }
-    for (unsigned i_y = 0; i_y < dim.h; ++i_y) {
+    for (unsigned i_y = 0; i_y < dim::h; ++i_y) {
       float f_y = 1.f - (2 * (y + i_y) + 1) / max_y;
       auto t = top * f_y;
-      for (unsigned i_x = 0; i_x < dim.w; ++i_x) {
-        X[i_y * dim.w + i_x] += t.x;
-        Y[i_y * dim.w + i_x] += t.y;
-        Z[i_y * dim.w + i_x] += t.z;
+      for (unsigned i_x = 0; i_x < dim::w; ++i_x) {
+        X[i_y * dim::w + i_x] += t.x;
+        Y[i_y * dim::w + i_x] += t.y;
+        Z[i_y * dim::w + i_x] += t.z;
       }
     }
     direction.x = simd::load_ps(X.data());
@@ -108,8 +108,8 @@ struct SSERay {
   
   inline bool_t intersectAABB(const AABox3 &aabb) const
   {
-    auto aabb_min = location_t(aabb.min);
-    auto aabb_max = location_t(aabb.max);
+    const auto aabb_min = location_t(aabb.min);
+    const auto aabb_max = location_t(aabb.max);
 
     // https://people.csail.mit.edu/amy/papers/box-jgt.pdf
     auto signx = simd::cmple_ps(dir_inv.x, simd::setzero_ps());
@@ -284,9 +284,9 @@ inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::
   simd::store_ps(R.data(), c.x);
   simd::store_ps(G.data(), c.y);
   simd::store_ps(B.data(), c.z);
-  for (unsigned i_y = 0; i_y < SSERay::dim.h && i_y + y < img.resolution.h; ++i_y) {
-    for (unsigned i_x = 0; i_x < SSERay::dim.w && i_x + x < img.resolution.w; ++i_x) {
-      auto idx = i_y * SSERay::dim.w + i_x;
+  for (unsigned i_y = 0; i_y < SSERay::dim::h && i_y + y < img.resolution.h; ++i_y) {
+    for (unsigned i_x = 0; i_x < SSERay::dim::w && i_x + x < img.resolution.w; ++i_x) {
+      auto idx = i_y * SSERay::dim::w + i_x;
       img.setPixel(x + i_x, y + i_y, {R[idx], G[idx], B[idx]});
     }
   }
