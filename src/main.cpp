@@ -23,6 +23,8 @@ static void traceWhitted(const Scene &scene, ImageView &img, StageLogger &logger
 		logger.startPreprocessing();
 		tracer.preprocess();
 
+		//tracer.acceleration_structure.printAnalsyis();
+
 		logger.startRendering();
 		tracer.render(img);
 	}
@@ -43,6 +45,8 @@ static void traceWhitted(const Scene &scene, ImageView &img, StageLogger &logger
 
 	logger.startPreprocessing();
 	tracer.preprocess();
+
+	//tracer.acceleration_structure.printAnalsyis();
 
 	logger.startRendering();
 	tracer.render(img);

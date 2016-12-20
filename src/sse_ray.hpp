@@ -16,8 +16,10 @@ struct SSERay {
   using distance_t = simd::floatty;
   using angle_t = simd::floatty;
   using bool_t = simd::intty;
-  
+
   using dim = ConstDim2<simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2>;
+
+  static constexpr unsigned subrays_count = simd::REGISTER_CAPACITY_FLOAT;
 
   const location_t origin;
   simd::Vec3Pack direction;
@@ -132,6 +134,17 @@ struct SSERay {
     return origin + direction * intersection_distance;
   }
 
+  Vector3 getSubrayDirection(unsigned subray) const { return direction.extract(subray); }
+
+  void isDirectionSignEqualForAllSubrays(Vector3 test_sign, std::array<bool, 3> *out_result) const {
+    const auto x = simd::cmplt_ps(direction.x, simd::setzero_ps());
+    const auto y = simd::cmplt_ps(direction.y, simd::setzero_ps());
+    const auto z = simd::cmplt_ps(direction.z, simd::setzero_ps());
+    (*out_result)[0] = isAll(test_sign.x < 0 ? x : simd::not_ps(x));
+    (*out_result)[1] = isAll(test_sign.y < 0 ? y : simd::not_ps(y));
+    (*out_result)[2] = isAll(test_sign.z < 0 ? z : simd::not_ps(z));
+  }
+
 private:
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 
@@ -242,6 +255,10 @@ public:
 
   static inline bool isAny(bool_t b) {
     return simd::isAny(b);
+  }
+
+  static inline bool_t booleanAnd(bool_t a, bool_t b) {
+    return simd::castps_si(simd::and_ps(simd::castsi_ps(a), simd::castsi_ps(b)));
   }
 
   static inline bool_t isOppositeDirection(const vec3_t v1, const vec3_t v2) {

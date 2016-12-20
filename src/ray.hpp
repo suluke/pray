@@ -9,9 +9,11 @@ struct Ray {
   using distance_t = float;
   using angle_t = float;
   using bool_t = bool;
-  
+
   using dim = ConstDim2<1, 1>;
-  
+
+  static constexpr unsigned subrays_count = 1u;
+
   const Vector3 origin;
   const Vector3 direction;
 
@@ -70,6 +72,15 @@ struct Ray {
 
   location_t getIntersectionPoint(distance_t intersection_distance) const {
     return origin + direction * intersection_distance;
+  }
+
+  Vector3 getSubrayDirection(unsigned subray) const { ASSERT(subray == 0); return direction; }
+
+  void isDirectionSignEqualForAllSubrays(Vector3 test_sign, std::array<bool, 3> *out_result) const {
+    const auto sign = direction.sign();
+    (*out_result)[0] = test_sign.x == sign.x;
+    (*out_result)[1] = test_sign.y == sign.y;
+    (*out_result)[2] = test_sign.z == sign.z;
   }
 
 #ifndef DEBUG_TOOL
@@ -134,6 +145,10 @@ public:
 
   static inline bool isAny(bool_t b) {
     return b;
+  }
+
+  static inline bool_t booleanAnd(bool_t a, bool_t b) {
+    return a && b;
   }
 
   /**

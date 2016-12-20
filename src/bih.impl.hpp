@@ -1,3 +1,5 @@
+#include "pray/Config.h"
+
 template<class bih_t>
 struct BihBuilder
 {
@@ -159,6 +161,9 @@ struct IntersectionResult
 	typename ray_t::distance_t distance = ray_t::max_distance();
 };
 
+#ifndef WITH_BIH_SMART_TRAVERSION
+
+// old algorithm!!!!!
 template<class ray_t>
 static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3 aabb, const Bih<ray_t> &bih, const Scene &scene, const ray_t &ray, IntersectionResult<ray_t> &intersection)
 {
@@ -206,6 +211,7 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 	}
 }
 
+// old algorithm!!!!!
 template<class ray_t>
 typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
@@ -220,4 +226,127 @@ typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_
 
 	*out_distance = intersection_result.distance;
 	return intersection_result.triangle;
+}
+
+#else
+
+template<class ray_t>
+static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3 aabb, const Bih<ray_t> &bih, const Scene &scene, const ray_t &ray, const Vector3 &direction_sign, const std::array<bool, 3> &direction_sign_equal, const typename ray_t::bool_t active_mask, IntersectionResult<ray_t> &intersection)
+{
+#ifdef DEBUG_TOOL
+	bih_intersected_nodes.push_back(&node - &bih.nodes[0]);
+#endif
+
+	if(node.getType() == Bih<ray_t>::Node::Leaf)
+	{
+		for(unsigned i = 0u; i < node.getLeafData().children_count; ++i)
+		{
+			//TODO: remove double indirection (reorder scene.triangles)
+			const TriangleIndex triangle_index = bih.triangles[node.getChildrenIndex() + i];
+			const Triangle &triangle = scene.triangles[triangle_index];
+
+			typename ray_t::distance_t distance;
+			const auto intersected = ray_t::booleanAnd(ray.intersectTriangle(triangle, &distance), active_mask);
+
+			if(ray_t::isAny(intersected))
+			{
+				// no need to pass active_mask here, updateIntersection handles this correctly
+				// however, should ray_t ever get wider than one register, adding the mask might improve the performance if used correctly
+				ray_t::updateIntersections(&intersection.triangle, triangle_index, &intersection.distance, distance);
+			}
+		}
+	}
+	else
+	{
+		const auto split_axis = node.getType();
+
+		const auto &left_child = bih.nodes[node.getChildrenIndex()+0];
+		const auto &right_child = bih.nodes[node.getChildrenIndex()+1];
+
+		const auto left_plane = node.getSplitData().left_plane;
+		const auto right_plane = node.getSplitData().right_plane;
+
+		auto left_aabb = aabb;
+		left_aabb.max[split_axis] = left_plane;
+		auto right_aabb = aabb;
+		right_aabb.min[split_axis] = right_plane;
+
+		// The code in both cases is duplicated but with swapped left/right parameters. This gave a speedup of ~800ms on my machine with the sponza scene, no sse (lukasf)!
+		if(direction_sign[split_axis] >= 0.f)
+		{
+			const auto intersect_first_mask = ray_t::booleanAnd(ray.intersectAABB(left_aabb), active_mask);
+			if(ray_t::isAny(intersect_first_mask))
+			{
+				intersectBihNode(left_child, left_aabb, bih, scene, ray, direction_sign, direction_sign_equal, intersect_first_mask, intersection);
+			}
+
+			if(ray_t::isAny(ray_t::booleanAnd(ray_t::isNoIntersection(intersection.triangle), active_mask)) || left_plane >= right_plane || !direction_sign_equal[split_axis]) // if planes overlap, we need to check the other node, too
+			{
+				const auto intersect_second_mask = ray_t::booleanAnd(ray.intersectAABB(right_aabb), active_mask);
+				if(ray_t::isAny(intersect_second_mask)) intersectBihNode(right_child, right_aabb, bih, scene, ray, direction_sign, direction_sign_equal, intersect_second_mask, intersection);
+			}
+		}
+		else
+		{
+			const auto intersect_first_mask = ray_t::booleanAnd(ray.intersectAABB(right_aabb), active_mask);
+			if(ray_t::isAny(intersect_first_mask))
+			{
+				intersectBihNode(right_child, right_aabb, bih, scene, ray, direction_sign, direction_sign_equal, intersect_first_mask, intersection);
+			}
+
+			if(ray_t::isAny(ray_t::booleanAnd(ray_t::isNoIntersection(intersection.triangle), active_mask)) || left_plane >= right_plane || !direction_sign_equal[split_axis]) // if planes overlap, we need to check the other node, too
+			{
+				const auto intersect_second_mask = ray_t::booleanAnd(ray.intersectAABB(left_aabb), active_mask);
+				if(ray_t::isAny(intersect_second_mask)) intersectBihNode(left_child, left_aabb, bih, scene, ray, direction_sign, direction_sign_equal, intersect_second_mask, intersection);
+			}
+		}
+	}
+}
+
+template<class ray_t>
+typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
+{
+#ifdef DEBUG_TOOL
+	bih_intersected_nodes.clear();
+#endif
+
+	const auto active_mask = ray.intersectAABB(scene_aabb);
+	if(!ray_t::isAny(active_mask)) return ray_t::getNoIntersection();
+
+	const Vector3 direction_sign = ray.getSubrayDirection(ray_t::subrays_count / 2).sign();
+
+	std::array<bool, 3> direction_sign_equal;
+	ray.isDirectionSignEqualForAllSubrays(direction_sign, &direction_sign_equal);
+
+	IntersectionResult<ray_t> intersection_result;
+	intersectBihNode(nodes[0u], scene_aabb, *this, scene, ray, direction_sign, direction_sign_equal, active_mask, intersection_result);
+
+	*out_distance = intersection_result.distance;
+	return intersection_result.triangle;
+}
+
+#endif // WITH_BIH_NEW_TRAVERSION
+
+template<class ray_t>
+void Bih<ray_t>::printAnalsyis() const
+{
+	size_t inner_nodes_count = 0u, non_overlapping_inner_nodes_count = 0u, leaves_count = 0u, max_leaf_children_count = 0u;
+
+	for(auto &n : nodes)
+	{
+		if(n.getType() == Node::Leaf)
+		{
+			++leaves_count;
+			max_leaf_children_count = std::max<size_t>(max_leaf_children_count, n.getLeafData().children_count);
+		}
+		else
+		{
+			++inner_nodes_count;
+			if(n.getSplitData().left_plane < n.getSplitData().right_plane) ++non_overlapping_inner_nodes_count;
+		}
+	}
+
+	std::cout << "inner nodes: " << inner_nodes_count << " (non-overlapping: " << non_overlapping_inner_nodes_count << ")\n"
+		<< "leaves: " << leaves_count << " max children count: " << max_leaf_children_count << "\n"
+		<< "reserved storage: " << nodes.capacity() << " actual storage: " << nodes.size() << "\n";
 }

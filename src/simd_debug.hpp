@@ -7,7 +7,6 @@
 
 #if defined(__AVX__)
 #include <immintrin.h>
-#include "math.hpp"
 
 #define MACRO_REGISTER_SIZE_BYTES 32u
 #define MACRO_REGISTER_SIZE_BITS 256
@@ -48,10 +47,10 @@ namespace simd {
   constexpr auto cmple_ps = _mm_cmple_ps;
   constexpr auto cmpeq_epi32 = _mm_cmpeq_epi32;
 
-  static inline bool isAll(__m256i b) {
+  static inline bool isAll(__m128i b) {
     return _mm_movemask_epi8(b) == 0xffff;
   }
-  static inline bool isAny(__m256i b) {
+  static inline bool isAny(__m128i b) {
     return _mm_movemask_epi8(b) != 0x0;
   }
 }

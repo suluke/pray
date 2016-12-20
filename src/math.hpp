@@ -43,6 +43,8 @@ struct Vector3
 	constexpr component_t lengthSquared() const { return x*x + y*y + z*z; }
 	component_t length() const { return sqrt(lengthSquared()); }
 	Vector3 &normalize() { ASSERT(length() != approx(0)); return *this /= length(); }
+
+	Vector3 sign() const { return Vector3(copysign(1.f, x), copysign(1.f, y), copysign(1.f, z)); }
 };
 
 inline std::ostream &operator<<(std::ostream &o, const Vector3 &v)

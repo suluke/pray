@@ -6,10 +6,10 @@
 #include "image.hpp"
 
 template<class ray_t, class accel_t>
-class CpuTracer {
+struct CpuTracer {
   const Scene &scene;
   accel_t acceleration_structure;
-public:
+
   CpuTracer(const Scene &scene) : scene(scene) {}
   void preprocess();
   void render(ImageView &image) const;

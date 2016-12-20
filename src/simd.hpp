@@ -141,10 +141,10 @@ namespace simd {
     return and_ps(f, castsi_ps(set1_epi32(0x7fffffff)));
   }
 
-  static inline float extract_ps(floatty x, int i) {
-    ASSERT(i >= 0 && i < (int) REGISTER_CAPACITY_FLOAT);
+  static inline float extract_ps(floatty x, unsigned i) {
     alignas(32) std::array<float, REGISTER_CAPACITY_FLOAT> X;
     store_ps(X.data(), x);
+    ASSERT(i < (unsigned) REGISTER_CAPACITY_FLOAT);
     return X[i];
   }
 }
@@ -220,6 +220,8 @@ namespace simd {
     }
     component_t length() const { return sqrt_ps(lengthSquared()); }
     Vec3Pack &normalize() { /*ASSERT(length() != approx(0));*/ return *this /= length(); }
+
+    Vector3 extract(unsigned i) const { return Vector3(simd::extract_ps(x, i), simd::extract_ps(y, i), simd::extract_ps(z, i)); }
   };
 }
 
