@@ -140,9 +140,9 @@ struct SSERay {
     const auto x = simd::cmplt_ps(direction.x, simd::setzero_ps());
     const auto y = simd::cmplt_ps(direction.y, simd::setzero_ps());
     const auto z = simd::cmplt_ps(direction.z, simd::setzero_ps());
-    (*out_result)[0] = isAll(test_sign.x < 0 ? x : simd::not_ps(x));
-    (*out_result)[1] = isAll(test_sign.y < 0 ? y : simd::not_ps(y));
-    (*out_result)[2] = isAll(test_sign.z < 0 ? z : simd::not_ps(z));
+    (*out_result)[0] = isAll(simd::castps_si(test_sign.x < 0 ? x : simd::not_ps(x)));
+    (*out_result)[1] = isAll(simd::castps_si(test_sign.y < 0 ? y : simd::not_ps(y)));
+    (*out_result)[2] = isAll(simd::castps_si(test_sign.z < 0 ? z : simd::not_ps(z)));
   }
 
 private:
@@ -204,7 +204,6 @@ public:
         Y[i] = N.y;
         Z[i] = N.z;
       } else {
-        // TODO is this necessary or default initialized?
         X[i] = 0;
         Y[i] = 0;
         Z[i] = 0;
@@ -226,6 +225,14 @@ public:
     
     const auto res = mat_colors * color_t(light.color) * lambert;
     return {simd::and_ps(MASK, res.x), simd::and_ps(MASK, res.y), simd::and_ps(MASK, res.z)};
+  }
+
+  static void addBackgroundcolor(color_t &result_color, const intersect_t intersected_triangle, const Color bg) {
+    const auto MASK = simd::castsi_ps(simd::cmpeq_epi32(simd::set1_epi32(TriangleIndex_Invalid), intersected_triangle));
+    color_t simdBG(bg);
+    result_color.x = simd::or_ps(simd::and_ps(MASK, simdBG.x), result_color.x);
+    result_color.y = simd::or_ps(simd::and_ps(MASK, simdBG.y), result_color.y);
+    result_color.z = simd::or_ps(simd::and_ps(MASK, simdBG.z), result_color.z);
   }
 
   static distance_t max_distance() {

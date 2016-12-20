@@ -17,7 +17,11 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 
 	// optimization: back faces are never lit
 	const auto N = ray_t::getNormals(scene, intersected_triangle);
+#ifndef WITH_SSE
+	// TODO We have a problem with normals being 0 here for no-hit SSE rays
+	// Would it be ok if we returned BG-Color here? 
 	if(!ray_t::isAny(ray_t::isOppositeDirection(ray.direction, N))) return Color(0.f, 0.f, 0.f);
+#endif
 
 	const auto P = ray.getIntersectionPoint(intersection_distance);
 
@@ -40,6 +44,8 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 			result_color += shading_color;
 		}
 	}
+	// TODO Although this is a no-op for scalar rays, this seems expensive for SSERays
+	ray_t::addBackgroundcolor(result_color, intersected_triangle, scene.background_color);
 
 	return result_color;
 }

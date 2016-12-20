@@ -119,6 +119,10 @@ public:
     return mat_color * light.color * L.dot(N) / (light_distance * light_distance);
   }
 
+  static void addBackgroundcolor(color_t &result_color, const intersect_t intersected_triangle, const Color bg) {
+    // can be no-op because the tracer already returns the background color if there have not been __ANY__ intersections
+  }
+
   static inline distance_t max_distance() {
     return std::numeric_limits<distance_t>::max();
   }
