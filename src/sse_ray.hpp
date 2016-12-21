@@ -12,7 +12,13 @@ struct SSERay {
   using intersect_t = simd::intty;
   using color_t = SSEColor;
   using location_t = simd::Vec3Pack;
+  using vec3_t = simd::Vec3Pack;
   using distance_t = simd::floatty;
+  using angle_t = simd::floatty;
+  using bool_t = simd::intty;
+  
+  const bool_t b_true = simd::set1_epi32(-1);
+  const bool_t b_false = simd::set1_epi32(0);
 
   static constexpr IntDimension2 dim = {simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2};
 
@@ -52,7 +58,7 @@ struct SSERay {
     direction.normalize();
   }
 
-  inline bool intersectTriangle(const Triangle &triangle, distance_t *out_distance) const {
+  inline bool_t intersectTriangle(const Triangle &triangle, distance_t *out_distance) const {
     // http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
     const Vector3 &t_v1 = triangle.vertices[0];
     const Vector3 &t_v2 = triangle.vertices[1];
@@ -60,7 +66,7 @@ struct SSERay {
 
     const Vector3 e1 = t_v2 - t_v1;
     const Vector3 e2 = t_v3 - t_v1;
-
+    
     const auto p = direction.cross(e2);
 
     const auto det = p.dot(e1);
@@ -82,6 +88,8 @@ struct SSERay {
     MASK = simd::and_ps(MASK, simd::cmple_ps(zero, v));
     MASK = simd::and_ps(MASK, simd::cmple_ps(simd::add_ps(u, v), one));
     
+    bool_t result = simd::castps_si(MASK); // add all intersections to result
+    
     auto distance = simd::and_ps(simd::div_ps(q.dot(e2), det), MASK);
     const auto max = simd::and_ps(simd::not_ps(MASK), max_distance());
     distance = simd::or_ps(distance, max); // We need to set all places that have no intersection to max
@@ -90,10 +98,52 @@ struct SSERay {
     MASK = simd::cmplt_ps(distance, simd::setzero_ps());
     distance = simd::or_ps(simd::and_ps(simd::not_ps(MASK), distance), simd::and_ps(MASK, max_distance()));
     
+    result = simd::castps_si(simd::and_ps(simd::castsi_ps(result), simd::not_ps(MASK))); // remove intersections with negative distance from result
+    
     *out_distance = distance;
-    // TODO
-    //~ return distance >= 0.f;
-    return true;
+    return result;
+  }
+  
+  inline bool_t intersectAABB(const AABox3 &aabb) const
+  {
+    // http://psgraphics.blogspot.de/2016/02/new-simple-ray-box-test-from-andrew.html
+    
+    auto zero = simd::setzero_ps();
+    auto one = simd::set1_ps(1.f);
+    bool_t result = b_true;
+    
+    auto t_min = simd::set1_ps(std::numeric_limits<float>::lowest());
+    auto t_max = simd::set1_ps(std::numeric_limits<float>::max());
+    
+    for(int i=0; i<3; ++i)
+    {
+      auto i_d = simd::div_ps(one, direction[i]);
+      auto t0 = simd::mul_ps(simd::sub_ps(simd::set1_ps(aabb.min[i]), origin[i]), direction[i]);
+      auto t1 = simd::mul_ps(simd::sub_ps(simd::set1_ps(aabb.max[i]), origin[i]), direction[i]);
+      
+      // if(i_d < 0.f) std::swap(t0, t1);
+      auto mask = simd::cmplt_ps(i_d, zero);
+      
+      // create copies of fields to swap
+      auto t0_c = simd::and_ps(t0, mask);
+      auto t1_c = simd::and_ps(t1, mask);
+      
+      // clear old values of those fields
+      t0 = simd::and_ps(t0, simd::not_ps(mask));
+      t1 = simd::and_ps(t1, simd::not_ps(mask));
+      
+      // copy values -> swap
+      t0 = simd::or_ps(t0, t1_c);
+      t1 = simd::or_ps(t0, t0_c);
+      
+      t_min = simd::min_ps(t_min, t0);
+      t_max = simd::min_ps(t_max, t1);
+      
+      result = simd::castps_si(simd::or_ps(simd::castsi_ps(result), simd::cmplt_ps(t_max, t_min)));
+      
+    }
+    
+    return result;
   }
 
   location_t getIntersectionPoint(distance_t intersection_distance) const {
@@ -103,28 +153,17 @@ struct SSERay {
 private:
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction) {}
 
-  static simd::Vec3Pack getNormals(const Scene &scene, intersect_t intersects) {
-    alignas(16) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
-    simd::store_si((simd::intty *) &int_ersects[0], intersects);
-    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
-    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
-    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
-    for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
-      auto triangle = int_ersects[i];
-      if (triangle != TriangleIndex_Invalid) {
-        // TODO we could also load the triangles into a Vec3Pack and calculate normals with SIMD code
-        const auto N = scene.triangles[triangle].calculateNormal();
-        X[i] = N.x;
-        Y[i] = N.y;
-        Z[i] = N.z;
-      } else {
-        // TODO is this necessary or default initialized?
-        X[i] = 0;
-        Y[i] = 0;
-        Z[i] = 0;
-      }
-    }
-    return {simd::load_ps(&X[0]), simd::load_ps(&Y[0]), simd::load_ps(&Z[0])};
+  static distance_t getLambert(simd::Vec3Pack L, simd::Vec3Pack N, distance_t light_dist_squared) {
+    return simd::div_ps(simd::max_ps(L.dot(N), simd::set1_ps(0.f)), light_dist_squared);
+  }
+
+public:
+  static SSERay getShadowRay(Light light, location_t P, distance_t *ld) {
+    const auto light_vector = location_t(light.position) - P;
+		const auto light_distance = light_vector.length();
+		const auto L = light_vector / light_distance;
+    *ld = light_distance;
+    return {P + L * simd::set1_ps(0.001f), L};
   }
 
   static color_t getMaterialColors(const Scene &scene, intersect_t intersects) {
@@ -150,20 +189,31 @@ private:
     return {simd::load_ps(&R[0]), simd::load_ps(&G[0]), simd::load_ps(&B[0])};
   }
 
-  static distance_t getLambert(simd::Vec3Pack L, simd::Vec3Pack N, distance_t light_dist_squared) {
-    return simd::div_ps(simd::max_ps(L.dot(N), simd::set1_ps(0.f)), light_dist_squared);
+  static vec3_t getNormals(const Scene &scene, intersect_t intersects) {
+    alignas(16) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
+    simd::store_si((simd::intty *) &int_ersects[0], intersects);
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
+    alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
+    for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
+      auto triangle = int_ersects[i];
+      if (triangle != TriangleIndex_Invalid) {
+        // TODO we could also load the triangles into a Vec3Pack and calculate normals with SIMD code
+        const auto N = scene.triangles[triangle].calculateNormal();
+        X[i] = N.x;
+        Y[i] = N.y;
+        Z[i] = N.z;
+      } else {
+        // TODO is this necessary or default initialized?
+        X[i] = 0;
+        Y[i] = 0;
+        Z[i] = 0;
+      }
+    }
+    return {simd::load_ps(&X[0]), simd::load_ps(&Y[0]), simd::load_ps(&Z[0])};
   }
 
-public:
-  static SSERay getShadowRay(Light light, location_t P, distance_t *ld) {
-    const auto light_vector = location_t(light.position) - P;
-		const auto light_distance = light_vector.length();
-		const auto L = light_vector / light_distance;
-    *ld = light_distance;
-    return {P + L * simd::set1_ps(0.001f), L};
-  }
-
-  static color_t shade(const Scene &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance) {
+  static color_t shade(const Scene &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_colors) {
     // TODO duplicated code
     const auto light_vector = location_t(light.position) - P;
 		const auto light_distance = light_vector.length();
@@ -171,13 +221,10 @@ public:
 
     const auto MASK = simd::cmplt_ps(light_distance, intersection_distance);
 
-    const auto N = getNormals(scene, intersects);
-    const auto materialColors = getMaterialColors(scene, intersects);
-
     const auto light_dist_squared = simd::mul_ps(light_distance, light_distance);
     const auto lambert = getLambert(L, N, light_dist_squared);
     
-    const auto res = materialColors * color_t(light.color) * lambert;
+    const auto res = mat_colors * color_t(light.color) * lambert;
     return {simd::and_ps(MASK, res.x), simd::and_ps(MASK, res.y), simd::and_ps(MASK, res.z)};
   }
 
@@ -194,12 +241,24 @@ public:
     *intersect = simd::castps_si(simd::or_ps(simd::and_ps(DIST_MASK, trianglevec_float), simd::and_ps(DIST_MASK_INV, intersect_float)));
   }
 
-  static bool isNoIntersection(intersect_t intersect) {
-    return simd::cmpeq_all_epi32(intersect, simd::set1_epi32(TriangleIndex_Invalid));
+  static bool_t isNoIntersection(intersect_t intersect) {
+    return simd::cmpeq_epi32(intersect, simd::set1_epi32(TriangleIndex_Invalid));
   }
   
   static intersect_t getNoIntersection() {
     return simd::set1_epi32(TriangleIndex_Invalid);
+  }
+
+  static inline bool isAll(bool_t b) {
+    return simd::isAll(b);
+  }
+
+  static inline bool isAny(bool_t b) {
+    return simd::isAny(b);
+  }
+
+  static inline bool_t isOppositeDirection(const vec3_t v1, const vec3_t v2) {
+    return simd::castps_si(simd::cmple_ps(v1.dot(v2), simd::setzero_ps()));
   }
 };
 

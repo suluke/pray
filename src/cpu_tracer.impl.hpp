@@ -13,12 +13,15 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 	typename ray_t::distance_t intersection_distance;
 	const auto intersected_triangle = acceleration_structure.intersect(scene, ray, &intersection_distance);
 
-	if (ray_t::isNoIntersection(intersected_triangle)) return scene.background_color;
+	if (ray_t::isAll(ray_t::isNoIntersection(intersected_triangle))) return scene.background_color;
 
-	//~ // optimization: back faces are never lit
-	//~ if(ray.direction.dot(N) >= 0.f) return Color(0.f, 0.f, 0.f);
+	// optimization: back faces are never lit
+	const auto N = ray_t::getNormals(scene, intersected_triangle);
+	if(!ray_t::isAny(ray_t::isOppositeDirection(ray.direction, N))) return Color(0.f, 0.f, 0.f);
 
 	const auto P = ray.getIntersectionPoint(intersection_distance);
+
+	const auto mat_colors = ray_t::getMaterialColors(scene, intersected_triangle);
 
 	typename ray_t::color_t result_color(Color(0.f, 0.f, 0.f));
 
@@ -26,11 +29,14 @@ typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, con
 	{
 		typename ray_t::distance_t light_distance;
 		const ray_t shadow_ray = ray_t::getShadowRay(light, P, &light_distance);
-		// TODO isNoIntersection is too strict because it is only true if ALL rays don't have an intersection
+		// optimization: don't consider lights behind the triangle
+		if (ray_t::isAll(ray_t::isOppositeDirection(shadow_ray.direction, N))) continue;
+		// This check does not work because shadow rays are actually allowed to intersect triangles
+		// - just not those BETWEEN hitpoint and light. See `MASK` in SSERay::shade
 		/* const auto shadow_intersect = */ acceleration_structure.intersect(scene, shadow_ray, &intersection_distance);
-		//if (ray_t::isNoIntersection(shadow_intersect))
+		//~ if (ray_t::isAny(ray_t::isNoIntersection(shadow_intersect)))
 		{
-			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance);
+			const typename ray_t::color_t shading_color = ray_t::shade(scene, P, intersected_triangle, light, intersection_distance, N, mat_colors);
 			result_color += shading_color;
 		}
 	}
@@ -54,7 +60,7 @@ void CpuTracer<ray_t, accel_t>::render(ImageView &image) const
 	#endif /*WITH_SUBSAMPLING*/
 
 #ifdef WITH_OMP
-	#pragma omp parallel for
+	#pragma omp parallel for schedule(guided, 10)
 #endif
 	for(long y = 0; y < image.resolution.h; y += ray_t::dim.h) {
 		for(long x = 0; x < image.resolution.w; x += ray_t::dim.w) {

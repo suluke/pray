@@ -42,7 +42,7 @@ struct BihBuilder
 		buildNode(bih.nodes.back(), bih.scene_aabb, bih.triangles.begin(), bih.triangles.end());
 	}
 
-	void buildNode(typename bih_t::Node &current_node, const AABox3 &initial_aabb, TrianglesIt triangles_begin, TrianglesIt triangles_end)
+	void buildNode(typename bih_t::Node &current_node, const AABox3 &initial_aabb, TrianglesIt triangles_begin, TrianglesIt triangles_end, const unsigned retry_depth = 0u)
 	{
 		ASSERT(initial_aabb.isValid());
 
@@ -53,10 +53,24 @@ struct BihBuilder
 
 		auto children_count = std::distance(triangles_begin, triangles_end);
 
-		//TODO: if two triangles happen to have the same centroid, this recursion never ends...
+		const bool leaf_children_count_reached = children_count <= 4u; //TODO: how to pass this constant as a parameter? (pls not template...)
 
-		//TODO: how to pass this constant as a parameter? (pls not template...)
-		if(children_count > 4)
+		/* retry_depth counts how often we retried to split a node with a smaller aabb. If is is too great (magic number), the triangles are very close to each
+		   other and a split will most likely never be found (due to float inprecision). The speedup wouldn't be to great anyways... */
+		const bool maximum_retry_depth_reached = retry_depth == 16u; //TODO: tweak this parameter? or find a better criterium (floating point inaccuracy reached (nextafter(aabb.min, +1.f) == aabb.max or something like that...))?
+
+		if(leaf_children_count_reached || maximum_retry_depth_reached)
+		{
+			// build a leaf
+
+			auto children_index = std::distance(bih.triangles.begin(), triangles_begin);
+			current_node.makeLeafNode(children_index, children_count);
+
+#ifdef DEBUG
+			current_node.child1 = current_node.child2 = nullptr;
+#endif
+		}
+		else
 		{
 			// build a node
 
@@ -78,11 +92,13 @@ struct BihBuilder
 
 			if(split_element == triangles_begin || split_element == triangles_end)
 			{
+				// one side of the partition is empty, so retry with a smaller aabb
+
 				AABox3 new_initial_aabb = initial_aabb;
 				if(split_element == triangles_begin) new_initial_aabb.min[split_axis] = pivot;
 				else                                 new_initial_aabb.max[split_axis] = pivot;
 
-				return buildNode(current_node, new_initial_aabb, triangles_begin, triangles_end);
+				return buildNode(current_node, new_initial_aabb, triangles_begin, triangles_end, retry_depth + 1u);
 			}
 
 			// allocate child nodes (this is a critical section)
@@ -107,19 +123,9 @@ struct BihBuilder
 			child1_initial_aabb.max[split_axis] = pivot; // we could also insert the calculated planes here, let's try sometime whether this works better
 			child2_initial_aabb.min[split_axis] = pivot;
 
+			// recursion
 			buildNode(child1, child1_initial_aabb, triangles_begin, split_element);
 			buildNode(child2, child2_initial_aabb, split_element, triangles_end);
-		}
-		else
-		{
-			// build a leaf
-
-			auto children_index = std::distance(bih.triangles.begin(), triangles_begin);
-			current_node.makeLeafNode(children_index, children_count);
-
-#ifdef DEBUG
-			current_node.child1 = current_node.child2 = nullptr;
-#endif
 		}
 	}
 
@@ -146,14 +152,15 @@ extern std::vector<size_t> bih_intersected_nodes;
 #endif
 
 // move to global namespace and use this intead of float *out_distance?
+template<class ray_t>
 struct IntersectionResult
 {
-	TriangleIndex triangle = TriangleIndex_Invalid;
-	float distance = std::numeric_limits<float>::max();
+	typename ray_t::intersect_t triangle = ray_t::getNoIntersection();
+	typename ray_t::distance_t distance = ray_t::max_distance();
 };
 
 template<class ray_t>
-static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3 aabb, const Bih<ray_t> &bih, const Scene &scene, const ray_t &ray, IntersectionResult &intersection)
+static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3 aabb, const Bih<ray_t> &bih, const Scene &scene, const ray_t &ray, IntersectionResult<ray_t> &intersection)
 {
 #ifdef DEBUG_TOOL
 	bih_intersected_nodes.push_back(&node - &bih.nodes[0]);
@@ -166,15 +173,11 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 			//TODO: remove double indirection (reorder scene.triangles)
 			const TriangleIndex triangle_index = bih.triangles[node.getChildrenIndex() + i];
 			const Triangle &triangle = scene.triangles[triangle_index];
-
-			float distance;
-			if(ray.intersectTriangle(triangle, &distance))
+      
+			typename ray_t::distance_t distance;
+      if(ray_t::isAny(ray.intersectTriangle(triangle, &distance)))
 			{
-				if(distance < intersection.distance)
-				{
-					intersection.triangle = triangle_index;
-					intersection.distance = distance;
-				}
+				ray_t::updateIntersections(&intersection.triangle, triangle_index, &intersection.distance, distance);
 			}
 		}
 	}
@@ -192,24 +195,27 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 		left_aabb.max[split_axis] = left_plane;
 		right_aabb.min[split_axis] = right_plane;
 
+    // if ray_t are several rays and at least one ray has an intersection, the complete pack is checked
+
 		//TODO: this can be done smarter!
-		auto intersect_left = intersectRayAABB(ray.origin, ray.direction, left_aabb);
-		if(intersect_left) intersectBihNode(left_child, left_aabb, bih, scene, ray, intersection);
-		auto intersect_right = intersectRayAABB(ray.origin, ray.direction, right_aabb);
-		if(intersect_right) intersectBihNode(right_child, right_aabb, bih, scene, ray, intersection);
+		auto intersect_left = ray.intersectAABB(left_aabb);
+		if(ray_t::isAny(intersect_left)) intersectBihNode(left_child, left_aabb, bih, scene, ray, intersection);
+    
+		auto intersect_right = ray.intersectAABB(right_aabb);
+		if(ray_t::isAny(intersect_right)) intersectBihNode(right_child, right_aabb, bih, scene, ray, intersection);
 	}
 }
 
 template<class ray_t>
-TriangleIndex Bih<ray_t>::intersect(const Scene &scene, const ray_t &ray, float *out_distance) const
+typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
 #ifdef DEBUG_TOOL
 	bih_intersected_nodes.clear();
 #endif
 
-	if(!intersectRayAABB(ray.origin, ray.direction, scene_aabb)) return TriangleIndex_Invalid;
+  if(!ray_t::isAny(ray.intersectAABB(scene_aabb))) return ray_t::getNoIntersection();
 
-	IntersectionResult intersection_result;
+	IntersectionResult<ray_t> intersection_result;
 	intersectBihNode(nodes[0u], scene_aabb, *this, scene, ray, intersection_result);
 
 	*out_distance = intersection_result.distance;

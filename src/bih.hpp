@@ -71,7 +71,7 @@ struct Bih
 		void setTypeAndChildrenIndex(Type type, uint32_t children_index)
 		{
 			ASSERT(type >= 0 && type <= 3);
-			ASSERT(children_index < (2 << 30));
+			ASSERT(children_index < (2u << 30));
 			type_and_children_index = type << 30 | children_index;
 		}
 
@@ -96,7 +96,7 @@ struct Bih
 	std::vector<Node> nodes;
 
 	void build(const Scene &scene);
-	TriangleIndex intersect(const Scene &scene, const ray_t &ray, float *out_distance) const;
+	typename ray_t::intersect_t intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
 };
 
 #include "bih.impl.hpp"
