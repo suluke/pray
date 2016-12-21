@@ -280,7 +280,10 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 				intersectBihNode(left_child, left_aabb, bih, scene, ray, direction_sign, direction_sign_equal, intersect_first_mask, intersection);
 			}
 
-			if(ray_t::isAny(ray_t::booleanAnd(ray_t::isNoIntersection(intersection.triangle), active_mask)) || left_plane >= right_plane || !direction_sign_equal[split_axis]) // if planes overlap, we need to check the other node, too
+			// using here that intersection.distance is default-initialized with ray_t::max_distance()
+			const auto intersect_right_plane = ray.intersectAxisPlane(right_plane, split_axis, intersection.distance);
+
+			if(ray_t::isAny(ray_t::booleanAnd(intersect_right_plane, active_mask)) || !direction_sign_equal[split_axis])
 			{
 				const auto intersect_second_mask = ray_t::booleanAnd(ray.intersectAABB(right_aabb), active_mask);
 				if(ray_t::isAny(intersect_second_mask)) intersectBihNode(right_child, right_aabb, bih, scene, ray, direction_sign, direction_sign_equal, intersect_second_mask, intersection);
@@ -294,7 +297,10 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 				intersectBihNode(right_child, right_aabb, bih, scene, ray, direction_sign, direction_sign_equal, intersect_first_mask, intersection);
 			}
 
-			if(ray_t::isAny(ray_t::booleanAnd(ray_t::isNoIntersection(intersection.triangle), active_mask)) || left_plane >= right_plane || !direction_sign_equal[split_axis]) // if planes overlap, we need to check the other node, too
+			// using here that intersection.distance is default-initialized with ray_t::max_distance()
+			const auto intersect_left_plane = ray.intersectAxisPlane(left_plane, split_axis, intersection.distance);
+
+			if(ray_t::isAny(ray_t::booleanAnd(intersect_left_plane, active_mask)) || !direction_sign_equal[split_axis]) // if planes overlap, we need to check the other node, too
 			{
 				const auto intersect_second_mask = ray_t::booleanAnd(ray.intersectAABB(left_aabb), active_mask);
 				if(ray_t::isAny(intersect_second_mask)) intersectBihNode(left_child, left_aabb, bih, scene, ray, direction_sign, direction_sign_equal, intersect_second_mask, intersection);

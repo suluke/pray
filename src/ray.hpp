@@ -83,6 +83,18 @@ struct Ray {
     (*out_result)[2] = test_sign.z == sign.z;
   }
 
+  bool_t intersectAxisPlane(float plane, unsigned axis, distance_t maximum_distance) const {
+    const auto o = origin[axis];
+    const auto d_inv = 1.f / direction[axis];
+    const auto p = plane;
+
+    // solve o + t*d = p -> t = (p - o) / d
+    const auto t = (p - o) * d_inv;
+
+    // no t > 0 test for now, breaks if the camera is inside the scene aabb...
+    return t < maximum_distance;
+  }
+
 #ifndef DEBUG_TOOL
 private:
 #endif

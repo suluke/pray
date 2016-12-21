@@ -145,6 +145,18 @@ struct SSERay {
     (*out_result)[2] = isAll(simd::castps_si(test_sign.z < 0 ? z : simd::not_ps(z)));
   }
 
+  bool_t intersectAxisPlane(float plane, unsigned axis, distance_t maximum_distance) const {
+    const auto o = origin[axis];
+    const auto d_inv = dir_inv[axis];
+    const auto p = simd::set1_ps(plane);
+
+    // solve o + t*d = p -> t = (p - o) / d
+    const auto t = simd::mul_ps(simd::sub_ps(p, o), d_inv);
+
+    // no t > 0 test for now, breaks if the camera is inside the scene aabb...
+    return simd::cmplt_ps(t, maximum_distance);
+  }
+
 private:
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 
