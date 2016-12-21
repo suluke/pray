@@ -154,7 +154,7 @@ struct SSERay {
     const auto t = simd::mul_ps(simd::sub_ps(p, o), d_inv);
 
     // no t > 0 test for now, breaks if the camera is inside the scene aabb...
-    return simd::cmplt_ps(t, maximum_distance);
+    return simd::castps_si(simd::cmplt_ps(t, maximum_distance));
   }
 
 private:
