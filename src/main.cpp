@@ -53,6 +53,10 @@ static void traceWhitted(const Scene &scene, ImageView &img, StageLogger &logger
 }
 #endif
 
+void tracePath(const Scene &scene, ImageView &img, const RenderOptions::Path opts, StageLogger &logger) {
+	std::cout << "FIXME: Path tracing not implemented" << std::endl;
+}
+
 using namespace std;
 int main(int argc, char *argv[])
 {
@@ -70,10 +74,10 @@ int main(int argc, char *argv[])
 	Scene scene;
 
 	cout << "Loading..." << endl;
-	IntDimension2 image_resolution = IntDimension2(1920, 1080);
-	if(!scene.load(argv[1], &image_resolution)) return 1;
+	RenderOptions opts;
+	if(!scene.load(argv[1], &opts)) return 1;
 
-	Image image(image_resolution);
+	Image image(opts.resolution);
 
 	if(scene.triangles.empty())
 	{
@@ -86,15 +90,15 @@ int main(int argc, char *argv[])
 	StageLogger logger;
 	logger.start();
 
-	ImageView img(image, 0, image_resolution.h);
+	ImageView img(image, 0, opts.resolution.h);
 
-	switch (scene.render_method) {
-		case RenderMethod::WHITTED: {
+	switch (opts.method) {
+		case RenderOptions::WHITTED: {
 			traceWhitted(scene, img, logger);
 			break;
 		}
-		case RenderMethod::PATH: {
-			cout << "FIXME: Path tracing not implemented" << endl;
+		case RenderOptions::PATH: {
+			tracePath(scene, img, opts.path_opts, logger);
 			break;
 		}
 		default:

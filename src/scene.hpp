@@ -83,8 +83,25 @@ struct Camera
 	}
 };
 
-enum class RenderMethod {
-	WHITTED, PATH
+struct RenderOptions {
+	enum RenderMethod {
+		WHITTED, PATH
+	};
+	struct Whitted {
+	};
+	struct Path {
+		size_t num_samples;
+		size_t max_depth;
+	};
+
+	IntDimension2 resolution = {1920, 1080};
+	RenderMethod method = WHITTED;
+	// FIXME use C++17 std::variant so things actually explode if you try to
+	// use the incorrect option
+	union {
+		Whitted whitted_opts;
+		Path path_opts;
+	};
 };
 
 struct Scene
@@ -97,11 +114,9 @@ struct Scene
 	Camera camera;
 	Color background_color = Color(0.f, 0.f, 0.f);
 
-	RenderMethod render_method = RenderMethod::WHITTED;
-
 	void clear() { *this = Scene(); }
 
-	bool load(const std::string &filename, IntDimension2 *out_image_resolution = nullptr);
+	bool load(const std::string &filename, RenderOptions *out_opts);
 
 	template<class... Args>
 	TriangleIndex insertTriangle(Args&&... args)

@@ -62,7 +62,7 @@ static bool loadObj(Scene &scene, const fs::path &file)
 	return true;
 }
 
-bool Scene::load(const string &filename, IntDimension2 *out_image_resolution)
+bool Scene::load(const string &filename, RenderOptions *out_opts)
 {
 	clear();
 
@@ -77,11 +77,6 @@ bool Scene::load(const string &filename, IntDimension2 *out_image_resolution)
 		}
 
 		json_input = json::parse(in);
-	}
-
-	if(out_image_resolution)
-	{
-		*out_image_resolution = IntDimension2(json_input["resolution_x"], json_input["resolution_y"]);
 	}
 
 	fs::path file(filename);
@@ -103,12 +98,20 @@ bool Scene::load(const string &filename, IntDimension2 *out_image_resolution)
 	camera.fov = json_input["fov"].get<float>() * acos(-1) / 180.f; // convert to radians
 
 	background_color = Color(json_input["background"][0], json_input["background"][1], json_input["background"][2]);
+
+	if (json_input.find("resolution_x") != json_input.end() && json_input.find("resolution_y") != json_input.end()) {
+		out_opts->resolution = {json_input["resolution_x"], json_input["resolution_y"]};
+	}
 	if (json_input.find("method") != json_input.end()) {
 		auto method = json_input["method"].get<string>();
 		if (method == "path_tracing") {
-			render_method = RenderMethod::PATH;
+			out_opts->method = RenderOptions::PATH;
+			if (json_input.find("num_samples") != json_input.end())
+				out_opts->path_opts.num_samples = json_input["num_samples"];
+			if (json_input.find("max_depth") != json_input.end())
+				out_opts->path_opts.max_depth = json_input["max_depth"];
 		} else {
-			render_method = RenderMethod::WHITTED;
+			out_opts->method = RenderOptions::WHITTED;
 		}
 	}
 
