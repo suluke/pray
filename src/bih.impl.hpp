@@ -341,7 +341,7 @@ typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_
 #endif // WITH_BIH_NEW_TRAVERSION
 
 template<class ray_t>
-void Bih<ray_t>::printAnalsyis() const
+void Bih<ray_t>::printAnalysis() const
 {
 	size_t inner_nodes_count = 0u, non_overlapping_inner_nodes_count = 0u, leaves_count = 0u, max_leaf_children_count = 0u;
 

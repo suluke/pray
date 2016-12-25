@@ -8,10 +8,9 @@
 template<class ray_t, class accel_t>
 struct CpuTracer {
   const Scene &scene;
-  accel_t acceleration_structure;
+  const accel_t &acceleration_structure;
 
-  CpuTracer(const Scene &scene) : scene(scene) {}
-  void preprocess();
+  CpuTracer(const Scene &scene, const accel_t &acceleration_structure) : scene(scene), acceleration_structure(acceleration_structure) {}
   void render(ImageView &image) const;
 
 private:

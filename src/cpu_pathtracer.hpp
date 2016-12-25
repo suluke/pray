@@ -9,10 +9,9 @@ template<class ray_t, class accel_t>
 struct CpuPathTracer {
   const Scene &scene;
   const RenderOptions::Path &opts;
-  accel_t acceleration_structure;
+  const accel_t &acceleration_structure;
 
-  CpuPathTracer(const Scene &scene, const RenderOptions::Path &opts) : scene(scene), opts(opts) {}
-  void preprocess();
+  CpuPathTracer(const Scene &scene, const RenderOptions::Path &opts, const accel_t &acceleration_structure) : scene(scene), opts(opts), acceleration_structure(acceleration_structure) {}
   void render(ImageView &image) const;
 
 private:

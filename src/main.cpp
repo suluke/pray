@@ -8,60 +8,28 @@
 #include "sse_ray.hpp"
 #include "logging.hpp" // This should always be last
 
-// Sorry for this...
-#ifdef WITH_BIH
-#define accel_t Bih
-#else
-#define accel_t DummyAcceleration
-#endif
-
 #ifdef WITH_SSE
-static void traceWhitted(const Scene &scene, ImageView &img, StageLogger &logger) {
-	//~ if (scene.lights.size() < 2)
-	{
-		CpuTracer<SSERay, accel_t<SSERay>> tracer(scene);
-
-		logger.startPreprocessing();
-		tracer.preprocess();
-
-		//tracer.acceleration_structure.printAnalsyis();
-
-		logger.startRendering();
-		tracer.render(img);
-	}
-	//~ else {
-		//~ CpuTracer<Ray, accel_t<Ray>> tracer(scene);
-
-		//~ logger.startPreprocessing();
-		//~ tracer.preprocess();
-
-		//~ logger.startRendering();
-		//~ tracer.render(img);
-	//~ }
-}
+using ray_t = SSERay;
 #else
 using ray_t = Ray;
-static void traceWhitted(const Scene &scene, ImageView &img, StageLogger &logger) {
-	CpuTracer<ray_t, accel_t<ray_t>> tracer(scene);
-
-	logger.startPreprocessing();
-	tracer.preprocess();
-
-	//tracer.acceleration_structure.printAnalsyis();
-
-	logger.startRendering();
-	tracer.render(img);
-}
 #endif
 
-void tracePath(const Scene &scene, ImageView &img, const RenderOptions::Path &opts, StageLogger &logger) {
+#ifdef WITH_BIH
+using accel_t = Bih<ray_t>;
+#else
+using accel_t = DummyAcceleration<ray_t>;
+#endif
+
+static void traceWhitted(const Scene &scene, ImageView &img, const accel_t &accel) {
+	CpuTracer<ray_t, accel_t> tracer(scene, accel);
+	//tracer.acceleration_structure.printAnalysis();
+	tracer.render(img);
+}
+
+static void tracePath(const Scene &scene, ImageView &img, const accel_t &accel, const RenderOptions::Path &opts) {
 	std::cout << "FIXME: Path tracing not implemented" << std::endl;
-	CpuPathTracer<Ray, accel_t<Ray>> tracer(scene, opts);
-
-	logger.startPreprocessing();
-	tracer.preprocess();
-
-	logger.startRendering();
+	CpuPathTracer<Ray, accel_t> tracer(scene, opts, accel);
+	//tracer.acceleration_structure.printAnalysis();
 	tracer.render(img);
 }
 
@@ -100,13 +68,18 @@ int main(int argc, char *argv[])
 
 	ImageView img(image, 0, opts.resolution.h);
 
+	logger.startPreprocessing();
+	accel_t accel;
+	accel.build(scene);
+
+	logger.startRendering();
 	switch (opts.method) {
 		case RenderOptions::WHITTED: {
-			traceWhitted(scene, img, logger);
+			traceWhitted(scene, img, accel);
 			break;
 		}
 		case RenderOptions::PATH: {
-			tracePath(scene, img, opts.path_opts, logger);
+			tracePath(scene, img, accel, opts.path_opts);
 			break;
 		}
 		default:

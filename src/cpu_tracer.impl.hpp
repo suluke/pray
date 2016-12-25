@@ -2,12 +2,6 @@
 #include "pray/Config.h"
 
 template <class ray_t, class accel_t>
-inline void CpuTracer<ray_t, accel_t>::preprocess()
-{
-	acceleration_structure.build(scene);
-}
-
-template <class ray_t, class accel_t>
 typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, const ray_t &ray) const
 {
 	typename ray_t::distance_t intersection_distance;
