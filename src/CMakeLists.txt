@@ -13,6 +13,8 @@ add_executable(pray
   sse_ray.hpp
   cpu_tracer.hpp
   cpu_tracer.impl.hpp
+  cpu_pathtracer.hpp
+  cpu_pathtracer.impl.hpp
   dummy_acceleration.hpp
   bih.hpp
   bih.impl.hpp

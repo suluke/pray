@@ -3,6 +3,7 @@
 #include "dummy_acceleration.hpp"
 #include "bih.hpp"
 #include "cpu_tracer.hpp"
+#include "cpu_pathtracer.hpp"
 #include "ray.hpp"
 #include "sse_ray.hpp"
 #include "logging.hpp" // This should always be last
@@ -53,8 +54,15 @@ static void traceWhitted(const Scene &scene, ImageView &img, StageLogger &logger
 }
 #endif
 
-void tracePath(const Scene &scene, ImageView &img, const RenderOptions::Path opts, StageLogger &logger) {
+void tracePath(const Scene &scene, ImageView &img, const RenderOptions::Path &opts, StageLogger &logger) {
 	std::cout << "FIXME: Path tracing not implemented" << std::endl;
+	CpuPathTracer<Ray, accel_t<Ray>> tracer(scene, opts);
+
+	logger.startPreprocessing();
+	tracer.preprocess();
+
+	logger.startRendering();
+	tracer.render(img);
 }
 
 using namespace std;
