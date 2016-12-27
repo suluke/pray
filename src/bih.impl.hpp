@@ -3,7 +3,7 @@
 template<class bih_t>
 struct BihBuilder
 {
-	const Scene &scene;
+	const typename bih_t::scene_t &scene;
 	bih_t &bih;
 
 	struct TriangleData
@@ -17,7 +17,7 @@ struct BihBuilder
 
 	typedef std::vector<TriangleIndex>::iterator TrianglesIt;
 
-	BihBuilder(const Scene &scene, bih_t &bih) : scene(scene), bih(bih) {}
+	BihBuilder(const typename bih_t::scene_t &scene, bih_t &bih) : scene(scene), bih(bih) {}
 
 	void build()
 	{
@@ -142,10 +142,10 @@ struct BihBuilder
 	}
 };
 
-template<class ray_t>
-void Bih<ray_t>::build(const Scene &scene)
+template<class ray_t, class scene_t>
+void Bih<ray_t, scene_t>::build(const scene_t &scene)
 {
-	BihBuilder<Bih<ray_t>> builder(scene, *this);
+	BihBuilder<Bih<ray_t, scene_t>> builder(scene, *this);
 	builder.build();
 }
 
@@ -164,14 +164,14 @@ struct IntersectionResult
 #ifndef WITH_BIH_SMART_TRAVERSION
 
 // old algorithm!!!!!
-template<class ray_t>
-static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3 aabb, const Bih<ray_t> &bih, const Scene &scene, const ray_t &ray, IntersectionResult<ray_t> &intersection)
+template<class ray_t, class scene_t>
+static void intersectBihNode(const typename Bih<ray_t, scene_t>::Node &node, const AABox3 aabb, const Bih<ray_t, scene_t> &bih, const scene_t &scene, const ray_t &ray, IntersectionResult<ray_t> &intersection)
 {
 #ifdef DEBUG_TOOL
 	bih_intersected_nodes.push_back(&node - &bih.nodes[0]);
 #endif
 
-	if(node.getType() == Bih<ray_t>::Node::Leaf)
+	if(node.getType() == Bih<ray_t, scene_t>::Node::Leaf)
 	{
 		for(unsigned i = 0u; i < node.getLeafData().children_count; ++i)
 		{
@@ -212,8 +212,8 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 }
 
 // old algorithm!!!!!
-template<class ray_t>
-typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
+template<class ray_t, class scene_t>
+typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
 #ifdef DEBUG_TOOL
 	bih_intersected_nodes.clear();
@@ -230,14 +230,14 @@ typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_
 
 #else
 
-template<class ray_t>
-static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3 aabb, const Bih<ray_t> &bih, const Scene &scene, const ray_t &ray, const Vector3 &direction_sign, const std::array<bool, 3> &direction_sign_equal, const typename ray_t::bool_t active_mask, IntersectionResult<ray_t> &intersection)
+template<class ray_t, class scene_t>
+static void intersectBihNode(const typename Bih<ray_t, scene_t>::Node &node, const AABox3 aabb, const Bih<ray_t, scene_t> &bih, const scene_t &scene, const ray_t &ray, const Vector3 &direction_sign, const std::array<bool, 3> &direction_sign_equal, const typename ray_t::bool_t active_mask, IntersectionResult<ray_t> &intersection)
 {
 #ifdef DEBUG_TOOL
 	bih_intersected_nodes.push_back(&node - &bih.nodes[0]);
 #endif
 
-	if(node.getType() == Bih<ray_t>::Node::Leaf)
+	if(node.getType() == Bih<ray_t, scene_t>::Node::Leaf)
 	{
 		for(unsigned i = 0u; i < node.getLeafData().children_count; ++i)
 		{
@@ -316,8 +316,8 @@ static void intersectBihNode(const typename Bih<ray_t>::Node &node, const AABox3
 	}
 }
 
-template<class ray_t>
-typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
+template<class ray_t, class scene_t>
+typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
 #ifdef DEBUG_TOOL
 	bih_intersected_nodes.clear();
@@ -340,8 +340,8 @@ typename ray_t::intersect_t Bih<ray_t>::intersect(const Scene &scene, const ray_
 
 #endif // WITH_BIH_NEW_TRAVERSION
 
-template<class ray_t>
-void Bih<ray_t>::printAnalysis() const
+template<class ray_t, class scene_t>
+void Bih<ray_t, scene_t>::printAnalysis() const
 {
 	size_t inner_nodes_count = 0u, non_overlapping_inner_nodes_count = 0u, leaves_count = 0u, max_leaf_children_count = 0u;
 

@@ -2,7 +2,7 @@
 #include "pray/Config.h"
 
 template <class ray_t, class accel_t>
-typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const Scene &scene, const ray_t &ray) const
+typename ray_t::color_t CpuTracer<ray_t, accel_t>::trace(const WhittedScene &scene, const ray_t &ray) const
 {
 	typename ray_t::distance_t intersection_distance;
 	const auto intersected_triangle = acceleration_structure.intersect(scene, ray, &intersection_distance);

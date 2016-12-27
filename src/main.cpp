@@ -8,29 +8,68 @@
 #include "sse_ray.hpp"
 #include "logging.hpp" // This should always be last
 
+template<class scene_t>
+struct PrayTypes {
 #ifdef WITH_SSE
-using ray_t = SSERay;
+	using ray_t = SSERay<scene_t>;
 #else
-using ray_t = Ray;
+	using ray_t = Ray<scene_t>;
 #endif
-
 #ifdef WITH_BIH
-using accel_t = Bih<ray_t>;
+	using accel_t = Bih<ray_t, scene_t>;
 #else
-using accel_t = DummyAcceleration<ray_t>;
+	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
+};
 
-static void traceWhitted(const Scene &scene, ImageView &img, const accel_t &accel) {
-	CpuTracer<ray_t, accel_t> tracer(scene, accel);
+using WhittedTypes = PrayTypes<WhittedScene>;
+using PathTypes = PrayTypes<PathScene>;
+
+static void traceScene(const WhittedScene &scene, ImageView &img, const WhittedTypes::accel_t &accel, const RenderOptions &opts) {
+	CpuTracer<WhittedTypes::ray_t, WhittedTypes::accel_t> tracer(scene, accel);
 	//tracer.acceleration_structure.printAnalysis();
 	tracer.render(img);
 }
 
-static void tracePath(const Scene &scene, ImageView &img, const accel_t &accel, const RenderOptions::Path &opts) {
+static void traceScene(const PathScene &scene, ImageView &img, const PathTypes::accel_t &accel, const RenderOptions &opts) {
 	std::cout << "FIXME: Path tracing not implemented" << std::endl;
-	CpuPathTracer<Ray, accel_t> tracer(scene, opts, accel);
+	CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t > tracer(scene, opts.path_opts, accel);
 	//tracer.acceleration_structure.printAnalysis();
 	tracer.render(img);
+}
+
+template<class scene_t>
+static int trace(const char *outpath, RenderOptions &opts) {
+	Image image(opts.resolution);
+
+	StageLogger logger;
+	logger.start();
+
+	ImageView img(image, 0, opts.resolution.h);
+
+	scene_t scene;
+	if (!LoadScene(opts, &scene)) return 1;
+	if (scene.triangles.empty()) {
+		image.fill(scene.background_color);
+		image.save(outpath);
+		return 0;
+	}
+
+	logger.startPreprocessing();
+	typename PrayTypes<scene_t>::accel_t accel;
+	accel.build(scene);
+
+	logger.startRendering();
+	traceScene(scene, img, accel, opts);
+
+	logger.startOutput();
+#ifndef DISABLE_OUTPUT
+	image.save(outpath);
+#endif
+
+	logger.finish();
+	logger.log();
+	return 0;
 }
 
 using namespace std;
@@ -47,52 +86,19 @@ int main(int argc, char *argv[])
 	cout << "Warning: This is a Debug build and might be very slow!\n";
 #endif
 
-	Scene scene;
-
 	cout << "Loading..." << endl;
 	RenderOptions opts;
-	if(!scene.load(argv[1], &opts)) return 1;
+	if(!LoadJob(argv[1], &opts)) return 1;
 
-	Image image(opts.resolution);
-
-	if(scene.triangles.empty())
-	{
-		// when the scene is empty, just fill the image with the background color and get outta here, no need to do any ray tracing stuff
-		image.fill(scene.background_color);
-		image.save(argv[2]);
-		return 0;
-	}
-
-	StageLogger logger;
-	logger.start();
-
-	ImageView img(image, 0, opts.resolution.h);
-
-	logger.startPreprocessing();
-	accel_t accel;
-	accel.build(scene);
-
-	logger.startRendering();
 	switch (opts.method) {
 		case RenderOptions::WHITTED: {
-			traceWhitted(scene, img, accel);
-			break;
+			return trace<WhittedScene>(argv[2], opts);
 		}
 		case RenderOptions::PATH: {
-			tracePath(scene, img, accel, opts.path_opts);
-			break;
+			return trace<PathScene>(argv[2], opts);
 		}
 		default:
-			;// ???
+			return 1;
 	}
-
-	logger.startOutput();
-#ifndef DISABLE_OUTPUT
-	image.save(argv[2]);
-#endif
-
-	logger.finish();
-	logger.log();
-
 	return 0;
 }

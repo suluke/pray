@@ -1,5 +1,6 @@
 #include "scene.hpp" // includes math and image
 
+template<class scene_t>
 struct Ray {
   using dim_t = IntDimension2::dim_t;
   using intersect_t = TriangleIndex;
@@ -109,17 +110,17 @@ public:
     return {P + L * 0.001f, L};
   }
 
-  static inline color_t getMaterialColors(const Scene &scene, intersect_t triangle) {
+  static inline color_t getMaterialColors(const scene_t &scene, intersect_t triangle) {
     const auto material_index = scene.triangles[triangle].material_index;
     ASSERT(material_index != MaterialIndex_Invalid);
     return scene.materials[material_index].color;
   }
 
-  static inline vec3_t getNormals(const Scene &scene, intersect_t triangle) {
+  static inline vec3_t getNormals(const scene_t &scene, intersect_t triangle) {
     return scene.triangles[triangle].calculateNormal();
   }
   
-  static color_t shade(const Scene &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_color) {
+  static color_t shade(const scene_t &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_color) {
     // TODO duplicated code
     const Vector3 light_vector = light.position - P;
     const float light_distance = light_vector.length();
@@ -175,7 +176,8 @@ public:
   }
 };
 
-inline std::ostream &operator<<(std::ostream &o, const Ray &r) {
+template<class scene_t>
+inline std::ostream &operator<<(std::ostream &o, const Ray<scene_t> &r) {
   o << "Origin: " << r.origin << "\nDirection: " << r.direction;
   return o;
 }

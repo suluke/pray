@@ -7,6 +7,7 @@ struct SSEColor : public simd::Vec3Pack {
   SSEColor(simd::floatty r, simd::floatty g, simd::floatty b) : simd::Vec3Pack(r, g, b) {}
 };
 
+template<class scene_t>
 struct SSERay {
   using dim_t = IntDimension2::dim_t;
   using intersect_t = simd::intty;
@@ -174,7 +175,7 @@ public:
     return {P + L * simd::set1_ps(0.001f), L};
   }
 
-  static color_t getMaterialColors(const Scene &scene, intersect_t intersects) {
+  static color_t getMaterialColors(const scene_t &scene, intersect_t intersects) {
     alignas(32) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> int_ersects;
     simd::store_si((simd::intty *) int_ersects.data(), intersects);
     alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
@@ -197,7 +198,7 @@ public:
     return {simd::load_ps(R.data()), simd::load_ps(G.data()), simd::load_ps(B.data())};
   }
 
-  static vec3_t getNormals(const Scene &scene, intersect_t intersects) {
+  static vec3_t getNormals(const scene_t &scene, intersect_t intersects) {
     // I tested implementing vectorized calculateNormal() with scalar
     // edge calculation and it was slower. Pseudocode:
     // vec E1 = for each triangle: load(vertex1 - vertex0)
@@ -224,7 +225,7 @@ public:
     return {simd::load_ps(&X[0]), simd::load_ps(&Y[0]), simd::load_ps(&Z[0])};
   }
 
-  static color_t shade(const Scene &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_colors) {
+  static color_t shade(const scene_t &scene, const location_t &P, intersect_t intersects, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_colors) {
     // TODO duplicated code
     const auto light_vector = location_t(light.position) - P;
     const auto light_distance = light_vector.length();
@@ -285,7 +286,8 @@ public:
   }
 };
 
-inline std::ostream &operator<<(std::ostream &o, const SSERay &r) {
+template<class scene_t>
+inline std::ostream &operator<<(std::ostream &o, const SSERay<scene_t> &r) {
   o << "Origin: " << r.origin << "\n" << "Direction: " << r.direction;
   return o;
 }
@@ -297,9 +299,10 @@ inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::
   simd::store_ps(R.data(), c.x);
   simd::store_ps(G.data(), c.y);
   simd::store_ps(B.data(), c.z);
-  for (unsigned i_y = 0; i_y < SSERay::dim::h && i_y + y < img.resolution.h; ++i_y) {
-    for (unsigned i_x = 0; i_x < SSERay::dim::w && i_x + x < img.resolution.w; ++i_x) {
-      auto idx = i_y * SSERay::dim::w + i_x;
+  // TODO I didn't want to template this method, so I just used a default Scene type
+  for (unsigned i_y = 0; i_y < SSERay<WhittedScene>::dim::h && i_y + y < img.resolution.h; ++i_y) {
+    for (unsigned i_x = 0; i_x < SSERay<WhittedScene>::dim::w && i_x + x < img.resolution.w; ++i_x) {
+      auto idx = i_y * SSERay<WhittedScene>::dim::w + i_x;
       img.setPixel(x + i_x, y + i_y, {R[idx], G[idx], B[idx]});
     }
   }
