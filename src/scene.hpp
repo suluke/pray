@@ -10,6 +10,7 @@
 #include <limits>
 #include <array>
 #include <vector>
+#include <memory>
 
 using TriangleIndex = uint32_t;
 using MaterialIndex = uint32_t;
@@ -56,6 +57,12 @@ struct Material
 	Material(Color color) : color(color) {}
 };
 
+struct EmissionMaterial : public Material {
+	Color emission;
+
+	EmissionMaterial(Color color, Color emission) : Material(color) {}
+};
+
 struct Light
 {
 	Vector3 position;
@@ -83,6 +90,8 @@ struct Camera
 	}
 };
 
+class json_fwd;
+
 struct RenderOptions {
 	enum RenderMethod {
 		WHITTED, PATH
@@ -96,18 +105,24 @@ struct RenderOptions {
 
 	IntDimension2 resolution = {1920, 1080};
 	RenderMethod method = WHITTED;
+	std::unique_ptr<json_fwd> json;
+	std::string filename;
 	// FIXME use C++17 std::variant so things actually explode if you try to
 	// use the incorrect option
 	union {
 		Whitted whitted_opts;
 		Path path_opts;
 	};
+
+	RenderOptions();
+	~RenderOptions();
 };
 
+template<class material_t>
 struct Scene
 {
 	std::vector<Triangle> triangles;
-	std::vector<Material> materials;
+	std::vector<material_t> materials;
 
 	std::vector<Light> lights;
 
@@ -115,8 +130,6 @@ struct Scene
 	Color background_color = Color(0.f, 0.f, 0.f);
 
 	void clear() { *this = Scene(); }
-
-	bool load(const std::string &filename, RenderOptions *out_opts);
 
 	template<class... Args>
 	TriangleIndex insertTriangle(Args&&... args)
@@ -138,4 +151,12 @@ struct Scene
 		lights.emplace_back(std::forward<Args>(args)...);
 	}
 };
+
+using WhittedScene = Scene<Material>;
+using PathScene = Scene<EmissionMaterial>;
+
+bool LoadJob(std::string filename, RenderOptions *out_opts);
+bool LoadScene(const RenderOptions &opts, WhittedScene *scene);
+bool LoadScene(const RenderOptions &opts, PathScene *scene);
+
 #endif
