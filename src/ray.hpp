@@ -96,12 +96,8 @@ struct Ray {
     return t < maximum_distance;
   }
 
-#ifndef DEBUG_TOOL
-private:
-#endif
   Ray(location_t origin, Vector3 direction) : origin(origin), direction(direction) {}
 
-public:
   static Ray getShadowRay(Light light, location_t P, distance_t *ld) {
     const Vector3 light_vector = light.position - P;
 		const float light_distance = light_vector.length();

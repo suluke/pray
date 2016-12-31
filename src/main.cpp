@@ -21,6 +21,16 @@ struct PrayTypes {
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
 };
+template<>
+struct PrayTypes<PathScene> {
+	using scene_t = PathScene;
+	using ray_t = Ray<scene_t>;
+#ifdef WITH_BIH
+	using accel_t = Bih<ray_t, scene_t>;
+#else
+	using accel_t = DummyAcceleration<ray_t, scene_t>;
+#endif
+};
 
 using WhittedTypes = PrayTypes<WhittedScene>;
 using PathTypes = PrayTypes<PathScene>;
@@ -32,7 +42,6 @@ static void traceScene(const WhittedScene &scene, ImageView &img, const WhittedT
 }
 
 static void traceScene(const PathScene &scene, ImageView &img, const PathTypes::accel_t &accel, const RenderOptions &opts) {
-	std::cout << "FIXME: Path tracing not implemented" << std::endl;
 	CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t > tracer(scene, opts.path_opts, accel);
 	//tracer.acceleration_structure.printAnalysis();
 	tracer.render(img);

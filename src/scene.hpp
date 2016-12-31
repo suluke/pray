@@ -58,9 +58,9 @@ struct Material
 };
 
 struct EmissionMaterial : public Material {
-	Color emission;
+	const bool isEmission;
 
-	EmissionMaterial(Color color, Color emission) : Material(color) {}
+	EmissionMaterial(Color color, bool isEmission = false) : Material(color), isEmission(isEmission) {}
 };
 
 struct Light

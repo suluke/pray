@@ -29,7 +29,10 @@ static inline void addMaterials(PathScene &scene, const vector<tinyobj::material
 	{
 		const Color diffuse_color = Color(m.diffuse[0], m.diffuse[1], m.diffuse[2]);
 		const Color emission = Color(m.emission[0], m.emission[1], m.emission[2]);
-		scene.insertMaterial(diffuse_color, emission);
+		bool isEmission = true;
+		if (emission.r == approx(0) && emission.g == approx(0) && emission.b == approx(0))
+			isEmission = false;
+		scene.insertMaterial(diffuse_color, isEmission);
 	}
 }
 
