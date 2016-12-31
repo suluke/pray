@@ -12,14 +12,9 @@ void CpuPathTracer<ray_t, accel_t>::render(ImageView &image) const {
 #endif
 	for(long y = 0; y < image.resolution.h; y += ray_t::dim::h) {
 		for(long x = 0; x < image.resolution.w; x += ray_t::dim::w) {
-			if (!subsampling_enabled || (
-					x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y ||
-					(x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)))
-			{
-				ray_t ray(scene.camera, left, top, x, image.getGlobalY(y), max_x, max_y);
-				auto c = trace(scene, ray);
-				writeColorToImage(c, image, x, y);
-			}
+      ray_t ray(scene.camera, left, top, x, image.getGlobalY(y), max_x, max_y);
+      auto c = trace(scene, ray);
+      writeColorToImage(c, image, x, y);
 		}
 	}
 }
@@ -43,7 +38,7 @@ typename ray_t::color_t CpuPathTracer<ray_t, accel_t>::trace(const PathScene &sc
   const auto X = triangle.vertices[1] - triangle.vertices[0];
   const auto N = ray_t::getNormals(scene, intersected_triangle);
   const auto Y = X.cross(N);
-  const auto P = ray.getIntersectionPoint(intersection_distance);
+  const auto P = ray.getIntersectionPoint(intersection_distance) + N * 0.0001f;
 
   Color value{0, 0, 0};
   for (unsigned i = 0; i < opts.num_samples; ++i) {
