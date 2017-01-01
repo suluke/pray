@@ -56,13 +56,13 @@ struct StageLogger {
 #define STR(x)   #x
 #define print_opt(x) do {\
 		auto f(std::cout.flags());\
-		std::cout << std::left << std::setw(18) << #x ": ";\
+		std::cout << std::left << std::setw(27) << #x ": ";\
 		strcmp(#x, STR(x)) ? std::cout << "ON\n" : std::cout << "OFF\n";\
 		std::cout.flags(f);\
 	} while(false)
 	
 	static void dump_config() {
-		std::cout << "#### Configuration: ####\n";
+		std::cout << "####### Configuration: #######\n";
 		print_opt(WITH_OMP);
 		print_opt(WITH_CUDA);
 		print_opt(WITH_SSE);
@@ -73,7 +73,7 @@ struct StageLogger {
 		print_opt(WITH_DEBUG_TOOL);
 		print_opt(WITH_CONFDUMP);
 		print_opt(DISABLE_OUTPUT);
-		std::cout << "########################\n";
+		std::cout << "##############################\n";
 	}
 #undef STR
 #undef print_opt
