@@ -17,6 +17,7 @@ struct CpuPathTracer {
   void render(ImageView &image) const;
 
 private:
+  // Relevant: https://github.com/s9w/articles/blob/master/perf%20cpp%20random.md
   std::function<float()> sampling_rand = std::bind(std::uniform_real_distribution<float>(0, 1), std::default_random_engine());
 
   typename ray_t::color_t trace(const PathScene &scene, const ray_t &ray, unsigned depth = 0) const;

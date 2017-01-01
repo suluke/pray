@@ -37,14 +37,15 @@ typename ray_t::color_t CpuPathTracer<ray_t, accel_t>::trace(const PathScene &sc
   if (depth >= opts.max_depth)
     return Color {0, 0, 0};
 
-  const auto X = triangle.vertices[1] - triangle.vertices[0];
   const auto N = ray_t::getNormals(scene, intersected_triangle);
-  const auto Y = X.cross(N);
+  const auto X = (triangle.vertices[1] - triangle.vertices[0]).normalize();
+  const auto Y = N.cross(X).normalize();
+  const auto &Z = N;
   const auto P = ray.getIntersectionPoint(intersection_distance) + N * 0.0001f;
 
   Color value{0, 0, 0};
   for (unsigned i = 0; i < opts.num_samples; ++i) {
-    ray_t next(P, sampleHemisphere(X, Y, N));
+    ray_t next(P, sampleHemisphere(X, Y, Z));
     value += trace(scene, next, depth + 1);
   }
   value = material.color * value / opts.num_samples;
