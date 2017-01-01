@@ -31,9 +31,11 @@ typename ray_t::color_t CpuPathTracer<ray_t, accel_t>::trace(const PathScene &sc
   const auto material_index = triangle.material_index;
   ASSERT(material_index != MaterialIndex_Invalid);
   auto &material = scene.materials[material_index];
-    
-  if (depth >= opts.max_depth || material.isEmission)
+
+  if (material.isEmission)
     return material.color;
+  if (depth >= opts.max_depth)
+    return Color {0, 0, 0};
 
   const auto X = triangle.vertices[1] - triangle.vertices[0];
   const auto N = ray_t::getNormals(scene, intersected_triangle);
