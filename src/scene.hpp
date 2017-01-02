@@ -90,7 +90,7 @@ struct Camera
 	}
 };
 
-class json_fwd;
+struct json_fwd;
 
 struct RenderOptions {
 	enum RenderMethod {
