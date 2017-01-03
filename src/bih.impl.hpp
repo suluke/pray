@@ -230,6 +230,8 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 
 #else
 
+#ifndef WITH_BIH_SMART_TRAVERSION_ITERATIVE
+
 template<class ray_t, class scene_t>
 static void intersectBihNode(const typename Bih<ray_t, scene_t>::Node &node, const AABox3 aabb, const Bih<ray_t, scene_t> &bih, const scene_t &scene, const ray_t &ray, const Vector3 &direction_sign, const std::array<bool, 3> &direction_sign_equal, const typename ray_t::bool_t active_mask, IntersectionResult<ray_t> &intersection)
 {
@@ -338,7 +340,168 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 	return intersection_result.triangle;
 }
 
-#endif // WITH_BIH_NEW_TRAVERSION
+#else
+
+template<class ray_t, class scene_t>
+typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
+{
+	const auto active_mask = ray.intersectAABB(scene_aabb);
+	if(!ray_t::isAny(active_mask)) return ray_t::getNoIntersection();
+
+	const Vector3 direction_sign = ray.getSubrayDirection(ray_t::subrays_count / 2).sign();
+
+	std::array<bool, 3> direction_sign_equal;
+	ray.isDirectionSignEqualForAllSubrays(direction_sign, &direction_sign_equal);
+
+	IntersectionResult<ray_t> intersection_result;
+
+	struct StackElement
+	{
+		float plane;
+		unsigned split_axis;
+		typename ray_t::bool_t active_mask;
+		const Node *node;
+		AABox3 aabb;
+
+		StackElement() {}
+		StackElement(float plane, unsigned split_axis, typename ray_t::bool_t active_mask, const Node &node, AABox3 aabb) : plane(plane), split_axis(split_axis), active_mask(active_mask), node(&node), aabb(aabb) {}
+	};
+
+	std::array<StackElement, 128u> node_stack;
+	int node_stack_pointer = -1;
+
+	auto current_node = this->nodes[0u];
+	auto current_aabb = scene_aabb;
+	auto current_active_mask = active_mask;
+
+	for(;;)
+	{
+		if(current_node.getType() == Bih<ray_t, scene_t>::Node::Leaf)
+		{
+			for(unsigned i = 0u; i < current_node.getLeafData().children_count; ++i)
+			{
+				//TODO: remove double indirection (reorder scene.triangles)
+				const TriangleIndex triangle_index = this->triangles[current_node.getChildrenIndex() + i];
+				const Triangle &triangle = scene.triangles[triangle_index];
+
+				typename ray_t::distance_t distance;
+				const auto intersected = ray_t::booleanAnd(ray.intersectTriangle(triangle, &distance), current_active_mask);
+
+				if(ray_t::isAny(intersected))
+				{
+					// no need to pass current_active_mask here, updateIntersection handles this correctly
+					// however, should ray_t ever get wider than one register, adding the mask might improve the performance if used correctly
+					ray_t::updateIntersections(&intersection_result.triangle, triangle_index, &intersection_result.distance, distance);
+				}
+			}
+		}
+		else
+		{
+			const auto split_axis = current_node.getType();
+
+			const auto &left_child = this->nodes[current_node.getChildrenIndex()+0];
+			const auto &right_child = this->nodes[current_node.getChildrenIndex()+1];
+
+			const auto left_plane = current_node.getSplitData().left_plane;
+			const auto right_plane = current_node.getSplitData().right_plane;
+
+			auto left_aabb = current_aabb;
+			left_aabb.max[split_axis] = left_plane;
+			auto right_aabb = current_aabb;
+			right_aabb.min[split_axis] = right_plane;
+
+			if(direction_sign_equal[split_axis])
+			{
+				// The code in both cases is duplicated but with swapped left/right parameters. This gave a speedup of ~800ms on my machine with the sponza scene, no sse (lukasf)!
+				if(direction_sign[split_axis] >= 0.f)
+				{
+					node_stack[++node_stack_pointer] = StackElement(right_plane, split_axis, current_active_mask, right_child, right_aabb);
+
+					const auto intersect_left = ray_t::booleanAnd(ray.intersectAABB(left_aabb), current_active_mask);
+					if(ray_t::isAny(intersect_left))
+					{
+						current_node = left_child;
+						current_aabb = left_aabb;
+						current_active_mask = intersect_left;
+						continue;
+					}
+					else
+					{
+						//TODO: handle right_child here, don't push it on the stack and pop it directly afterwards down below
+					}
+				}
+				else
+				{
+					node_stack[++node_stack_pointer] = StackElement(left_plane, split_axis, current_active_mask, left_child, left_aabb);
+
+					const auto intersect_right = ray_t::booleanAnd(ray.intersectAABB(right_aabb), current_active_mask);
+					if(ray_t::isAny(intersect_right))
+					{
+						current_node = right_child;
+						current_aabb = right_aabb;
+						current_active_mask = intersect_right;
+						continue;
+					}
+					else
+					{
+						//TODO: handle left_child here, don't push it on the stack and pop it directly afterwards down below
+					}
+				}
+			}
+			else
+			{
+				// when the sign of the ray direction is not equal for all subrays, the optimizations above are incorrect
+
+				node_stack[++node_stack_pointer] = StackElement(right_plane, split_axis, current_active_mask, right_child, right_aabb);
+
+				const auto intersect_left = ray_t::booleanAnd(ray.intersectAABB(left_aabb), current_active_mask);
+				if(ray_t::isAny(intersect_left))
+				{
+					current_node = left_child;
+					current_aabb = left_aabb;
+					current_active_mask = intersect_left;
+					continue;
+				}
+				else
+				{
+					//TODO: handle right_child here, don't push it on the stack and pop it directly afterwards down below
+				}
+			}
+		}
+
+		for(;;)
+		{
+			if(node_stack_pointer == -1) goto finish; // this goto is totally valid, I need to jump out of two loops!
+
+			const auto &top = node_stack[node_stack_pointer--]; // pop the top element from the stack
+
+			const auto smart_test = !direction_sign_equal[top.split_axis] || // always handle nodes which were pushed in the !direction_sign_equal[split_axis] case
+				// using here that intersection_result.distance is default-initialized with ray_t::max_distance()
+				ray_t::isAny(ray_t::booleanAnd(ray.intersectAxisPlane(top.plane, top.split_axis, intersection_result.distance), top.active_mask));
+
+			if(smart_test)
+			{
+				const auto intersect_node = ray_t::booleanAnd(ray.intersectAABB(top.aabb), top.active_mask);
+				if(ray_t::isAny(intersect_node))
+				{
+					current_node = *top.node;
+					current_aabb = top.aabb;
+					current_active_mask = top.active_mask;
+					break;
+				}
+			}
+		}
+	}
+
+	finish:
+
+	*out_distance = intersection_result.distance;
+	return intersection_result.triangle;
+}
+
+#endif // WITH_BIH_SMART_TRAVERSION_ITERATIVE
+
+#endif // WITH_BIH_SMART_TRAVERSION
 
 template<class ray_t, class scene_t>
 void Bih<ray_t, scene_t>::printAnalysis() const
