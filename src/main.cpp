@@ -1,5 +1,6 @@
 #include "scene.hpp"
 #include "image.hpp"
+#include "parallel_worker.hpp"
 #include "dummy_acceleration.hpp"
 #include "bih.hpp"
 #include "cpu_tracer.hpp"
@@ -64,13 +65,23 @@ static int trace(const char *outpath, RenderOptions &opts) {
 		return 0;
 	}
 
+	const auto thread_pool_size = std::max(std::thread::hardware_concurrency(), 1u);
+	std::cout << "creating thread pool with " << thread_pool_size << " threads.\n";
+	ThreadPool thread_pool(thread_pool_size);
+
 	logger.startPreprocessing();
 	typename PrayTypes<scene_t>::accel_t accel;
-	accel.build(scene);
+	accel.build(scene, thread_pool);
 	//std::cout << "hash: " << accel.hash() << "\n";
 
 	logger.startRendering();
+#ifndef DISABLE_RENDERING
 	traceScene(scene, img, accel, opts);
+#else
+	// fix "unused function traceScene"
+	// because traceScene is overloaded, the static_cast is needed to specify which overload we want to (void)traceScene
+	(void)static_cast<void(*)(const scene_t&, ImageView&, const typename PrayTypes<scene_t>::accel_t&, const RenderOptions&)>(traceScene);
+#endif
 
 	logger.startOutput();
 #ifndef DISABLE_OUTPUT

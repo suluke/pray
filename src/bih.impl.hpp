@@ -5,6 +5,7 @@ struct BihBuilder
 {
 	const typename bih_t::scene_t &scene;
 	bih_t &bih;
+	ThreadPool &thread_pool;
 
 	struct TriangleData
 	{
@@ -17,7 +18,7 @@ struct BihBuilder
 
 	typedef std::vector<TriangleIndex>::iterator TrianglesIt;
 
-	BihBuilder(const typename bih_t::scene_t &scene, bih_t &bih) : scene(scene), bih(bih) {}
+	BihBuilder(const typename bih_t::scene_t &scene, bih_t &bih, ThreadPool &thread_pool) : scene(scene), bih(bih), thread_pool(thread_pool) {}
 
 	void build()
 	{
@@ -144,9 +145,9 @@ struct BihBuilder
 };
 
 template<class ray_t, class scene_t>
-void Bih<ray_t, scene_t>::build(const scene_t &scene)
+void Bih<ray_t, scene_t>::build(const scene_t &scene, ThreadPool &thread_pool)
 {
-	BihBuilder<Bih<ray_t, scene_t>> builder(scene, *this);
+	BihBuilder<Bih<ray_t, scene_t>> builder(scene, *this, thread_pool);
 	builder.build();
 }
 

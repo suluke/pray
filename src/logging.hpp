@@ -29,7 +29,9 @@ struct StageLogger {
 #endif
 	}
 	void startRendering() {
+#ifndef DISABLE_RENDERING
 		std::cout << "Rendering..." << std::endl;
+#endif
 #ifdef WITH_TIMING
 		render_begin = std::chrono::high_resolution_clock::now();
 #endif
@@ -73,6 +75,7 @@ struct StageLogger {
 		print_opt(WITH_TIMING);
 		print_opt(WITH_DEBUG_TOOL);
 		print_opt(WITH_CONFDUMP);
+		print_opt(DISABLE_RENDERING);
 		print_opt(DISABLE_OUTPUT);
 		std::cout << "##############################\n";
 	}

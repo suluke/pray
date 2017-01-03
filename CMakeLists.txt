@@ -27,6 +27,7 @@ option(WITH_BIH_SMART_TRAVERSION "Build with smart BIH traversion algorithm" OFF
 option(WITH_BIH_SMART_TRAVERSION_ITERATIVE "Build with smart BIH traversion algorithm (iterative)" OFF)
 option(WITH_TIMING "Build with logging of processing time enabled" OFF)
 option(WITH_CONFDUMP "Build with logging all activated features on startup" OFF)
+option(DISABLE_RENDERING "Disable rendering. Useful for profiling preprocessing" OFF)
 option(DISABLE_OUTPUT "Disable writing out the image. Useful for profiling" OFF)
 
 option(WITH_DEBUG_TOOL "Build the debug tool" OFF)
@@ -55,6 +56,7 @@ print_opt(WITH_SUBSAMPLING)
 print_opt(WITH_TIMING)
 print_opt(WITH_DEBUG_TOOL)
 print_opt(WITH_CONFDUMP)
+print_opt(DISABLE_RENDERING)
 print_opt(DISABLE_OUTPUT)
 message(STATUS "##################\n")
 
