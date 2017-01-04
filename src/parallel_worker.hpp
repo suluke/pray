@@ -31,7 +31,7 @@ struct ThreadPool
 		for(auto &t : threads) t.thread.join();
 	}
 
-	bool do_work(std::function<void(void*)> function, void *argument)
+	bool do_work(std::function<void(void*)> function, void *argument) // force inline?
 	{
 		thread_index index;
 		auto idle_avaliable = idle_get(&index);
@@ -55,6 +55,7 @@ struct ThreadPool
 
 	private:
 
+	// maybe parts of this struct should be allocated differently so that there's no change of cache trashing
 	struct WorkerThread
 	{
 		std::thread thread;
@@ -82,6 +83,7 @@ struct ThreadPool
 			cv.notify_one();
 		}
 
+		// cppreference: std::function is a polymorphic type... How about a non-polymorphic type? :)
 		std::function<void(void*)> work_function;
 		void *work_argument;
 
@@ -97,6 +99,7 @@ struct ThreadPool
 
 		for(;;)
 		{
+			//TODO: It would be great to be able to queue one work item so that we don't yield when there's work to do.
 			worker_thread.sleep();
 
 			if(interrupt) break;
@@ -121,7 +124,7 @@ struct ThreadPool
 	std::atomic<thread_index> idle_head{thread_index_invalid};
 
 	// Tries to get a thread from the idle list. Returns false when no idle thread is avaliable.
-	bool idle_get(thread_index *out_index)
+	bool idle_get(thread_index *out_index) // force inline?
 	{
 		auto head = idle_head.load();
 		if(head == thread_index_invalid) return false;
