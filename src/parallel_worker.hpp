@@ -7,12 +7,20 @@
 struct ThreadPool
 {
 	using thread_index = unsigned;
+	static constexpr thread_index thread_index_invalid = std::numeric_limits<thread_index>::max();
 
-	ThreadPool(size_t num_threads) : threads(num_threads), idle_list(num_threads)
+	ThreadPool(const size_t num_threads) : threads(num_threads)
 	{
+		ASSERT(num_threads >= 1u);
+
 		for(auto i=0; i<num_threads; ++i)
 		{
 			threads[i].thread = std::thread([=]{ worker_func(i); });
+
+			// When doing the idle_insert here instead of at the beginning of worker_func we don't need
+			// to wait for the threads to be executed before using the pool. It's still correct
+			// since the wake is stored as long as the thread has not tried to sleep.
+			idle_insert(i);
 		}
 	}
 
@@ -26,7 +34,7 @@ struct ThreadPool
 	bool do_work(std::function<void(void*)> function, void *argument)
 	{
 		thread_index index;
-		auto idle_avaliable = idle_list.get_idle(&index);
+		auto idle_avaliable = idle_get(&index);
 		if(!idle_avaliable) return false;
 		auto &worker_thread = threads[index];
 		worker_thread.work_function = function;
@@ -35,34 +43,17 @@ struct ThreadPool
 		return true;
 	}
 
-	private:
-
-	//TODO: make this lock-free
-	struct IdleList
+	// don't use this function while worker threads are executing, it's not thread safe...
+	void debug_print_idle_list()
 	{
-		std::stack<thread_index, std::vector<thread_index>> elements;
-		std::mutex lock;
-
-		IdleList(size_t num_threads)
+		for(auto i = idle_head.load(); i != thread_index_invalid; i = threads[i].idle_next)
 		{
-			for(auto i=0; i<num_threads; ++i) elements.push(i);
+			std::cout << i << " ";
 		}
+		std::cout << "\n";
+	}
 
-		bool get_idle(thread_index *out_index)
-		{
-			std::lock_guard<std::mutex> lock_guard(lock);
-			if(elements.empty()) return false;
-			*out_index = elements.top();
-			elements.pop();
-			return true;
-		}
-
-		void add_idle(thread_index index)
-		{
-			std::lock_guard<std::mutex> lock_guard(lock);
-			elements.push(index);
-		}
-	};
+	private:
 
 	struct WorkerThread
 	{
@@ -84,7 +75,6 @@ struct ThreadPool
 		// called by other thread
 		void wake_up()
 		{
-			// not sure whether we need this lock here...
 			std::unique_lock<std::mutex> lock(mutex);
 			wake = true;
 			lock.unlock();
@@ -94,14 +84,14 @@ struct ThreadPool
 
 		std::function<void(void*)> work_function;
 		void *work_argument;
+
+		thread_index idle_next;
 	};
 
 	std::vector<WorkerThread> threads;
 	std::atomic<bool> interrupt{false};
 
-	IdleList idle_list;
-
-	void worker_func(thread_index index)
+	void worker_func(const thread_index index)
 	{
 		auto &worker_thread = threads[index];
 
@@ -120,7 +110,36 @@ struct ThreadPool
 #if DEBUG
 			worker_thread.work_function = std::function<void(void*)>();
 #endif
+
+			// This is only correct as long as the thread is only waked when it was in the idle list (i.e. after idle_get).
+			// We break this condition only on deconstruction but then immideately break out of the loop, so this should be fine...
+			idle_insert(index);
 		}
+	}
+
+	// This is a lock-free single linked list. Everything is implemented in idle_*
+	std::atomic<thread_index> idle_head{thread_index_invalid};
+
+	// Tries to get a thread from the idle list. Returns false when no idle thread is avaliable.
+	bool idle_get(thread_index *out_index)
+	{
+		auto head = idle_head.load();
+		if(head == thread_index_invalid) return false;
+
+		while(!idle_head.compare_exchange_weak(head, threads[head].idle_next))
+		{
+			if(head == thread_index_invalid) return false;
+		}
+
+		*out_index = head;
+		return true;
+	}
+
+	// Inserts a thread into the idle list.
+	void idle_insert(const thread_index index)
+	{
+		threads[index].idle_next = idle_head.load();
+		while(!idle_head.compare_exchange_weak(threads[index].idle_next, index));
 	}
 };
 
