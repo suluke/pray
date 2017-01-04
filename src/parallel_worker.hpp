@@ -198,6 +198,7 @@ struct ParallelRecursion
 	ParallelRecursion(ThreadPool &thread_pool) : thread_pool(thread_pool), argument_storage(thread_pool.size()) {}
 	~ParallelRecursion() {}
 
+	// call the function first, blocks until all work is done
 	template<class T>
 	void run(const T &function, const Args &args)
 	{
@@ -205,6 +206,7 @@ struct ParallelRecursion
 		thread_pool.wait_for_all_idle();
 	}
 
+	// call this function from within the worker threads
 	template<class T>
 	void recurse(const T &function, const Args &args)
 	{
@@ -224,6 +226,8 @@ struct ParallelRecursion
 
 	private:
 	ThreadPool &thread_pool;
+
+	// this is probably causes cash trashing...
 	std::vector<Args> argument_storage;
 };
 
