@@ -535,3 +535,32 @@ void Bih<ray_t, scene_t>::printAnalysis() const
 		<< "leaves: " << leaves_count << " max children count: " << max_leaf_children_count << "\n"
 		<< "reserved storage: " << nodes.capacity() << " actual storage: " << nodes.size() << "\n";
 }
+
+#include <sstream>
+
+template<class ray_t, class scene_t>
+size_t Bih<ray_t, scene_t>::hash() const
+{
+	std::stringstream s;
+
+	s << scene_aabb.min << " " << scene_aabb.max << " ";
+
+	const std::function<void(const Node&)> f = [&](const Node &n)
+	{
+		s << n.getType() << " ";
+		if(n.getType() == Node::Leaf)
+		{
+			for(auto i=0u; i<n.getLeafData().children_count; ++i) s << triangles[n.getChildrenIndex()+i] << " ";
+		}
+		else
+		{
+			s << n.getSplitData().left_plane << " " << n.getSplitData().right_plane << " ";
+			f(nodes[n.getChildrenIndex()+0]);
+			f(nodes[n.getChildrenIndex()+1]);
+		}
+	};
+	f(nodes.front());
+
+	std::hash<std::string> hash_fn;
+	return hash_fn(s.str());
+}

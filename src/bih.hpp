@@ -100,6 +100,7 @@ struct Bih
 	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
 
 	void printAnalysis() const;
+	size_t hash() const;
 };
 
 #include "bih.impl.hpp"

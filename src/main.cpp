@@ -67,6 +67,7 @@ static int trace(const char *outpath, RenderOptions &opts) {
 	logger.startPreprocessing();
 	typename PrayTypes<scene_t>::accel_t accel;
 	accel.build(scene);
+	//std::cout << "hash: " << accel.hash() << "\n";
 
 	logger.startRendering();
 	traceScene(scene, img, accel, opts);
