@@ -7,6 +7,7 @@
 #cmakedefine WITH_SSE
 #cmakedefine WITH_SUBSAMPLING
 #cmakedefine WITH_BIH
+#cmakedefine WITH_BIH_PARALLEL_BUILD
 #cmakedefine WITH_BIH_SMART_TRAVERSION
 #cmakedefine WITH_BIH_SMART_TRAVERSION_ITERATIVE
 #cmakedefine WITH_TIMING

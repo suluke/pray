@@ -20,10 +20,30 @@ struct BihBuilder
 
 	BihBuilder(const typename bih_t::scene_t &scene, bih_t &bih, ThreadPool &thread_pool) : scene(scene), bih(bih), thread_pool(thread_pool) {}
 
+#ifdef WITH_BIH_PARALLEL_BUILD
+	struct BuildNodeArgs
+	{
+		BihBuilder<bih_t> *builder;
+		typename bih_t::Node *current_node;
+		AABox3 initial_aabb;
+		TrianglesIt triangles_begin, triangles_end;
+		unsigned retry_depth;
+
+		BuildNodeArgs() {}
+		BuildNodeArgs(BihBuilder<bih_t> *builder, typename bih_t::Node &current_node, AABox3 initial_aabb, TrianglesIt triangles_begin, TrianglesIt triangles_end, unsigned retry_depth = 0u) : builder(builder), current_node(&current_node), initial_aabb(initial_aabb), triangles_begin(triangles_begin), triangles_end(triangles_end), retry_depth(retry_depth) {}
+	};
+
+	using BuildWorker = ParallelRecursion<BuildNodeArgs>;
+
+	std::mutex mutex;
+#endif
+
 	void build()
 	{
 		bih.scene_aabb.clear();
 		triangle_data.reserve(scene.triangles.size());
+
+		//TODO: parallelize this !!!
 		for(const auto &t : scene.triangles)
 		{
 			auto aabb = t.calculateAabb();
@@ -42,8 +62,15 @@ struct BihBuilder
 #ifdef DEBUG
 		bih.nodes.back().parent = nullptr;
 #endif
+#ifndef WITH_BIH_PARALLEL_BUILD
 		buildNode(bih.nodes.back(), bih.scene_aabb, bih.triangles.begin(), bih.triangles.end());
+#else
+		BuildWorker worker(thread_pool);
+		worker.run(buildNode, BuildNodeArgs(this, bih.nodes.back(), bih.scene_aabb, bih.triangles.begin(), bih.triangles.end()));
+#endif
 	}
+
+#ifndef WITH_BIH_PARALLEL_BUILD
 
 	void buildNode(typename bih_t::Node &current_node, const AABox3 &initial_aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const unsigned retry_depth = 0u)
 	{
@@ -133,7 +160,84 @@ struct BihBuilder
 		}
 	}
 
-	unsigned getSplitAxis(const AABox3 &aabb)
+#else
+
+
+	static void buildNode(const BuildNodeArgs &args, ParallelRecursion<BuildNodeArgs> &worker)
+	{
+		const auto children_count = std::distance(args.triangles_begin, args.triangles_end);
+
+		const bool leaf_children_count_reached = children_count <= 4u; //TODO: how to pass this constant as a parameter? (pls not template...)
+
+		/* retry_depth counts how often we retried to split a node with a smaller aabb. If is is too great (magic number), the triangles are very close to each
+		   other and a split will most likely never be found (due to float inprecision). The speedup wouldn't be to great anyways... */
+		const bool maximum_retry_depth_reached = args.retry_depth == 16u; //TODO: tweak this parameter? or find a better criterium (floating point inaccuracy reached (nextafter(aabb.min, +1.f) == aabb.max or something like that...))?
+
+		if(leaf_children_count_reached || maximum_retry_depth_reached)
+		{
+			// build a leaf
+
+			const auto children_index = std::distance(args.builder->bih.triangles.begin(), args.triangles_begin);
+			args.current_node->makeLeafNode(children_index, children_count);
+		}
+		else
+		{
+			// build a node
+
+			const auto split_axis = getSplitAxis(args.initial_aabb);
+
+			float left_plane = std::numeric_limits<float>::lowest(), right_plane = std::numeric_limits<float>::max();
+
+			const auto pivot = (args.initial_aabb.min[split_axis] + args.initial_aabb.max[split_axis]) / 2.f;
+			const auto split_element = std::partition(args.triangles_begin, args.triangles_end,
+			[&](TriangleIndex t)
+			{
+				const bool left = args.builder->triangle_data[t].centroid[split_axis] <= pivot;
+
+				if(left) left_plane = std::max(left_plane, args.builder->triangle_data[t].aabb.max[split_axis]);
+				else right_plane = std::min(right_plane, args.builder->triangle_data[t].aabb.min[split_axis]);
+
+				return left;
+			});
+
+			if(split_element == args.triangles_begin || split_element == args.triangles_end)
+			{
+				// one side of the partition is empty, so retry with a smaller aabb
+
+				AABox3 new_initial_aabb = args.initial_aabb;
+				if(split_element == args.triangles_begin) new_initial_aabb.min[split_axis] = pivot;
+				else                                 new_initial_aabb.max[split_axis] = pivot;
+
+				return buildNode(BuildNodeArgs(args.builder, *args.current_node, new_initial_aabb, args.triangles_begin, args.triangles_end, args.retry_depth + 1u), worker);
+			}
+
+			size_t children_index;
+			// allocate child nodes
+			{
+				std::lock_guard<std::mutex> lock(args.builder->mutex);
+				children_index = args.builder->bih.nodes.size();
+				ASSERT(args.builder->bih.nodes.capacity() - args.builder->bih.nodes.size() >= 2u); // we don't want relocation (breaks references)
+				args.builder->bih.nodes.emplace_back(); args.builder->bih.nodes.emplace_back();
+			}
+
+			args.current_node->makeSplitNode(split_axis, children_index, left_plane, right_plane);
+
+			auto &child1 = args.builder->bih.nodes[children_index+0];
+			auto &child2 = args.builder->bih.nodes[children_index+1];
+
+			AABox3 child1_initial_aabb = args.initial_aabb, child2_initial_aabb = args.initial_aabb;
+			child1_initial_aabb.max[split_axis] = pivot; // we could also insert the calculated planes here, let's try sometime whether this works better
+			child2_initial_aabb.min[split_axis] = pivot;
+
+			// recursion
+			worker.recurse(buildNode, BuildNodeArgs(args.builder, child1, child1_initial_aabb, args.triangles_begin, split_element));
+			buildNode(BuildNodeArgs(args.builder, child2, child2_initial_aabb, split_element, args.triangles_end), worker);
+		}
+	}
+
+#endif
+
+	static unsigned getSplitAxis(const AABox3 &aabb)
 	{
 		auto dx = aabb.max.x - aabb.min.x;
 		auto dy = aabb.max.y - aabb.min.y;

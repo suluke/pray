@@ -9,6 +9,10 @@ struct ThreadPool
 	using thread_index = unsigned;
 	static constexpr thread_index thread_index_invalid = std::numeric_limits<thread_index>::max();
 
+	// cppreference: std::function is a polymorphic type... How about a non-polymorphic type? :)
+	using work_function = std::function<void(void*)>;
+	using work_argument = void*;
+
 	ThreadPool(const size_t num_threads) : threads(num_threads)
 	{
 		ASSERT(num_threads >= 1u);
@@ -31,16 +35,35 @@ struct ThreadPool
 		for(auto &t : threads) t.thread.join();
 	}
 
-	bool do_work(std::function<void(void*)> function, void *argument) // force inline?
+	size_t size()
+	{
+		return threads.size();
+	}
+
+	bool reserve_idle(thread_index *out_index) // force inline?
+	{
+		return idle_get(out_index);
+	}
+
+	void run_on_reserved(thread_index index, const work_function &function, const work_argument &argument = nullptr)
+	{
+		auto &worker_thread = threads[index];
+		worker_thread.work_item.function = function;
+		worker_thread.work_item.argument = argument;
+		worker_thread.wake_up();
+	}
+
+	bool do_work(const work_function &function, const work_argument &argument = nullptr)
 	{
 		thread_index index;
-		auto idle_avaliable = idle_get(&index);
-		if(!idle_avaliable) return false;
-		auto &worker_thread = threads[index];
-		worker_thread.work_function = function;
-		worker_thread.work_argument = argument;
-		worker_thread.wake_up();
+		if(!reserve_idle(&index)) return false;
+		run_on_reserved(index, function, argument);
 		return true;
+	}
+
+	void wait_for_all_idle()
+	{
+		return idle_wait_all();
 	}
 
 	// don't use this function while worker threads are executing, it's not thread safe...
@@ -69,7 +92,7 @@ struct ThreadPool
 		void sleep()
 		{
 			std::unique_lock<std::mutex> lock(mutex);
-			cv.wait(lock, [&]{ return wake; });
+			cv.wait(lock, [this]{ return wake; });
 			wake = false;
 		}
 
@@ -83,9 +106,11 @@ struct ThreadPool
 			cv.notify_one();
 		}
 
-		// cppreference: std::function is a polymorphic type... How about a non-polymorphic type? :)
-		std::function<void(void*)> work_function;
-		void *work_argument;
+		struct WorkItem
+		{
+			work_function function;
+			work_argument argument;
+		} work_item;
 
 		thread_index idle_next;
 	};
@@ -108,7 +133,7 @@ struct ThreadPool
 			ASSERT(worker_thread.work_function);
 #endif
 
-			worker_thread.work_function(worker_thread.work_argument);
+			worker_thread.work_item.function(worker_thread.work_item.argument);
 
 #if DEBUG
 			worker_thread.work_function = std::function<void(void*)>();
@@ -123,6 +148,10 @@ struct ThreadPool
 	// This is a lock-free single linked list. Everything is implemented in idle_*
 	std::atomic<thread_index> idle_head{thread_index_invalid};
 
+	std::atomic<unsigned> idle_count{0};
+	std::mutex idle_wait_all_mutex;
+	std::condition_variable idle_wait_all_cv;
+
 	// Tries to get a thread from the idle list. Returns false when no idle thread is avaliable.
 	bool idle_get(thread_index *out_index) // force inline?
 	{
@@ -134,6 +163,8 @@ struct ThreadPool
 			if(head == thread_index_invalid) return false;
 		}
 
+		--idle_count;
+
 		*out_index = head;
 		return true;
 	}
@@ -143,11 +174,57 @@ struct ThreadPool
 	{
 		threads[index].idle_next = idle_head.load();
 		while(!idle_head.compare_exchange_weak(threads[index].idle_next, index));
+
+		++idle_count;
+		if(idle_count == threads.size())
+		{
+			// only one can be the last one...
+			idle_wait_all_cv.notify_all();
+		}
+	}
+
+	void idle_wait_all()
+	{
+		if(idle_count == threads.size()) std::cout << "shit\n";
+
+		std::unique_lock<std::mutex> lock(idle_wait_all_mutex);
+		idle_wait_all_cv.wait(lock, [this]{ return idle_count == threads.size(); });
 	}
 };
 
-struct ParallelWorker
+template<class Args>
+struct ParallelRecursion
 {
+	ParallelRecursion(ThreadPool &thread_pool) : thread_pool(thread_pool), argument_storage(thread_pool.size()) {}
+	~ParallelRecursion() {}
+
+	template<class T>
+	void run(const T &function, const Args &args)
+	{
+		recurse(function, args);
+		thread_pool.wait_for_all_idle();
+	}
+
+	template<class T>
+	void recurse(const T &function, const Args &args)
+	{
+		ThreadPool::thread_index thread;
+		if(thread_pool.reserve_idle(&thread))
+		{
+			// we successfully reserved an idle thread, use it to run the function asynchronously
+			argument_storage[thread] = args;
+			thread_pool.run_on_reserved(thread, [=](void *a) { function(*static_cast<Args*>(a), *this); }, &argument_storage[thread]);
+		}
+		else
+		{
+			// call function synchronously
+			function(args, *this);
+		}
+	}
+
+	private:
+	ThreadPool &thread_pool;
+	std::vector<Args> argument_storage;
 };
 
 #endif
