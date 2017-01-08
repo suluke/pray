@@ -175,8 +175,8 @@ struct ThreadPool
 		threads[index].idle_next = idle_head.load();
 		while(!idle_head.compare_exchange_weak(threads[index].idle_next, index));
 
-		++idle_count;
-		if(idle_count == threads.size())
+		const auto new_idle_count = ++idle_count;
+		if(new_idle_count == threads.size())
 		{
 			// only one can be the last one...
 			idle_wait_all_cv.notify_all();
