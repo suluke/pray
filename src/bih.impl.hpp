@@ -106,6 +106,7 @@ struct BihBuilder
 			// allocate child nodes (this is a critical section)
 			const auto children_index = bih.nodes.size();
 			ASSERT(bih.nodes.capacity() - bih.nodes.size() >= 2u); // we don't want relocation (breaks references)
+			static_assert(std::is_trivial<typename bih_t::Node>::value, "Bih::Node should be trivial, otherwise the critical section is not as small as it could be");
 			bih.nodes.emplace_back(); bih.nodes.emplace_back();
 
 			current_node.makeSplitNode(split_axis, children_index, left_plane, right_plane);
@@ -363,9 +364,10 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 		const Node *node;
 		AABox3 aabb;
 
-		StackElement() {}
+		StackElement() = default;
 		StackElement(float plane, unsigned split_axis, typename ray_t::bool_t active_mask, const Node &node, AABox3 aabb) : plane(plane), split_axis(split_axis), active_mask(active_mask), node(&node), aabb(aabb) {}
 	};
+	static_assert(std::is_trivial<StackElement>::value, "StackElement should be trivial, otherwise we pay for stack initialization");
 
 	struct Stack
 	{
