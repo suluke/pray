@@ -108,7 +108,7 @@ static bool LoadSceneCommon(const RenderOptions &opts, scene_t *scene) {
 
 	scene->camera.position = Vector3(json_input["camera_position"][0], json_input["camera_position"][1], json_input["camera_position"][2]);
 	scene->camera.direction = Vector3(json_input["camera_look"][0], json_input["camera_look"][1], json_input["camera_look"][2]).normalize();
-	scene->camera.fov = json_input["fov"].get<float>() * acos(-1) / 180.f; // convert to radians
+	scene->camera.fov = json_input["fov"].get<float>() * acos(-1.f) / 180.f; // convert to radians
 
 	scene->background_color = Color(json_input["background"][0], json_input["background"][1], json_input["background"][2]);
 	return true;

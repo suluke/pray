@@ -57,8 +57,8 @@ template <class ray_t, class accel_t>
 typename ray_t::vec3_t CpuPathTracer<ray_t, accel_t>::sampleHemisphere(const typename ray_t::vec3_t &X, const typename ray_t::vec3_t &Y, const typename ray_t::vec3_t &Z) const {
   float u1 = sampling_rand();
   float u2 = sampling_rand();
-  float r = std::sqrt(1 - u1);
-  float phi = 2 * std::acos(-1) * u2;
+  float r = std::sqrt(1.f - u1);
+  float phi = 2 * std::acos(-1.f) * u2;
   float x = std::cos(phi) * r;
   float y = std::sin(phi) * r;
   float z = std::sqrt(u1);
