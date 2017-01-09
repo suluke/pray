@@ -5,9 +5,13 @@
 #include "ray.hpp"
 #include "bih.hpp"
 
+#include <functional>
+#include <random>
+
 using namespace std;
 
-static Scene scene;
+typedef WhittedScene Scene_t;
+static Scene_t scene;
 
 static float camera_pan = 0.f, camera_tilt = 0.f;
 static float camera_distance = 5.f;
@@ -16,11 +20,12 @@ static string debug_mode;
 static string debug_mode_parameter;
 
 // "bih"
-typedef Bih<Ray> Bih_t;
+typedef Ray<Scene_t> Ray_t;
+typedef Bih<Ray_t, Scene_t> Bih_t;
 static Bih_t bih;
 static int bih_depth = 0; // "draw_all"
 static Bih_t::Node *bih_current_node = nullptr; // "draw_single"
-static Ray bih_ray(Vector3(0.f, 5.f, -5.f), Vector3(0.f, -1.f, 1.f).normalize()); // "intersect"
+static Ray_t bih_ray(Vector3(0.f, 5.f, -5.f), Vector3(0.f, -1.f, 1.f).normalize()); // "intersect"
 std::vector<size_t> bih_intersected_nodes;
 static bool bih_draw_intersected_nodes = true;
 
@@ -36,8 +41,6 @@ static void init()
 {
 	glEnable(GL_CULL_FACE);
 	glFrontFace(GL_CW);
-
-	glPointSize(5.f);
 
 	if(debug_mode == "bih")
 	{
@@ -229,6 +232,24 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 	}
 }
 
+static Vector3 sampleHemisphere(const Vector3 &X, const Vector3 &Y, const Vector3 &Z, float u1, float u2)
+{
+#if 1
+	float r = std::sqrt(1.f - u1);
+	float phi = 2 * std::acos(-1.f) * u2;
+	float x = std::cos(phi) * r;
+	float y = std::sin(phi) * r;
+	float z = std::sqrt(u1);
+#else
+	float theta = std::acos(1.f - u1);
+	float phi = 2 * std::acos(-1.f) * u2;
+	float x = std::cos(phi) * std::sin(theta);
+	float y = std::sin(phi) * std::sin(theta);
+	float z = std::cos(theta);
+#endif
+	return X * x + Y * y + Z * z;
+}
+
 static void display()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -242,13 +263,16 @@ static void display()
 
 	glScalef(1.f, 1.f, -1.f);
 
-	glEnable(GL_DEPTH_TEST);
-	for(const auto &triangle : scene.triangles)
+	if(debug_mode != "sampling")
 	{
-		glColor3fv(&scene.materials[triangle.material_index].color.r);
-		draw_triangle(triangle);
+		glEnable(GL_DEPTH_TEST);
+		for(const auto &triangle : scene.triangles)
+		{
+			glColor3fv(&scene.materials[triangle.material_index].color.r);
+			draw_triangle(triangle);
+		}
+		glDisable(GL_DEPTH_TEST);
 	}
-	glDisable(GL_DEPTH_TEST);
 
 	glColor3f(1.f, 1.f, 1.f);
 
@@ -256,6 +280,8 @@ static void display()
 	{
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ONE);
+
+		glPointSize(5.f);
 
 		glEnable(GL_DEPTH_TEST);
 		glBegin(GL_LINES);
@@ -277,6 +303,21 @@ static void display()
 		glDisable(GL_BLEND);
 	}
 
+	if(debug_mode == "sampling")
+	{
+		glPointSize(1.f);
+
+		auto rnd = std::bind(std::uniform_real_distribution<float>(0, 1), std::default_random_engine());
+
+		glBegin(GL_POINTS);
+		for(size_t i=0u; i<1000u; ++i)
+		{
+			const auto p = sampleHemisphere(Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0), rnd(), rnd());
+			glVertex3fv(&p.x);
+		}
+		glEnd();
+	}
+
 	glutSwapBuffers();
 }
 
@@ -288,7 +329,9 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	scene.load(argv[1], nullptr);
+	RenderOptions opts;
+	LoadJob(argv[1], &opts);
+	LoadScene(opts, &scene);
 	debug_mode = argv[2];
 	if(argc == 4) debug_mode_parameter = argv[3];
 
