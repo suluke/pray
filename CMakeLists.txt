@@ -76,7 +76,7 @@ endif()
 add_subdirectory(src)
 
 if(WITH_DEBUG_TOOL)
-  add_subdirectory(debug_tool)
+  add_subdirectory(tools/debug_tool)
 endif()
 
 configure_file(

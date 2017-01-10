@@ -1,12 +1,12 @@
 add_executable(pray_debug_tool
   main.cpp
-  ../src/ext.cpp
-  ../src/scene.cpp
+  ${PROJECT_SOURCE_DIR}/src/ext.cpp
+  ${PROJECT_SOURCE_DIR}/src/scene.cpp
   )
 
 target_compile_definitions(pray_debug_tool PRIVATE DEBUG_TOOL)
 
-target_include_directories(pray_debug_tool PRIVATE ../src)
+target_include_directories(pray_debug_tool PRIVATE ${PROJECT_SOURCE_DIR}/src)
 set_target_properties(pray_debug_tool PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	target_link_libraries(pray_debug_tool "-lc++experimental")
