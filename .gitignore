@@ -25,3 +25,6 @@ tests/reference
 *.snm
 *.pdf
 *.toc
+
+# Benchmark tool
+pray_benchmark-*.json
