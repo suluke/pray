@@ -2,6 +2,9 @@
 #define PRAY_PARALLEL_WORKER_H
 
 #include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <atomic>
 #include <stack>
 
 struct ThreadPool
