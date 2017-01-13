@@ -1,3 +1,6 @@
+#ifndef PRAY_SIMD_HPP
+#define PRAY_SIMD_HPP
+#pragma once
 #include <array>
 
 #ifdef DEBUG
@@ -237,3 +240,4 @@ inline std::ostream &operator<<(std::ostream &o, const simd::Vec3Pack &v) {
   }
   return o;
 }
+#endif // PRAY_SIMD_HPP

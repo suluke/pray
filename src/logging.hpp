@@ -1,3 +1,6 @@
+#ifndef PRAY_LOGGING_HPP
+#define PRAY_LOGGING_HPP
+
 #include "pray/Config.h"
 #ifdef WITH_TIMING
  #include <chrono>
@@ -81,3 +84,4 @@ struct StageLogger {
 #else
 	static void dump_config() {}
 #endif
+#endif // PRAY_LOGGING_HPP

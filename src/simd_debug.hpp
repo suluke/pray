@@ -1,3 +1,6 @@
+#ifndef PRAY_SIMD_DEBUG_HPP
+#define PRAY_SIMD_DEBUG_HPP
+
 #define _CONCAT2(s1, s2) s1 ## s2
 #define _CONCAT3(s1, s2, s3) s1 ## s2 ## s3
 #define _CONCAT4(s1, s2, s3, s4) s1 ## s2 ## s3 ## s4
@@ -102,4 +105,4 @@ namespace simd {
   static inline void store_ps(float *addr, floatty val) { CONCAT2(MACRO_INTRIN_PREFIX, store_ps)(addr, val); }
   static inline void store_si(intty *addr, intty val) { CONCAT3(MACRO_INTRIN_PREFIX, store_si, MACRO_REGISTER_SIZE_BITS)(addr, val); }
 }
-
+#endif // PRAY_SIMD_DEBUG_HPP

@@ -1,3 +1,6 @@
+#ifndef PRAY_RAY_HPP
+#define PRAY_RAY_HPP
+#pragma once
 #include "scene.hpp" // includes math and image
 
 template<class scene_t>
@@ -177,3 +180,4 @@ inline std::ostream &operator<<(std::ostream &o, const Ray<scene_t> &r) {
   o << "Origin: " << r.origin << "\nDirection: " << r.direction;
   return o;
 }
+#endif // PRAY_RAY_HPP

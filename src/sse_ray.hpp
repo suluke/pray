@@ -1,3 +1,7 @@
+#ifndef PRAY_SSE_RAY_HPP
+#define PRAY_SSE_RAY_HPP
+#pragma once
+
 #include "simd.hpp"
 #include <array>
 
@@ -307,3 +311,4 @@ inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::
     }
   }
 }
+#endif // PRAY_SSE_RAY_HPP
