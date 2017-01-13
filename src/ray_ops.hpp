@@ -9,6 +9,7 @@ namespace ray_ops {
   using ray_loc = Vector3;
   using ray_vec3 = Vector3;
   using ray_intersect = TriangleIndex;
+  using ray_color = Color;
 
   template <class scene_t, class rand_t>
   static inline Ray<scene_t> sampleHemisphere(const ray_loc &origin, const ray_vec3 &X, const ray_vec3 &Y, const ray_vec3 &Z, rand_t &sampling_rand) {
@@ -28,6 +29,18 @@ namespace ray_ops {
     *out_X = (triangle.vertices[1] - triangle.vertices[0]).normalize();
     *out_Y = N.cross(*out_X).normalize();
     *out_Z = N;
+  }
+
+  template <class scene_t>
+  static inline bool getEmission(ray_intersect intersected_triangle, const scene_t &scene, ray_color *out_color) {
+    const auto &triangle = scene.triangles[intersected_triangle];
+    const auto &material = scene.materials[triangle.material_index];
+    if (material.isEmission) {
+      *out_color = material.color;
+      return true;
+    }
+    *out_color = {0, 0, 0};
+    return false; 
   }
 }
 

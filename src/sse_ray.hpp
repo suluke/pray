@@ -21,6 +21,8 @@ struct SSERay {
   using distance_t = simd::floatty;
   using angle_t = simd::floatty;
   using bool_t = simd::intty;
+  using material_t = simd::intty;
+  using mask_t = simd::intty;
 
   using dim = ConstDim2<simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2>;
 

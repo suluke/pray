@@ -22,33 +22,28 @@ void CpuPathTracer<ray_t, accel_t>::render(ImageView &image) const {
 }
 
 template <class ray_t, class accel_t>
-typename ray_t::color_t CpuPathTracer<ray_t, accel_t>::trace(const PathScene &scene, const ray_t &ray, unsigned depth) const {
+typename ray_t::color_t CpuPathTracer<ray_t, accel_t>::trace(const PathScene &scene, const ray_t &ray, unsigned depth, typename ray_t::mask_t mask) const {
   typename ray_t::distance_t intersection_distance;
   const auto intersected_triangle = acceleration_structure.intersect(scene, ray, &intersection_distance);
 
   if (ray_t::isAll(ray_t::isNoIntersection(intersected_triangle)))
     return scene.background_color;
 
-  const auto &triangle = scene.triangles[intersected_triangle];
-  const auto material_index = triangle.material_index;
-  ASSERT(material_index != MaterialIndex_Invalid);
-  auto &material = scene.materials[material_index];
-
-  if (material.isEmission)
-    return material.color;
-  if (depth >= opts.max_depth)
-    return Color {0, 0, 0};
+  typename ray_t::color_t material_color;
+  if (ray_t::isAll(ray_ops::getEmission(intersected_triangle, scene, &material_color)) || depth >= opts.max_depth)
+    return material_color;
 
   auto N = ray_t::getNormals(scene, intersected_triangle);
   typename ray_t::vec3_t X, Y, Z;
   ray_ops::getIntersectionBase(N, intersected_triangle, scene, &X, &Y, &Z);
   const auto P = ray.getIntersectionPoint(intersection_distance) + N * 0.0001f;
 
-  Color value{0, 0, 0};
+  typename ray_t::color_t value{0, 0, 0};
+  // TODO this can be parallelized. Maybe with a global task system for all casted rays?
   for (unsigned i = 0; i < opts.num_samples; ++i) {
     ray_t next = ray_ops::sampleHemisphere<PathScene>(P, X, Y, Z, sampling_rand);
-    value += trace(scene, next, depth + 1);
+    value += trace(scene, next, depth + 1, mask);
   }
-  value = material.color * value / opts.num_samples;
+  value = ray_t::getMaterialColors(scene, intersected_triangle) * value / opts.num_samples;
   return value;
 }

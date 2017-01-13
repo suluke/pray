@@ -5,6 +5,8 @@
 
 template<class scene_t>
 struct Ray {
+  struct mask_t {};
+  
   using dim_t = IntDimension2::dim_t;
   using intersect_t = TriangleIndex;
   using color_t = Color;
@@ -13,6 +15,7 @@ struct Ray {
   using distance_t = float;
   using angle_t = float;
   using bool_t = bool;
+  using material_t = MaterialIndex;
 
   using dim = ConstDim2<1, 1>;
 
