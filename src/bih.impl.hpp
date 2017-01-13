@@ -381,7 +381,7 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 
 		bool full()
 		{
-			return node_stack_pointer == node_stack.size() - 1;
+			return node_stack_pointer == (int) node_stack.size() - 1;
 		}
 
 		// Can't use template<class... Args> here because templates are not allowed inside functions.
@@ -422,7 +422,7 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 				const TriangleIndex triangle_index = this->triangles[current.node->getChildrenIndex() + i];
 				const Triangle &triangle = scene.triangles[triangle_index];
 
-				typename ray_t::distance_t distance;
+				typename ray_t::distance_t distance = ray_t::max_distance();
 				const auto intersected = ray_t::booleanAnd(ray.intersectTriangle(triangle, &distance), current.active_mask);
 
 				if(ray_t::isAny(intersected))
