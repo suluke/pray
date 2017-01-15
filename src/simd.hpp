@@ -70,6 +70,7 @@ namespace simd {
 
   // memory
   static constexpr auto load_ps = _mm256_load_ps;
+  static constexpr auto load_si = _mm256_load_si256;
   static constexpr auto store_ps = _mm256_store_ps;
   static constexpr auto store_si = _mm256_store_si256;
 }
@@ -128,6 +129,7 @@ namespace simd {
 
   // memory
   static constexpr auto load_ps = _mm_load_ps;
+  static constexpr auto load_si = _mm_load_si128;
   static constexpr auto store_ps = _mm_store_ps;
   static constexpr auto store_si = _mm_store_si128;
 }
@@ -194,7 +196,15 @@ namespace simd {
     Vec3Pack operator*(component_t a) const {
       return Vec3Pack(mul_ps(x, a), mul_ps(y, a), mul_ps(z, a));
     }
+    Vec3Pack operator*(float A) const {
+      const auto a = simd::set1_ps(A);
+      return Vec3Pack(mul_ps(x, a), mul_ps(y, a), mul_ps(z, a));
+    }
     Vec3Pack operator/(component_t a) const {
+      return Vec3Pack(div_ps(x, a), div_ps(y, a), div_ps(z, a));
+    }
+    Vec3Pack operator/(float A) const {
+      const auto a = simd::set1_ps(A);
       return Vec3Pack(div_ps(x, a), div_ps(y, a), div_ps(z, a));
     }
     Vec3Pack operator/(Vec3Pack v) const {

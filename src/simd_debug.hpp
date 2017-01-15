@@ -102,6 +102,7 @@ namespace simd {
 
   // memory
   static inline floatty load_ps(const float *addr) { return CONCAT2(MACRO_INTRIN_PREFIX, load_ps)(addr); }
+  static inline intty load_si(const CONCAT3(__m, MACRO_REGISTER_SIZE_BITS, i) *addr) { return CONCAT3(MACRO_INTRIN_PREFIX, load_si, MACRO_REGISTER_SIZE_BITS)(addr); }
   static inline void store_ps(float *addr, floatty val) { CONCAT2(MACRO_INTRIN_PREFIX, store_ps)(addr, val); }
   static inline void store_si(intty *addr, intty val) { CONCAT3(MACRO_INTRIN_PREFIX, store_si, MACRO_REGISTER_SIZE_BITS)(addr, val); }
 }
