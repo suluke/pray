@@ -6,9 +6,11 @@
 #include <array>
 
 struct SSEColor : public simd::Vec3Pack {
+  SSEColor() : simd::Vec3Pack() {}
   SSEColor(const Color &c) : simd::Vec3Pack(c.r, c.g, c.b) {}
   SSEColor(const simd::Vec3Pack &c) {}
   SSEColor(simd::floatty r, simd::floatty g, simd::floatty b) : simd::Vec3Pack(r, g, b) {}
+  SSEColor(float r, float g, float b) : simd::Vec3Pack(r, g, b) {}
 };
 
 template<class scene_t>
@@ -31,6 +33,8 @@ struct SSERay {
   const location_t origin;
   simd::Vec3Pack direction;
   simd::Vec3Pack dir_inv;
+
+  SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 
   SSERay(const Camera &cam, const Vector3 &left, const Vector3 &top, const dim_t x, const dim_t y, float max_x, float max_y) : origin(cam.position) {
     alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
@@ -165,8 +169,6 @@ struct SSERay {
   }
 
 private:
-  SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
-
   static distance_t getLambert(simd::Vec3Pack L, simd::Vec3Pack N, distance_t light_dist_squared) {
     // can't remove the simd::max_ps here since the ray_t::isOppositeDirection(shadow_ray.direction, N) in CpuTracer is reduced with isAll
     return simd::div_ps(simd::max_ps(L.dot(N), simd::set1_ps(0.f)), light_dist_squared);

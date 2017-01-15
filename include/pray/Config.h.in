@@ -5,6 +5,7 @@
 #cmakedefine WITH_OMP
 #cmakedefine WITH_CUDA
 #cmakedefine WITH_SSE
+#cmakedefine WITH_SSE_PT
 #cmakedefine WITH_SUBSAMPLING
 #cmakedefine WITH_BIH
 #cmakedefine WITH_BIH_SMART_TRAVERSION

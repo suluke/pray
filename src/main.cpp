@@ -21,6 +21,7 @@ struct PrayTypes {
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
 };
+#ifndef WITH_SSE_PT
 template<>
 struct PrayTypes<PathScene> {
 	using scene_t = PathScene;
@@ -31,6 +32,7 @@ struct PrayTypes<PathScene> {
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
 };
+#endif // not WITH_SSE_PT
 
 using WhittedTypes = PrayTypes<WhittedScene>;
 using PathTypes = PrayTypes<PathScene>;

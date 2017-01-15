@@ -20,6 +20,7 @@ find_package(SIMD)
 if (NOT SIMD_FOUND)
   set(WITH_SSE OFF CACHE BOOL "Build with SIMD (SSE) support" FORCE)
 endif()
+option(WITH_SSE_PT "Use SSE Rays in path tracing mode" OFF)
 
 option(WITH_SUBSAMPLING "Build with adaptive subsampling enabled" OFF)
 option(WITH_BIH "Build with BIH acceleration structure" OFF)
