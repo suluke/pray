@@ -60,7 +60,7 @@ void CpuTracer<ray_t, accel_t>::render(ImageView &image) const
 	#endif /*WITH_SUBSAMPLING*/
 
 #ifdef WITH_OMP
-	#pragma omp parallel for schedule(guided, 10)
+	#pragma omp parallel for schedule(guided, 10) collapse(2)
 #endif
 	for(long y = 0; y < image.resolution.h; y += ray_t::dim::h) {
 		for(long x = 0; x < image.resolution.w; x += ray_t::dim::w) {
