@@ -70,8 +70,6 @@ struct StageLogger {
 		print_opt(WITH_CUDA);
 		print_opt(WITH_SSE);
 		print_opt(WITH_BIH);
-		print_opt(WITH_BIH_SMART_TRAVERSION);
-		print_opt(WITH_BIH_SMART_TRAVERSION_ITERATIVE);
 		print_opt(WITH_SUBSAMPLING);
 		print_opt(WITH_TIMING);
 		print_opt(WITH_DEBUG_TOOL);
