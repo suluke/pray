@@ -181,6 +181,9 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 
 	IntersectionResult<ray_t> intersection_result;
 
+	// keen this a VALUE (as opposed to reference)!!!
+	const auto triangles_data = scene.triangles.data();
+
 	struct StackElement
 	{
 		float plane;
@@ -244,7 +247,7 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 			for(unsigned i = 0u; i < current.node->getLeafData().children_count; ++i)
 			{
 				const TriangleIndex triangle_index = current.node->getChildrenIndex() + i;
-				const Triangle &triangle = scene.triangles[triangle_index];
+				const Triangle &triangle = triangles_data[triangle_index];
 
 				typename ray_t::distance_t distance = ray_t::max_distance();
 				const auto intersected = ray_t::booleanAnd(ray.intersectTriangle(triangle, &distance), current.active_mask);
