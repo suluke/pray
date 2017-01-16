@@ -91,12 +91,10 @@ struct Bih
 #endif
 	};
 
-	std::vector<TriangleIndex> triangles;
-
 	AABox3 scene_aabb;
 	std::vector<Node> nodes;
 
-	void build(const scene_t &scene);
+	void build(scene_t &scene);
 	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
 
 	void printAnalysis() const;

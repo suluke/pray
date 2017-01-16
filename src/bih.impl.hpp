@@ -3,7 +3,7 @@
 template<class bih_t>
 struct BihBuilder
 {
-	const typename bih_t::scene_t &scene;
+	typename bih_t::scene_t &scene;
 	bih_t &bih;
 
 	struct TriangleData
@@ -15,9 +15,10 @@ struct BihBuilder
 	};
 	std::vector<TriangleData> triangle_data; // each element corresponds to an element in scene.triangles
 
+	std::vector<TriangleIndex> triangles;
 	typedef std::vector<TriangleIndex>::iterator TrianglesIt;
 
-	BihBuilder(const typename bih_t::scene_t &scene, bih_t &bih) : scene(scene), bih(bih) {}
+	BihBuilder(typename bih_t::scene_t &scene, bih_t &bih) : scene(scene), bih(bih) {}
 
 	void build()
 	{
@@ -30,8 +31,8 @@ struct BihBuilder
 			triangle_data.emplace_back(aabb, t.calculateCentroid());
 		}
 
-		bih.triangles.resize(scene.triangles.size());
-		for(TriangleIndex i=0u; i<scene.triangles.size(); ++i) bih.triangles[i] = i;
+		triangles.resize(scene.triangles.size());
+		for(TriangleIndex i=0u; i<scene.triangles.size(); ++i) triangles[i] = i;
 
 		// https://de.wikipedia.org/wiki/Bin%C3%A4rbaum#Abz.C3.A4hlungen
 		// The bih is a binary tree with (at most) scene.triangles.size() leaves.
@@ -41,7 +42,12 @@ struct BihBuilder
 #ifdef DEBUG
 		bih.nodes.back().parent = nullptr;
 #endif
-		buildNode(bih.nodes.back(), bih.scene_aabb, bih.triangles.begin(), bih.triangles.end());
+		buildNode(bih.nodes.back(), bih.scene_aabb, triangles.begin(), triangles.end());
+
+		static_assert(std::is_trivial<Triangle>::value, "Triangle should be trivial");
+		std::vector<Triangle> reordered_triangles(scene.triangles.size());
+		for(size_t i=0u; i<triangles.size(); ++i) reordered_triangles[i] = scene.triangles[triangles[i]];
+		scene.triangles = std::move(reordered_triangles);
 	}
 
 	void buildNode(typename bih_t::Node &current_node, const AABox3 &initial_aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const unsigned retry_depth = 0u)
@@ -65,7 +71,7 @@ struct BihBuilder
 		{
 			// build a leaf
 
-			const auto children_index = std::distance(bih.triangles.begin(), triangles_begin);
+			const auto children_index = std::distance(triangles.begin(), triangles_begin);
 			current_node.makeLeafNode(children_index, children_count);
 
 #ifdef DEBUG
@@ -144,7 +150,7 @@ struct BihBuilder
 };
 
 template<class ray_t, class scene_t>
-void Bih<ray_t, scene_t>::build(const scene_t &scene)
+void Bih<ray_t, scene_t>::build(scene_t &scene)
 {
 	BihBuilder<Bih<ray_t, scene_t>> builder(scene, *this);
 	builder.build();
@@ -237,8 +243,7 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 		{
 			for(unsigned i = 0u; i < current.node->getLeafData().children_count; ++i)
 			{
-				//TODO: remove double indirection (reorder scene.triangles)
-				const TriangleIndex triangle_index = this->triangles[current.node->getChildrenIndex() + i];
+				const TriangleIndex triangle_index = current.node->getChildrenIndex() + i;
 				const Triangle &triangle = scene.triangles[triangle_index];
 
 				typename ray_t::distance_t distance = ray_t::max_distance();
@@ -367,7 +372,7 @@ size_t Bih<ray_t, scene_t>::hash() const
 		s << n.getType() << " ";
 		if(n.getType() == Node::Leaf)
 		{
-			for(auto i=0u; i<n.getLeafData().children_count; ++i) s << triangles[n.getChildrenIndex()+i] << " ";
+			for(auto i=0u; i<n.getLeafData().children_count; ++i) s << n.getChildrenIndex()+i << " ";
 		}
 		else
 		{
