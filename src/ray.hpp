@@ -3,6 +3,50 @@
 #pragma once
 #include "scene.hpp" // includes math and image
 
+#include <pmmintrin.h>
+
+inline __m128 set_vector3_ps(const Vector3 &v) {
+    return _mm_set_ps(0.f, v.z, v.y, v.x);
+}
+
+// make sure that either a[3] or b[3] == 0.f, otherwise this is wrong!!!
+inline float fast_dot_ps(__m128 a, __m128 b) {
+    const __m128 t = _mm_mul_ps(a, b);
+    const __m128 r = _mm_hadd_ps(_mm_hadd_ps(t, t), t); // sse3...
+
+    // this is optimized to a no-op
+    float r_f;
+    _mm_store_ss(&r_f, r);
+    return r_f;
+}
+
+inline __m128 cross_ps(__m128 a, __m128 b) {
+    /*
+    shema:
+    z = (a1*b2 - a2*b1)
+    x = (a2*b3 - a3*b2)
+    y = (a3*b1 - a1*b3)
+    w = trash
+    "Shifting" coordinates around by 1, we safe one _mm_shuffle_ps in summary because we can use operands a and b as colums 1 and 4 directly.
+    */
+
+    // cloumns
+    const __m128 c1 = a;
+    const __m128 c2 = _mm_shuffle_ps(b, b, 0b001001);
+    const __m128 c3 = _mm_shuffle_ps(a, a, 0b001001);
+    const __m128 c4 = b;
+
+    // multiplications
+    const __m128 m1 = _mm_mul_ps(c1, c2);
+    const __m128 m2 = _mm_mul_ps(c3, c4);
+
+    // subtraction
+    const __m128 r = _mm_sub_ps(m1, m2);
+
+    // shuffle result so that we return the correct in-register layout
+    return _mm_shuffle_ps(r, r, 0b001001);
+}
+
 template<class scene_t>
 struct Ray {
   struct mask_t {};
@@ -30,29 +74,34 @@ struct Ray {
   inline bool_t intersectTriangle(const Triangle &triangle, distance_t *out_distance) const
   {
     // http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
-    const Vector3 &t_v1 = triangle.vertices[0];
-    const Vector3 &t_v2 = triangle.vertices[1];
-    const Vector3 &t_v3 = triangle.vertices[2];
+    const __m128 origin_mm = set_vector3_ps(origin);
+    const __m128 direction_mm = set_vector3_ps(direction);
 
-    const Vector3 e1 = t_v2 - t_v1;
-    const Vector3 e2 = t_v3 - t_v1;
+    const __m128 t_v1 = set_vector3_ps(triangle.vertices[0]);
+    const __m128 t_v2 = set_vector3_ps(triangle.vertices[1]);
+    const __m128 t_v3 = set_vector3_ps(triangle.vertices[2]);
 
-    const Vector3 p = direction.cross(e2);
+    const __m128 e1 = _mm_sub_ps(t_v2, t_v1);
+    const __m128 e2 = _mm_sub_ps(t_v3, t_v1);
 
-    const float det = p.dot(e1);
+    const __m128 p = cross_ps(direction_mm, e2);
+
+    const float det = fast_dot_ps(p, e1);
 
     if(det == approx(0.f)) return false;
 
-    const Vector3 t = origin - t_v1;
+    const __m128 t = _mm_sub_ps(origin_mm, t_v1);
 
-    const Vector3 q = t.cross(e1);
+    const __m128 q = cross_ps(t, e1);
 
-    const float u = p.dot(t) / det;
-    const float v = q.dot(direction) / det;
+    const float inv_det = 1.f / det;
+
+    const float u = fast_dot_ps(p, t) * inv_det;
+    const float v = fast_dot_ps(q, direction_mm) * inv_det;
 
     if(u >= 0.f && v >= 0.f && u + v <= 1.f)
     {
-      const float distance = q.dot(e2) / det;
+      const float distance = fast_dot_ps(q, e2) * inv_det;
       *out_distance = distance;
       return distance >= 0.f;
     }
