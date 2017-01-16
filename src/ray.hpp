@@ -67,9 +67,10 @@ struct Ray {
 
   const Vector3 origin;
   const Vector3 direction;
+  const Vector3 dir_inv;
 
   Ray(const Camera &cam, const Vector3 &left, const Vector3 &top, const dim_t x, const dim_t y, float max_x, float max_y)
-  : origin(cam.position), direction((top * (1.f - (2 * y + 1) / max_y) + left * (1.f - (2 * x + 1) / max_x) + cam.direction).normalize()) {}
+  : origin(cam.position), direction((top * (1.f - (2 * y + 1) / max_y) + left * (1.f - (2 * x + 1) / max_x) + cam.direction).normalize()), dir_inv(1.f / direction.x, 1.f / direction.y, 1.f / direction.z) {}
 
   inline bool_t intersectTriangle(const Triangle &triangle, distance_t *out_distance) const
   {
@@ -115,7 +116,7 @@ struct Ray {
     float t_min = std::numeric_limits<float>::lowest(), t_max = std::numeric_limits<float>::max();
     for(int i=0; i<3; ++i)
     {
-      float i_d = 1.f / direction[i];
+      float i_d = dir_inv[i];
       float t0 = (aabb.min[i] - origin[i]) * i_d;
       float t1 = (aabb.max[i] - origin[i]) * i_d;
       if(i_d < 0.f) std::swap(t0, t1);
@@ -141,7 +142,7 @@ struct Ray {
 
   bool_t intersectAxisPlane(float plane, unsigned axis, distance_t maximum_distance) const {
     const auto o = origin[axis];
-    const auto d_inv = 1.f / direction[axis];
+    const auto d_inv = dir_inv[axis];
     const auto p = plane;
 
     // solve o + t*d = p -> t = (p - o) / d
@@ -151,7 +152,7 @@ struct Ray {
     return t < maximum_distance;
   }
 
-  Ray(location_t origin, Vector3 direction) : origin(origin), direction(direction) {}
+  Ray(location_t origin, Vector3 direction) : origin(origin), direction(direction), dir_inv(1.f / direction.x, 1.f / direction.y, 1.f / direction.z) {}
 
   static Ray getShadowRay(Light light, location_t P, distance_t *ld) {
     const Vector3 light_vector = light.position - P;
