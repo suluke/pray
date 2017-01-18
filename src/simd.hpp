@@ -155,9 +155,9 @@ namespace simd {
     return X[i];
   }
 
-  static inline int extract_ps(intty x, unsigned i) {
-    alignas(simd::REQUIRED_ALIGNMENT) std::array<int, REGISTER_CAPACITY_I32> X;
-    store_ps(reinterpret_cast<float*>(X.data()), x);
+  static inline int extract_si(intty x, unsigned i) {
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<int32_t, REGISTER_CAPACITY_I32> X;
+    store_si((intty *) X.data(), x);
     ASSERT(i < (unsigned) REGISTER_CAPACITY_I32);
     return X[i];
   }
@@ -255,7 +255,7 @@ inline std::ostream &operator<<(std::ostream &o, const simd::floatty &f) {
 }
 inline std::ostream &operator<<(std::ostream &o, const simd::intty &f) {
   for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
-    o << simd::extract_ps(f, i) << ", ";
+    o << simd::extract_si(f, i) << ", ";
   }
   return o;
 }

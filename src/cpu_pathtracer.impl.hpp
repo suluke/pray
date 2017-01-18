@@ -90,9 +90,13 @@ typename SSERay<PathScene>::color_t CpuPathTracer< rt, accel_t >::trace(const Pa
     }
   }
 
-  const auto killed = simd::load_ps(reinterpret_cast<float*>(EmissionMask.data()));
+  const auto killed = simd::load_si((simd::intty *) EmissionMask.data());
   const auto material_color = ray_t::color_t{simd::load_ps(R.data()), simd::load_ps(G.data()), simd::load_ps(B.data())};
-  const auto emission = ray_t::color_t{simd::and_ps(material_color.x, killed), simd::and_ps(material_color.y, killed), simd::and_ps(material_color.z, killed)};
+  const auto emission = ray_t::color_t {
+    simd::and_ps(material_color.x, simd::castsi_ps(killed)),
+    simd::and_ps(material_color.y, simd::castsi_ps(killed)),
+    simd::and_ps(material_color.z, simd::castsi_ps(killed))
+  };
 
   if(ray_t::isAll(killed) || depth >= opts.max_depth) {
     return emission;
@@ -104,7 +108,7 @@ typename SSERay<PathScene>::color_t CpuPathTracer< rt, accel_t >::trace(const Pa
   const auto &Z = N;
   const auto P = ray.getIntersectionPoint(intersection_distance) + N * 0.0001f;
 
-  const auto alive = simd::not_ps(killed);
+  const auto alive = simd::castps_si(simd::not_ps(simd::castsi_ps(killed)));
 
   typename ray_t::color_t value{0, 0, 0};
   for (unsigned i = 0; i < opts.num_samples; ++i) {
@@ -112,7 +116,11 @@ typename SSERay<PathScene>::color_t CpuPathTracer< rt, accel_t >::trace(const Pa
     value += trace(scene, next, depth + 1, alive);
   }
 
-  const auto irradiance = ray_t::color_t{simd::and_ps(value.x, alive), simd::and_ps(value.y, alive), simd::and_ps(value.z, alive)};
+  const auto irradiance = ray_t::color_t {
+    simd::and_ps(value.x, simd::castsi_ps(alive)),
+    simd::and_ps(value.y, simd::castsi_ps(alive)),
+    simd::and_ps(value.z, simd::castsi_ps(alive))
+  };
 
   return irradiance * material_color  / opts.num_samples + emission;
 }
