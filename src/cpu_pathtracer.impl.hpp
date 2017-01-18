@@ -55,77 +55,66 @@ typename Ray<PathScene>::color_t CpuPathTracer<ray_t, accel_t>::trace(const Path
 template <class rt, class accel_t>
 typename SSERay<PathScene>::color_t CpuPathTracer< rt, accel_t >::trace(const PathScene &scene, const SSERay<PathScene> &ray, unsigned depth, typename SSERay<PathScene>::mask_t mask) const {
   using ray_t = SSERay<PathScene>;
+
   typename ray_t::distance_t intersection_distance;
   const auto intersect = acceleration_structure.intersect(scene, ray, &intersection_distance);
 
-  alignas(32) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> triangles;
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> triangles;
   simd::store_si((simd::intty *) triangles.data(), intersect);
 
-  // base for hemisphere sampling
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X_x, X_y, X_z;
-  // material colors
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R, G, B;
-  alignas(32) std::array<int32_t, simd::REGISTER_CAPACITY_I32> KillBuf;
-  // load all the scattered information into consecutive vectors
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X_x, X_y, X_z;
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R, G, B;
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<int32_t, simd::REGISTER_CAPACITY_I32> EmissionMask;
+
   for (unsigned i = 0; i < triangles.size(); ++i) {
     auto T_idx = triangles[i];
     if (T_idx != TriangleIndex_Invalid) {
-      auto &triangle = scene.triangles[T_idx];
-      auto X = (triangle.vertices[1] - triangle.vertices[0]).normalize();
+      const auto &triangle = scene.triangles[T_idx];
+      const auto X = (triangle.vertices[1] - triangle.vertices[0]).normalize();
       X_x[i] = X.x;
       X_y[i] = X.y;
       X_z[i] = X.z;
       const auto &material = scene.materials[triangle.material_index];
-      if (material.isEmission) {
-	KillBuf[i] = true;
-      } else {
-	KillBuf[i] = false;
-      }
-      auto &c = material.color;
-      R[i] = c.r;
-      G[i] = c.g;
-      B[i] = c.b;
+      R[i] = material.color.r;
+      G[i] = material.color.g;
+      B[i] = material.color.b;
+      EmissionMask[i] = material.isEmission ? -1 : 0u;
     } else {
-      X_x[i] = 0;
-      X_y[i] = 0;
-      X_z[i] = 0;
+      X_x[i] = 0.f;
+      X_y[i] = 0.f;
+      X_z[i] = 0.f;
       R[i] = scene.background_color.r;
       G[i] = scene.background_color.g;
       B[i] = scene.background_color.b;
-      KillBuf[i] = true;
+      EmissionMask[i] = -1;
     }
   }
-  auto Killed = simd::load_si((simd::intty *) KillBuf.data());
-  auto Colr = typename ray_t::color_t{simd::load_ps(R.data()), simd::load_ps(G.data()), simd::load_ps(B.data())};
-  auto Alive = simd::castps_si(simd::and_ps(simd::not_ps(simd::castsi_ps(Killed)), simd::castsi_ps(mask)));
 
-  // The Killed mask tells if we hit an emitting triangle (aka a light source)
-  // Therefore, `Colr AND Killed` gives us all the emission colors
-  if (!ray_t::isAny(Alive) || depth >= opts.max_depth)
-    return typename ray_t::color_t {
-      simd::and_ps(simd::castsi_ps(Killed), Colr.x),
-      simd::and_ps(simd::castsi_ps(Killed), Colr.y),
-      simd::and_ps(simd::castsi_ps(Killed), Colr.z)
-    };
+  const auto killed = simd::load_ps(reinterpret_cast<float*>(EmissionMask.data()));
+  const auto material_color = ray_t::color_t{simd::load_ps(R.data()), simd::load_ps(G.data()), simd::load_ps(B.data())};
+  const auto emission = ray_t::color_t{simd::and_ps(material_color.x, killed), simd::and_ps(material_color.y, killed), simd::and_ps(material_color.z, killed)};
+
+  if(ray_t::isAll(killed) || depth >= opts.max_depth) {
+    return emission;
+  }
 
   const auto N = ray_t::getNormals(scene, intersect);
-  auto X = typename ray_t::vec3_t{simd::load_ps(X_x.data()), simd::load_ps(X_y.data()), simd::load_ps(X_z.data())};
-  auto Y = N.cross(X).normalize(); // this will be INFINITY (division by zero) for invalid triangles
-  auto &Z = N;
+  const auto X = typename ray_t::vec3_t{simd::load_ps(X_x.data()), simd::load_ps(X_y.data()), simd::load_ps(X_z.data())};
+  const auto Y = N.cross(X).normalize(); // this will be INFINITY (division by zero) for invalid triangles
+  const auto &Z = N;
   const auto P = ray.getIntersectionPoint(intersection_distance) + N * 0.0001f;
+
+  const auto alive = simd::not_ps(killed);
 
   typename ray_t::color_t value{0, 0, 0};
   for (unsigned i = 0; i < opts.num_samples; ++i) {
     ray_t next(P, sampleHemisphere(X, Y, Z));
-    value += trace(scene, next, depth + 1, Alive);
+    value += trace(scene, next, depth + 1, alive);
   }
-  auto MaterialColor = typename ray_t::color_t {
-    simd::and_ps(simd::castsi_ps(Alive), Colr.x),
-    simd::and_ps(simd::castsi_ps(Alive), Colr.y),
-    simd::and_ps(simd::castsi_ps(Alive), Colr.z)
-  };
-  value = MaterialColor * value / opts.num_samples;
-  return value;
+
+  const auto irradiance = ray_t::color_t{simd::and_ps(value.x, alive), simd::and_ps(value.y, alive), simd::and_ps(value.z, alive)};
+
+  return irradiance * material_color  / opts.num_samples + emission;
 }
 
 

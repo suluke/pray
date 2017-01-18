@@ -8,7 +8,7 @@
 struct SSEColor : public simd::Vec3Pack {
   SSEColor() : simd::Vec3Pack() {}
   SSEColor(const Color &c) : simd::Vec3Pack(c.r, c.g, c.b) {}
-  SSEColor(const simd::Vec3Pack &c) {}
+  SSEColor(const simd::Vec3Pack &c) : simd::Vec3Pack(c) {}
   SSEColor(simd::floatty r, simd::floatty g, simd::floatty b) : simd::Vec3Pack(r, g, b) {}
   SSEColor(float r, float g, float b) : simd::Vec3Pack(r, g, b) {}
 };
@@ -301,9 +301,9 @@ inline std::ostream &operator<<(std::ostream &o, const SSERay<scene_t> &r) {
 }
 
 inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) {
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
   simd::store_ps(R.data(), c.x);
   simd::store_ps(G.data(), c.y);
   simd::store_ps(B.data(), c.z);

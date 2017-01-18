@@ -17,6 +17,7 @@ namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = 32u;
   static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
   static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
+  static constexpr auto REQUIRED_ALIGNMENT = REGISTER_SIZE_BYTES;
 
   using floatty = __m256;
   using intty = __m256i;
@@ -83,6 +84,7 @@ namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = 16u;
   static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
   static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
+  static constexpr auto REQUIRED_ALIGNMENT = REGISTER_SIZE_BYTES;
 
   using floatty = __m128;
   using intty = __m128i;
@@ -147,9 +149,16 @@ namespace simd {
   }
 
   static inline float extract_ps(floatty x, unsigned i) {
-    alignas(32) std::array<float, REGISTER_CAPACITY_FLOAT> X;
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<float, REGISTER_CAPACITY_FLOAT> X;
     store_ps(X.data(), x);
     ASSERT(i < (unsigned) REGISTER_CAPACITY_FLOAT);
+    return X[i];
+  }
+
+  static inline int extract_ps(intty x, unsigned i) {
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<int, REGISTER_CAPACITY_I32> X;
+    store_ps(reinterpret_cast<float*>(X.data()), x);
+    ASSERT(i < (unsigned) REGISTER_CAPACITY_I32);
     return X[i];
   }
 }
@@ -240,6 +249,12 @@ namespace simd {
 
 inline std::ostream &operator<<(std::ostream &o, const simd::floatty &f) {
   for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
+    o << simd::extract_ps(f, i) << ", ";
+  }
+  return o;
+}
+inline std::ostream &operator<<(std::ostream &o, const simd::intty &f) {
+  for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
     o << simd::extract_ps(f, i) << ", ";
   }
   return o;

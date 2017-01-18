@@ -68,6 +68,7 @@ namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = MACRO_REGISTER_SIZE_BYTES;
   static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
   static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
+  static constexpr auto REQUIRED_ALIGNMENT = MACRO_REGISTER_SIZE_BYTES;
 
   using floatty = CONCAT2(__m, MACRO_REGISTER_SIZE_BITS);
   using intty = CONCAT3(__m, MACRO_REGISTER_SIZE_BITS, i);
