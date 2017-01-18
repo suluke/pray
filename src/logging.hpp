@@ -69,6 +69,7 @@ struct StageLogger {
 		print_opt(WITH_OMP);
 		print_opt(WITH_CUDA);
 		print_opt(WITH_SSE);
+		print_opt(WITH_SSE_PT);
 		print_opt(WITH_BIH);
 		print_opt(WITH_SUBSAMPLING);
 		print_opt(WITH_TIMING);
