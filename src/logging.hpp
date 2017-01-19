@@ -2,11 +2,29 @@
 #define PRAY_LOGGING_HPP
 
 #include "pray/Config.h"
+#include <iostream>
 #ifdef WITH_TIMING
   #include <chrono>
 #endif
+#ifdef WITH_PROGRESS
+	#include <atomic>
+	#include <future>
+	#include <iomanip>
+#endif
 
 struct StageLogger {
+	const RenderOptions &opts;
+	StageLogger(const RenderOptions &opts) : opts(opts) {}
+#ifdef WITH_PROGRESS
+	static constexpr unsigned progressWidth = 3;
+	static constexpr std::chrono::milliseconds progressRefreshTime{200};
+	const Image *image;
+	std::atomic<bool> renderFinished{false};
+	std::thread progressPrinter;
+	~StageLogger() {
+		progressPrinter.join();
+	}
+#endif // WITH_PROGRESS
 #ifdef WITH_TIMING
 	using timepoint_t = std::chrono::time_point<std::chrono::high_resolution_clock>;
 	timepoint_t begin;
@@ -15,8 +33,8 @@ struct StageLogger {
 	timepoint_t output_begin;
 	timepoint_t end;
 #endif
-	void start(const char *file) {
-		std::cout << "Loading " << file << std::endl;
+	void start() {
+		std::cout << "Loading " << opts.filename << std::endl;
 #ifdef WITH_TIMING
 		begin = std::chrono::high_resolution_clock::now();
 #endif
@@ -34,11 +52,29 @@ struct StageLogger {
 	}
 	void startRendering() {
 		std::cout << "Rendering..." << std::endl;
+#ifdef WITH_PROGRESS
+		progressPrinter = std::thread([](const StageLogger *logger) {
+			while (!logger->renderFinished) {
+				std::this_thread::sleep_for(StageLogger::progressRefreshTime);
+				auto percent = logger->image->writtenPixels * 100 / (logger->opts.resolution.w * logger->opts.resolution.h);
+				if (percent == 100) break;
+				auto f(std::cout.flags());
+				std::cout << std::string(StageLogger::progressWidth, '\b');
+				std::cout << std::right << std::setw(StageLogger::progressWidth - 1); // -1 because of %
+				std::cout << percent << "%" << std::flush;
+				std::cout.flags(f);
+			}
+		}, this);
+#endif // WITH_PROGRESS
 #ifdef WITH_TIMING
 		render_begin = std::chrono::high_resolution_clock::now();
 #endif
 	}
 	void startOutput() {
+#ifdef WITH_PROGRESS
+		std::cout << std::string(progressWidth, '\b') << std::setw(progressWidth) << "100%" << std::endl;
+		renderFinished = true;
+#endif // WITH_PROGRESS
 #ifndef DISABLE_OUTPUT
 		std::cout << "Saving..." << std::endl;
 #endif
