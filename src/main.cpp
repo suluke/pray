@@ -50,12 +50,8 @@ static void traceScene(const PathScene &scene, ImageView &img, const PathTypes::
 }
 
 template<class scene_t>
-static int trace(const char *outpath, RenderOptions &opts) {
+static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) {
 	Image image(opts.resolution);
-
-	StageLogger logger;
-	logger.start();
-
 	ImageView img(image, 0, opts.resolution.h);
 
 	scene_t scene;
@@ -87,27 +83,22 @@ static int trace(const char *outpath, RenderOptions &opts) {
 using namespace std;
 int main(int argc, char *argv[])
 {
-	if (argc != 3)
-	{
+	if (argc != 3) {
 		cerr << "usage: " << argv[0] << " <input.json> <output.bmp>\n";
 		return 1;
 	}
-	dump_config();
-
-#ifdef DEBUG
-	cout << "Warning: This is a Debug build and might be very slow!\n";
-#endif
-
-	cout << "Loading..." << endl;
+	StageLogger logger;
+	logger.dump_config();
+	logger.start(argv[1]);
 	RenderOptions opts;
 	if(!LoadJob(argv[1], &opts)) return 1;
 
 	switch (opts.method) {
 		case RenderOptions::WHITTED: {
-			return trace<WhittedScene>(argv[2], opts);
+			return trace<WhittedScene>(argv[2], opts, logger);
 		}
 		case RenderOptions::PATH: {
-			return trace<PathScene>(argv[2], opts);
+			return trace<PathScene>(argv[2], opts, logger);
 		}
 		default:
 			return 1;

@@ -3,7 +3,7 @@
 
 #include "pray/Config.h"
 #ifdef WITH_TIMING
- #include <chrono>
+  #include <chrono>
 #endif
 
 struct StageLogger {
@@ -15,7 +15,8 @@ struct StageLogger {
 	timepoint_t output_begin;
 	timepoint_t end;
 #endif
-	void start() {
+	void start(const char *file) {
+		std::cout << "Loading " << file << std::endl;
 #ifdef WITH_TIMING
 		begin = std::chrono::high_resolution_clock::now();
 #endif
@@ -45,13 +46,14 @@ struct StageLogger {
 		output_begin = std::chrono::high_resolution_clock::now();
 #endif
 	}
-	void log() {
+	void log() const {
 #ifdef WITH_TIMING
 		std::cout << "Preprocess Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(render_begin - preprocess_begin).count() << "ms\n";
 		std::cout << "Render Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(output_begin - render_begin).count() << "ms\n";
 		std::cout << "Total Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "ms\n";
 #endif
 	}
+	void dump_config() const;
 };
 #ifdef WITH_CONFDUMP
 #include <iomanip>
@@ -64,7 +66,7 @@ struct StageLogger {
 		std::cout.flags(f);\
 	} while(false)
 	
-	static void dump_config() {
+	void StageLogger::dump_config() const {
 		std::cout << "####### Configuration: #######\n";
 		print_opt(WITH_OMP);
 		print_opt(WITH_CUDA);
@@ -73,14 +75,16 @@ struct StageLogger {
 		print_opt(WITH_BIH);
 		print_opt(WITH_SUBSAMPLING);
 		print_opt(WITH_TIMING);
-		print_opt(WITH_DEBUG_TOOL);
 		print_opt(WITH_CONFDUMP);
 		print_opt(DISABLE_OUTPUT);
 		std::cout << "##############################\n";
+#ifdef DEBUG
+		std::cout << "Warning: This is a Debug build and might be very slow!\n";
+#endif
 	}
 #undef STR
 #undef print_opt
 #else
-	static void dump_config() {}
+	void StageLogger::dump_config() const {}
 #endif
 #endif // PRAY_LOGGING_HPP
