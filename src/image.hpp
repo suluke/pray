@@ -4,12 +4,19 @@
 
 #include <vector>
 #include "math.hpp"
+#ifdef WITH_PROGRESS
+	#include <atomic>
+#endif
 
 struct Image
 {
 	const IntDimension2 resolution;
 	std::vector<uint8_t> pixels;
 	using dim_t = IntDimension2::dim_t;
+	
+#ifdef WITH_PROGRESS
+	std::atomic<unsigned> writtenPixels{0};
+#endif
 
 	Image(const IntDimension2 &res) : resolution(res), pixels(3 * resolution.w * resolution.h) {}
 
@@ -18,15 +25,14 @@ struct Image
 		ASSERT(x < resolution.w); ASSERT(y < resolution.h);
 		ASSERT(c.r >= 0.f); ASSERT(c.g >= 0.f); ASSERT(c.b >= 0.f);
 
+#ifdef WITH_PROGRESS
+		writtenPixels++;
+#endif
+
 		pixels[3 * (y * resolution.w + x) + 0] = fast_round(std::min(c.r, 1.f) * 255.f);
 		pixels[3 * (y * resolution.w + x) + 1] = fast_round(std::min(c.g, 1.f) * 255.f);
 		pixels[3 * (y * resolution.w + x) + 2] = fast_round(std::min(c.b, 1.f) * 255.f);
-/*
-		pixels[3 * (y * resolution.w + x) + 0] = std::round(std::min(c.r, 1.f) * 255.f);
-		pixels[3 * (y * resolution.w + x) + 1] = std::round(std::min(c.g, 1.f) * 255.f);
-		pixels[3 * (y * resolution.w + x) + 2] = std::round(std::min(c.b, 1.f) * 255.f);
-*/
-        }
+  }
 
 	Color getPixel(dim_t x, dim_t y) {
 		ASSERT(x < resolution.w); ASSERT(y < resolution.h);

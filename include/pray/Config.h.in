@@ -12,6 +12,7 @@
 #cmakedefine WITH_BIH_SMART_TRAVERSION_ITERATIVE
 #cmakedefine WITH_TIMING
 #cmakedefine WITH_CONFDUMP
+#cmakedefine WITH_PROGRESS
 #cmakedefine DISABLE_OUTPUT
 
 #endif

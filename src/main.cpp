@@ -1,3 +1,4 @@
+#include "pray/Config.h" // This should always be first
 #include "scene.hpp"
 #include "image.hpp"
 #include "dummy_acceleration.hpp"
@@ -39,19 +40,20 @@ using PathTypes = PrayTypes<PathScene>;
 
 static void traceScene(const WhittedScene &scene, ImageView &img, const WhittedTypes::accel_t &accel, const RenderOptions &opts) {
 	CpuTracer<WhittedTypes::ray_t, WhittedTypes::accel_t> tracer(scene, accel);
-	//tracer.acceleration_structure.printAnalysis();
 	tracer.render(img);
 }
 
 static void traceScene(const PathScene &scene, ImageView &img, const PathTypes::accel_t &accel, const RenderOptions &opts) {
 	CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t > tracer(scene, opts.path_opts, accel);
-	//tracer.acceleration_structure.printAnalysis();
 	tracer.render(img);
 }
 
 template<class scene_t>
 static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) {
 	Image image(opts.resolution);
+#ifdef WITH_PROGRESS
+	logger.image = &image;
+#endif
 	ImageView img(image, 0, opts.resolution.h);
 
 	scene_t scene;
@@ -65,7 +67,6 @@ static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) 
 	logger.startPreprocessing();
 	typename PrayTypes<scene_t>::accel_t accel;
 	accel.build(scene);
-	//std::cout << "hash: " << accel.hash() << "\n";
 
 	logger.startRendering();
 	traceScene(scene, img, accel, opts);
@@ -87,10 +88,10 @@ int main(int argc, char *argv[])
 		cerr << "usage: " << argv[0] << " <input.json> <output.bmp>\n";
 		return 1;
 	}
-	StageLogger logger;
-	logger.dump_config();
-	logger.start(argv[1]);
 	RenderOptions opts;
+	StageLogger logger(opts);
+	logger.dump_config();
+	logger.start();
 	if(!LoadJob(argv[1], &opts)) return 1;
 
 	switch (opts.method) {
