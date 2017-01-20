@@ -7,6 +7,7 @@
 #include "cpu_pathtracer.hpp"
 #include "ray.hpp"
 #include "sse_ray.hpp"
+#include "sampler.hpp"
 #include "logging.hpp" // This should always be last
 
 template<class scene_t>
@@ -21,6 +22,13 @@ struct PrayTypes {
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
+#ifdef WITH_SUBSAMPLING
+	template <class tracer_t>
+	using sampler_t = interpolating_sampler<scene_t, tracer_t, ray_t>;
+#else
+	template <class tracer_t>
+	using sampler_t = naive_sampler<scene_t, tracer_t, ray_t>;
+#endif // WITH_SUBSAMPLING
 };
 #ifndef WITH_SSE_PT
 template<>
@@ -32,6 +40,13 @@ struct PrayTypes<PathScene> {
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
+#ifdef WITH_SUBSAMPLING
+	template <class tracer_t>
+	using sampler_t = interpolating_sampler<scene_t, tracer_t, ray_t>;
+#else
+	template <class tracer_t>
+	using sampler_t = naive_sampler<scene_t, tracer_t, ray_t>;
+#endif // WITH_SUBSAMPLING
 };
 #endif // not WITH_SSE_PT
 
@@ -39,13 +54,15 @@ using WhittedTypes = PrayTypes<WhittedScene>;
 using PathTypes = PrayTypes<PathScene>;
 
 static void traceScene(const WhittedScene &scene, ImageView &img, const WhittedTypes::accel_t &accel, const RenderOptions &opts) {
-	CpuTracer<WhittedTypes::ray_t, WhittedTypes::accel_t> tracer(scene, accel);
-	tracer.render(img);
+	auto tracer = CpuTracer<WhittedTypes::ray_t, WhittedTypes::accel_t>(scene, accel);
+	using sampler = WhittedTypes::sampler_t<decltype(tracer)>;
+	sampler::render(scene, img, tracer);
 }
 
 static void traceScene(const PathScene &scene, ImageView &img, const PathTypes::accel_t &accel, const RenderOptions &opts) {
-	CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t > tracer(scene, opts.path_opts, accel);
-	tracer.render(img);
+	auto tracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
+	using sampler = PathTypes::sampler_t<decltype(tracer)>;
+	sampler::render(scene, img, tracer);
 }
 
 template<class scene_t>

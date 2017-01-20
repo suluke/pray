@@ -36,40 +36,6 @@ struct SSERay {
 
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 
-  SSERay(const Camera &cam, const Vector3 &left, const Vector3 &top, const dim_t x, const dim_t y, float max_x, float max_y) : origin(cam.position) {
-    alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
-    alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
-    alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
-    for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
-      X[i] = cam.direction.x;
-      Y[i] = cam.direction.y;
-      Z[i] = cam.direction.z;
-    }
-    for (unsigned i_x = 0; i_x < dim::w; ++i_x) {
-      float f_x = 1.f - (2 * (x + i_x) + 1) / max_x;
-      auto l = left * f_x;
-      for (unsigned i_y = 0; i_y < dim::h; ++i_y) {
-        X[i_y * dim::w + i_x] += l.x;
-        Y[i_y * dim::w + i_x] += l.y;
-        Z[i_y * dim::w + i_x] += l.z;
-      }
-    }
-    for (unsigned i_y = 0; i_y < dim::h; ++i_y) {
-      float f_y = 1.f - (2 * (y + i_y) + 1) / max_y;
-      auto t = top * f_y;
-      for (unsigned i_x = 0; i_x < dim::w; ++i_x) {
-        X[i_y * dim::w + i_x] += t.x;
-        Y[i_y * dim::w + i_x] += t.y;
-        Z[i_y * dim::w + i_x] += t.z;
-      }
-    }
-    direction.x = simd::load_ps(X.data());
-    direction.y = simd::load_ps(Y.data());
-    direction.z = simd::load_ps(Z.data());
-    direction.normalize();
-    dir_inv = vec3_t(1.f, 1.f, 1.f) / direction;
-  }
-
   inline bool_t intersectTriangle(const Triangle &triangle, distance_t *out_distance) const {
     // http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
     const Vector3 &t_v1 = triangle.vertices[0];

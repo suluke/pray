@@ -1,25 +1,4 @@
 template <class ray_t, class accel_t>
-void CpuPathTracer<ray_t, accel_t>::render(ImageView &image) const {
-  Vector3 left, right, bottom, top;
-  const float aspect = (float) image.resolution.h / image.resolution.w;
-  scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
-
-  float max_x = (float) image.resolution.w;
-  float max_y = (float) image.img.resolution.h;
-
-#ifdef WITH_OMP
-  #pragma omp parallel for schedule(guided, 10) collapse(2)
-#endif
-  for(long y = 0; y < image.resolution.h; y += ray_t::dim::h) {
-    for(long x = 0; x < image.resolution.w; x += ray_t::dim::w) {
-      ray_t ray(scene.camera, left, top, x, image.getGlobalY(y), max_x, max_y);
-      auto c = trace(scene, ray);
-      writeColorToImage(c, image, x, y);
-    }
-  }
-}
-
-template <class ray_t, class accel_t>
 typename Ray<PathScene>::color_t CpuPathTracer<ray_t, accel_t>::trace(const PathScene &scene, const Ray<PathScene> &ray, unsigned depth) const {
   typename ray_t::distance_t intersection_distance;
   const auto intersected_triangle = acceleration_structure.intersect(scene, ray, &intersection_distance);

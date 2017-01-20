@@ -49,8 +49,6 @@ inline __m128 cross_ps(__m128 a, __m128 b) {
 
 template<class scene_t>
 struct Ray {
-  struct mask_t {};
-  
   using dim_t = IntDimension2::dim_t;
   using intersect_t = TriangleIndex;
   using color_t = Color;
@@ -69,8 +67,7 @@ struct Ray {
   const Vector3 direction;
   const Vector3 dir_inv;
 
-  Ray(const Camera &cam, const Vector3 &left, const Vector3 &top, const dim_t x, const dim_t y, float max_x, float max_y)
-  : origin(cam.position), direction((top * (1.f - (2 * y + 1) / max_y) + left * (1.f - (2 * x + 1) / max_x) + cam.direction).normalize()), dir_inv(1.f / direction.x, 1.f / direction.y, 1.f / direction.z) {}
+  Ray(location_t origin, Vector3 direction) : origin(origin), direction(direction), dir_inv(1.f / direction.x, 1.f / direction.y, 1.f / direction.z) {}
 
   inline bool_t intersectTriangle(const Triangle &triangle, distance_t *out_distance) const
   {
@@ -151,8 +148,6 @@ struct Ray {
     // no t > 0 test for now, breaks if the camera is inside the scene aabb...
     return t < maximum_distance;
   }
-
-  Ray(location_t origin, Vector3 direction) : origin(origin), direction(direction), dir_inv(1.f / direction.x, 1.f / direction.y, 1.f / direction.z) {}
 
   static Ray getShadowRay(Light light, location_t P, distance_t *ld) {
     const Vector3 light_vector = light.position - P;

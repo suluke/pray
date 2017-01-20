@@ -16,14 +16,12 @@ struct CpuPathTracer {
   const accel_t &acceleration_structure;
 
   CpuPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &acceleration_structure) : scene(scene), opts(opts), acceleration_structure(acceleration_structure) {}
-  void render(ImageView &image) const;
+  typename Ray<PathScene>::color_t trace(const PathScene &scene, const Ray<PathScene> &ray, unsigned depth = 0) const;
+  typename SSERay<PathScene>::color_t trace(const PathScene &scene, const SSERay<PathScene> &ray, unsigned depth = 0, typename SSERay<PathScene>::mask_t mask = simd::set1_epi32(-1)) const;
 
 private:
   // Relevant: https://github.com/s9w/articles/blob/master/perf%20cpp%20random.md
   std::function<float()> sampling_rand = std::bind(std::uniform_real_distribution<float>(0, 1), std::default_random_engine());
-
-  typename Ray<PathScene>::color_t trace(const PathScene &scene, const Ray<PathScene> &ray, unsigned depth = 0) const;
-  typename SSERay<PathScene>::color_t trace(const PathScene &scene, const SSERay<PathScene> &ray, unsigned depth = 0, typename SSERay<PathScene>::mask_t mask = simd::set1_epi32(-1)) const;
   typename ray_t::vec3_t sampleHemisphere(const typename ray_t::vec3_t &X, const typename ray_t::vec3_t &Y, const typename ray_t::vec3_t &Z) const;
 };
 

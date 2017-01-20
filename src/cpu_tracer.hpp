@@ -11,9 +11,6 @@ struct CpuTracer {
   const accel_t &acceleration_structure;
 
   CpuTracer(const WhittedScene &scene, const accel_t &acceleration_structure) : scene(scene), acceleration_structure(acceleration_structure) {}
-  void render(ImageView &image) const;
-
-private:
   typename ray_t::color_t trace(const WhittedScene &scene, const ray_t &ray) const;
 };
 
