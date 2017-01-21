@@ -22,7 +22,7 @@ struct Vector3
   
 	component_t x, y, z;
 
-	Vector3() {}
+	Vector3() = default;
 	constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
 
 	template<class T> component_t &operator[](T index) { ASSERT(index < 3); return *(&x + index); }
@@ -43,7 +43,11 @@ struct Vector3
 	constexpr component_t lengthSquared() const { return x*x + y*y + z*z; }
 	component_t length() const { return sqrt(lengthSquared()); }
 	Vector3 &normalize() { ASSERT(length() != approx(0)); return *this /= length(); }
+
+	Vector3 sign() const { return Vector3(copysign(1.f, x), copysign(1.f, y), copysign(1.f, z)); }
 };
+
+static_assert(std::is_trivial<Vector3>::value, "math types should be trivial");
 
 inline std::ostream &operator<<(std::ostream &o, const Vector3 &v)
 {
@@ -55,7 +59,7 @@ struct AABox3
 {
 	Vector3 min, max;
 
-	AABox3() {}
+	AABox3() = default;
 	constexpr AABox3(Vector3 min, Vector3 max) : min(min), max(max) {}
 
 	template<class It>
@@ -103,20 +107,30 @@ struct AABox3
 	}
 };
 
+static_assert(std::is_trivial<AABox3>::value, "math types should be trivial");
+
 struct IntDimension2
 {
 	using dim_t = uint32_t;
 	dim_t w, h;
 
-	IntDimension2() {}
+	IntDimension2() = default;
 	constexpr IntDimension2(dim_t w, dim_t h) : w(w), h(h) {}
+};
+
+static_assert(std::is_trivial<IntDimension2>::value, "math types should be trivial");
+
+template <unsigned W, unsigned H>
+struct ConstDim2 {
+	static const unsigned w = W;
+	static const unsigned h = H;
 };
 
 struct Color
 {
 	float r, g, b;
 
-	Color() {}
+	Color() = default;
 	constexpr Color(float r, float g, float b) : r(r), g(g), b(b) {}
 
 	constexpr Color operator+(const Color &a) const { return Color(r+a.r, g+a.g, b+a.b); }
@@ -128,6 +142,8 @@ struct Color
 	Color &operator+=(const Color &a) { return *this = *this + a; }
 	Color &operator-=(const Color &a) { return *this = *this - a; }
 };
+
+static_assert(std::is_trivial<Color>::value, "math types should be trivial");
 
 inline int fast_round (float f) {
 	return (int)(f + 0.5f);

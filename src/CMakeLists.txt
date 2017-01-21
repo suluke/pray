@@ -13,6 +13,9 @@ set(PRAY_SOURCES
   sse_ray.hpp
   cpu_tracer.hpp
   cpu_tracer.impl.hpp
+  cpu_pathtracer.hpp
+  cpu_pathtracer.impl.hpp
+  sampler.hpp
   dummy_acceleration.hpp
   bih.hpp
   bih.impl.hpp
@@ -43,7 +46,9 @@ endif()
 
 if (WITH_OMP)
   target_compile_options(pray PRIVATE ${OpenMP_CXX_FLAGS})
-  target_link_libraries(pray ${OpenMP_CXX_FLAGS})
+  if(NOT MSVC)
+    target_link_libraries(pray ${OpenMP_CXX_FLAGS})
+  endif()
 elseif(NOT MSVC)
   target_compile_options(pray PRIVATE -Wno-error=unknown-pragmas)
 endif()

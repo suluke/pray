@@ -1,5 +1,13 @@
+#ifndef PRAY_SIMD_HPP
+#define PRAY_SIMD_HPP
+#pragma once
 #include <array>
 
+#ifdef DEBUG
+
+#include "simd_debug.hpp"
+
+#else
 #if defined(__AVX__)
 
 #include <immintrin.h>
@@ -9,41 +17,42 @@ namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = 32u;
   static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
   static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
+  static constexpr auto REQUIRED_ALIGNMENT = REGISTER_SIZE_BYTES;
 
   using floatty = __m256;
   using intty = __m256i;
 
   // casts
-  constexpr auto castps_si = _mm256_castps_si256;
-  constexpr auto castsi_ps = _mm256_castsi256_ps;
+  static constexpr auto castps_si = _mm256_castps_si256;
+  static constexpr auto castsi_ps = _mm256_castsi256_ps;
 
   // binary
-  constexpr auto and_ps = _mm256_and_ps;
-  constexpr auto or_ps = _mm256_or_ps;
-  constexpr auto xor_ps = _mm256_xor_ps;
-  inline floatty not_ps (floatty x) {
+  static constexpr auto and_ps = _mm256_and_ps;
+  static constexpr auto or_ps = _mm256_or_ps;
+  static constexpr auto xor_ps = _mm256_xor_ps;
+  static inline floatty not_ps (floatty x) {
     return _mm256_xor_ps(x, _mm256_castsi256_ps(_mm256_set1_epi32(-1)));
   }
 
   // basic arithmetic
-  constexpr auto add_ps = _mm256_add_ps;
-  constexpr auto sub_ps = _mm256_sub_ps;
-  constexpr auto mul_ps = _mm256_mul_ps;
-  constexpr auto div_ps = _mm256_div_ps;
+  static constexpr auto add_ps = _mm256_add_ps;
+  static constexpr auto sub_ps = _mm256_sub_ps;
+  static constexpr auto mul_ps = _mm256_mul_ps;
+  static constexpr auto div_ps = _mm256_div_ps;
 
   // advanced arithmetic
-  constexpr auto min_ps = _mm256_min_ps;
-  constexpr auto max_ps = _mm256_max_ps;
-  constexpr auto sqrt_ps = _mm256_sqrt_ps;
+  static constexpr auto min_ps = _mm256_min_ps;
+  static constexpr auto max_ps = _mm256_max_ps;
+  static constexpr auto sqrt_ps = _mm256_sqrt_ps;
 
   // comparisons
-  inline floatty cmplt_ps(floatty a, floatty b) {
+  static inline floatty cmplt_ps(floatty a, floatty b) {
     return _mm256_cmp_ps(a, b, _CMP_LT_OS);
   }
-  inline floatty cmple_ps(floatty a, floatty b) {
+  static inline floatty cmple_ps(floatty a, floatty b) {
     return _mm256_cmp_ps(a, b, _CMP_LT_OS);
   }
-  inline intty cmpeq_epi32(intty a, intty b) {
+  static inline intty cmpeq_epi32(intty a, intty b) {
     return castps_si(_mm256_cmp_ps(xor_ps(castsi_ps(a), castsi_ps(b)), _mm256_setzero_ps(), _CMP_EQ_OS));
   }
 
@@ -56,15 +65,15 @@ namespace simd {
   }
 
   // setting
-  constexpr auto set1_ps = _mm256_set1_ps;
-  constexpr auto set_ps = _mm256_set_ps;
-  constexpr auto set1_epi32 = _mm256_set1_epi32;
-  constexpr auto setzero_ps = _mm256_setzero_ps;
+  static constexpr auto set1_ps = _mm256_set1_ps;
+  static constexpr auto set1_epi32 = _mm256_set1_epi32;
+  static constexpr auto setzero_ps = _mm256_setzero_ps;
 
   // memory
-  constexpr auto load_ps = _mm256_load_ps;
-  constexpr auto store_ps = _mm256_store_ps;
-  constexpr auto store_si = _mm256_store_si256;
+  static constexpr auto load_ps = _mm256_load_ps;
+  static constexpr auto load_si = _mm256_load_si256;
+  static constexpr auto store_ps = _mm256_store_ps;
+  static constexpr auto store_si = _mm256_store_si256;
 }
 
 #elif defined(__SSE2__)
@@ -75,37 +84,38 @@ namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = 16u;
   static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
   static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
+  static constexpr auto REQUIRED_ALIGNMENT = REGISTER_SIZE_BYTES;
 
   using floatty = __m128;
   using intty = __m128i;
 
   // casts
-  constexpr auto castps_si = _mm_castps_si128;
-  constexpr auto castsi_ps = _mm_castsi128_ps;
+  static constexpr auto castps_si = _mm_castps_si128;
+  static constexpr auto castsi_ps = _mm_castsi128_ps;
 
   // binary
-  constexpr auto and_ps = _mm_and_ps;
-  constexpr auto or_ps = _mm_or_ps;
-  constexpr auto xor_ps = _mm_xor_ps;
-  inline floatty not_ps (floatty x) {
+  static constexpr auto and_ps = _mm_and_ps;
+  static constexpr auto or_ps = _mm_or_ps;
+  static constexpr auto xor_ps = _mm_xor_ps;
+  static inline floatty not_ps (floatty x) {
     return _mm_xor_ps(x, _mm_castsi128_ps(_mm_set1_epi32(-1)));
   }
 
   // basic arithmetic
-  constexpr auto add_ps = _mm_add_ps;
-  constexpr auto sub_ps = _mm_sub_ps;
-  constexpr auto mul_ps = _mm_mul_ps;
-  constexpr auto div_ps = _mm_div_ps;
+  static constexpr auto add_ps = _mm_add_ps;
+  static constexpr auto sub_ps = _mm_sub_ps;
+  static constexpr auto mul_ps = _mm_mul_ps;
+  static constexpr auto div_ps = _mm_div_ps;
 
   // advanced arithmetic
-  constexpr auto min_ps = _mm_min_ps;
-  constexpr auto max_ps = _mm_max_ps;
-  constexpr auto sqrt_ps = _mm_sqrt_ps;
+  static constexpr auto min_ps = _mm_min_ps;
+  static constexpr auto max_ps = _mm_max_ps;
+  static constexpr auto sqrt_ps = _mm_sqrt_ps;
 
   // comparisons
-  constexpr auto cmplt_ps = _mm_cmplt_ps;
-  constexpr auto cmple_ps = _mm_cmple_ps;
-  constexpr auto cmpeq_epi32 = _mm_cmpeq_epi32;
+  static constexpr auto cmplt_ps = _mm_cmplt_ps;
+  static constexpr auto cmple_ps = _mm_cmple_ps;
+  static constexpr auto cmpeq_epi32 = _mm_cmpeq_epi32;
   
   static inline bool isAll(intty b) {
     return _mm_movemask_epi8(b) == 0xffff;
@@ -115,22 +125,43 @@ namespace simd {
   }
 
   // setting
-  constexpr auto set1_ps = _mm_set1_ps;
-  constexpr auto set_ps = _mm_set_ps;
-  constexpr auto set1_epi32 = _mm_set1_epi32;
-  constexpr auto setzero_ps = _mm_setzero_ps;
+  static constexpr auto set1_ps = _mm_set1_ps;
+  static constexpr auto set1_epi32 = _mm_set1_epi32;
+  static constexpr auto setzero_ps = _mm_setzero_ps;
 
   // memory
-  constexpr auto load_ps = _mm_load_ps;
-  constexpr auto store_ps = _mm_store_ps;
-  constexpr auto store_si = _mm_store_si128;
+  static constexpr auto load_ps = _mm_load_ps;
+  static constexpr auto load_si = _mm_load_si128;
+  static constexpr auto store_ps = _mm_store_ps;
+  static constexpr auto store_si = _mm_store_si128;
 }
 
 #else
 
 #error instruction set not supported
 
-#endif
+#endif // __AVX__ / __SSE__
+#endif // DEBUG
+
+namespace simd {
+  static inline floatty abs_ps(floatty f) {
+    return and_ps(f, castsi_ps(set1_epi32(0x7fffffff)));
+  }
+
+  static inline float extract_ps(floatty x, unsigned i) {
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<float, REGISTER_CAPACITY_FLOAT> X;
+    store_ps(X.data(), x);
+    ASSERT(i < (unsigned) REGISTER_CAPACITY_FLOAT);
+    return X[i];
+  }
+
+  static inline int extract_si(intty x, unsigned i) {
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<int32_t, REGISTER_CAPACITY_I32> X;
+    store_si((intty *) X.data(), x);
+    ASSERT(i < (unsigned) REGISTER_CAPACITY_I32);
+    return X[i];
+  }
+}
 
 namespace simd {
   struct Vec3Pack {
@@ -174,8 +205,19 @@ namespace simd {
     Vec3Pack operator*(component_t a) const {
       return Vec3Pack(mul_ps(x, a), mul_ps(y, a), mul_ps(z, a));
     }
+    Vec3Pack operator*(float A) const {
+      const auto a = simd::set1_ps(A);
+      return Vec3Pack(mul_ps(x, a), mul_ps(y, a), mul_ps(z, a));
+    }
     Vec3Pack operator/(component_t a) const {
       return Vec3Pack(div_ps(x, a), div_ps(y, a), div_ps(z, a));
+    }
+    Vec3Pack operator/(float A) const {
+      const auto a = simd::set1_ps(A);
+      return Vec3Pack(div_ps(x, a), div_ps(y, a), div_ps(z, a));
+    }
+    Vec3Pack operator/(Vec3Pack v) const {
+      return Vec3Pack(div_ps(x, v.x), div_ps(y, v.y), div_ps(z, v.z));
     }
 
     Vec3Pack &operator+=(const Vec3Pack &a) { return *this = *this + a; }
@@ -200,26 +242,27 @@ namespace simd {
     }
     component_t length() const { return sqrt_ps(lengthSquared()); }
     Vec3Pack &normalize() { /*ASSERT(length() != approx(0));*/ return *this /= length(); }
+
+    Vector3 extract(unsigned i) const { return Vector3(simd::extract_ps(x, i), simd::extract_ps(y, i), simd::extract_ps(z, i)); }
   };
 }
 
 inline std::ostream &operator<<(std::ostream &o, const simd::floatty &f) {
-  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> F;
-  simd::store_ps(&F[0], f);
   for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
-    o << F[i] << ", ";
+    o << simd::extract_ps(f, i) << ", ";
+  }
+  return o;
+}
+inline std::ostream &operator<<(std::ostream &o, const simd::intty &f) {
+  for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
+    o << simd::extract_si(f, i) << ", ";
   }
   return o;
 }
 inline std::ostream &operator<<(std::ostream &o, const simd::Vec3Pack &v) {
-  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
-  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
-  alignas(16) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
-  simd::store_ps(&X[0], v.x);
-  simd::store_ps(&Y[0], v.y);
-  simd::store_ps(&Z[0], v.z);
   for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
-    o << "(" << X[i] << ", " << Y[i] << ", " << Z[i] << ")";
+    o << "(" << simd::extract_ps(v.x, i) << ", " << simd::extract_ps(v.y, i) << ", " << simd::extract_ps(v.z, i) << ")";
   }
   return o;
 }
+#endif // PRAY_SIMD_HPP

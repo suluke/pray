@@ -10,6 +10,7 @@
 #include <limits>
 #include <array>
 #include <vector>
+#include <memory>
 
 using TriangleIndex = uint32_t;
 using MaterialIndex = uint32_t;
@@ -30,6 +31,7 @@ struct Triangle
 	std::array<Vector3, 3> vertices;
 	MaterialIndex material_index;
 
+	Triangle() = default;
 	Triangle(const std::array<Vector3, 3> &vertices, MaterialIndex material_index) : vertices(vertices), material_index(material_index) {}
 
 	Vector3 calculateNormal() const
@@ -56,6 +58,12 @@ struct Material
 	Material(Color color) : color(color) {}
 };
 
+struct EmissionMaterial : public Material {
+	const bool isEmission;
+
+	EmissionMaterial(Color color, bool isEmission = false) : Material(color), isEmission(isEmission) {}
+};
+
 struct Light
 {
 	Vector3 position;
@@ -68,7 +76,7 @@ struct Camera
 {
 	Vector3 position = Vector3(0.f, 0.f, 0.f);
 	Vector3 direction = Vector3(0.f, 0.f, -1.f);
-	float fov = acos(-1) / 2.f;
+	float fov = acos(-1.f) / 2.f;
 
 	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
 	{
@@ -83,10 +91,39 @@ struct Camera
 	}
 };
 
+struct json_fwd;
+
+struct RenderOptions {
+	enum RenderMethod {
+		WHITTED, PATH
+	};
+	struct Whitted {
+	};
+	struct Path {
+		size_t num_samples;
+		size_t max_depth;
+	};
+
+	IntDimension2 resolution = {1920, 1080};
+	RenderMethod method = WHITTED;
+	std::unique_ptr<json_fwd> json;
+	std::string filename;
+	// FIXME use C++17 std::variant so things actually explode if you try to
+	// use the incorrect option
+	union {
+		Whitted whitted_opts;
+		Path path_opts;
+	};
+
+	RenderOptions();
+	~RenderOptions();
+};
+
+template<class material_t>
 struct Scene
 {
 	std::vector<Triangle> triangles;
-	std::vector<Material> materials;
+	std::vector<material_t> materials;
 
 	std::vector<Light> lights;
 
@@ -94,8 +131,6 @@ struct Scene
 	Color background_color = Color(0.f, 0.f, 0.f);
 
 	void clear() { *this = Scene(); }
-
-	bool load(const std::string &filename, IntDimension2 *out_image_resolution = nullptr);
 
 	template<class... Args>
 	TriangleIndex insertTriangle(Args&&... args)
@@ -117,4 +152,12 @@ struct Scene
 		lights.emplace_back(std::forward<Args>(args)...);
 	}
 };
+
+using WhittedScene = Scene<Material>;
+using PathScene = Scene<EmissionMaterial>;
+
+bool LoadJob(std::string filename, RenderOptions *out_opts);
+bool LoadScene(const RenderOptions &opts, WhittedScene *scene);
+bool LoadScene(const RenderOptions &opts, PathScene *scene);
+
 #endif

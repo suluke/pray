@@ -1,5 +1,53 @@
+#ifndef PRAY_RAY_HPP
+#define PRAY_RAY_HPP
+#pragma once
 #include "scene.hpp" // includes math and image
 
+#include <pmmintrin.h>
+
+inline __m128 set_vector3_ps(const Vector3 &v) {
+    return _mm_set_ps(0.f, v.z, v.y, v.x);
+}
+
+// make sure that either a[3] or b[3] == 0.f, otherwise this is wrong!!!
+inline float fast_dot_ps(__m128 a, __m128 b) {
+    const __m128 t = _mm_mul_ps(a, b);
+    const __m128 r = _mm_hadd_ps(_mm_hadd_ps(t, t), t); // sse3...
+
+    // this is optimized to a no-op
+    float r_f;
+    _mm_store_ss(&r_f, r);
+    return r_f;
+}
+
+inline __m128 cross_ps(__m128 a, __m128 b) {
+    /*
+    shema:
+    z = (a1*b2 - a2*b1)
+    x = (a2*b3 - a3*b2)
+    y = (a3*b1 - a1*b3)
+    w = trash
+    "Shifting" coordinates around by 1, we safe one _mm_shuffle_ps in summary because we can use operands a and b as colums 1 and 4 directly.
+    */
+
+    // cloumns
+    const __m128 c1 = a;
+    const __m128 c2 = _mm_shuffle_ps(b, b, 0b001001);
+    const __m128 c3 = _mm_shuffle_ps(a, a, 0b001001);
+    const __m128 c4 = b;
+
+    // multiplications
+    const __m128 m1 = _mm_mul_ps(c1, c2);
+    const __m128 m2 = _mm_mul_ps(c3, c4);
+
+    // subtraction
+    const __m128 r = _mm_sub_ps(m1, m2);
+
+    // shuffle result so that we return the correct in-register layout
+    return _mm_shuffle_ps(r, r, 0b001001);
+}
+
+template<class scene_t>
 struct Ray {
   using dim_t = IntDimension2::dim_t;
   using intersect_t = TriangleIndex;
@@ -9,41 +57,49 @@ struct Ray {
   using distance_t = float;
   using angle_t = float;
   using bool_t = bool;
-  
-  static constexpr IntDimension2 dim = {1, 1};
-  
+  using material_t = MaterialIndex;
+
+  using dim = ConstDim2<1, 1>;
+
+  static constexpr unsigned subrays_count = 1u;
+
   const Vector3 origin;
   const Vector3 direction;
+  const Vector3 dir_inv;
 
-  Ray(const Camera &cam, const Vector3 &left, const Vector3 &top, const dim_t x, const dim_t y, float max_x, float max_y)
-  : origin(cam.position), direction((top * (1.f - (2 * y + 1) / max_y) + left * (1.f - (2 * x + 1) / max_x) + cam.direction).normalize()) {}
+  Ray(location_t origin, Vector3 direction) : origin(origin), direction(direction), dir_inv(1.f / direction.x, 1.f / direction.y, 1.f / direction.z) {}
 
   inline bool_t intersectTriangle(const Triangle &triangle, distance_t *out_distance) const
   {
     // http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
-    const Vector3 &t_v1 = triangle.vertices[0];
-    const Vector3 &t_v2 = triangle.vertices[1];
-    const Vector3 &t_v3 = triangle.vertices[2];
+    const __m128 origin_mm = set_vector3_ps(origin);
+    const __m128 direction_mm = set_vector3_ps(direction);
 
-    const Vector3 e1 = t_v2 - t_v1;
-    const Vector3 e2 = t_v3 - t_v1;
+    const __m128 t_v1 = set_vector3_ps(triangle.vertices[0]);
+    const __m128 t_v2 = set_vector3_ps(triangle.vertices[1]);
+    const __m128 t_v3 = set_vector3_ps(triangle.vertices[2]);
 
-    const Vector3 p = direction.cross(e2);
+    const __m128 e1 = _mm_sub_ps(t_v2, t_v1);
+    const __m128 e2 = _mm_sub_ps(t_v3, t_v1);
 
-    const float det = p.dot(e1);
+    const __m128 p = cross_ps(direction_mm, e2);
+
+    const float det = fast_dot_ps(p, e1);
 
     if(det == approx(0.f)) return false;
 
-    const Vector3 t = origin - t_v1;
+    const __m128 t = _mm_sub_ps(origin_mm, t_v1);
 
-    const Vector3 q = t.cross(e1);
+    const __m128 q = cross_ps(t, e1);
 
-    const float u = p.dot(t) / det;
-    const float v = q.dot(direction) / det;
+    const float inv_det = 1.f / det;
+
+    const float u = fast_dot_ps(p, t) * inv_det;
+    const float v = fast_dot_ps(q, direction_mm) * inv_det;
 
     if(u >= 0.f && v >= 0.f && u + v <= 1.f)
     {
-      const float distance = q.dot(e2) / det;
+      const float distance = fast_dot_ps(q, e2) * inv_det;
       *out_distance = distance;
       return distance >= 0.f;
     }
@@ -57,7 +113,7 @@ struct Ray {
     float t_min = std::numeric_limits<float>::lowest(), t_max = std::numeric_limits<float>::max();
     for(int i=0; i<3; ++i)
     {
-      float i_d = 1.f / direction[i];
+      float i_d = dir_inv[i];
       float t0 = (aabb.min[i] - origin[i]) * i_d;
       float t1 = (aabb.max[i] - origin[i]) * i_d;
       if(i_d < 0.f) std::swap(t0, t1);
@@ -72,12 +128,27 @@ struct Ray {
     return origin + direction * intersection_distance;
   }
 
-#ifndef DEBUG // for debugging tool...
-private:
-#endif
-  Ray(location_t origin, Vector3 direction) : origin(origin), direction(direction) {}
+  Vector3 getSubrayDirection(unsigned subray) const { ASSERT(subray == 0); return direction; }
 
-public:
+  void isDirectionSignEqualForAllSubrays(Vector3 test_sign, std::array<bool, 3> *out_result) const {
+    const auto sign = direction.sign();
+    (*out_result)[0] = test_sign.x == sign.x;
+    (*out_result)[1] = test_sign.y == sign.y;
+    (*out_result)[2] = test_sign.z == sign.z;
+  }
+
+  bool_t intersectAxisPlane(float plane, unsigned axis, distance_t maximum_distance) const {
+    const auto o = origin[axis];
+    const auto d_inv = dir_inv[axis];
+    const auto p = plane;
+
+    // solve o + t*d = p -> t = (p - o) / d
+    const auto t = (p - o) * d_inv;
+
+    // no t > 0 test for now, breaks if the camera is inside the scene aabb...
+    return t < maximum_distance;
+  }
+
   static Ray getShadowRay(Light light, location_t P, distance_t *ld) {
     const Vector3 light_vector = light.position - P;
 		const float light_distance = light_vector.length();
@@ -86,26 +157,30 @@ public:
     return {P + L * 0.001f, L};
   }
 
-  static inline color_t getMaterialColors(const Scene &scene, intersect_t triangle) {
+  static inline color_t getMaterialColors(const scene_t &scene, intersect_t triangle) {
     const auto material_index = scene.triangles[triangle].material_index;
     ASSERT(material_index != MaterialIndex_Invalid);
     return scene.materials[material_index].color;
   }
 
-  static inline vec3_t getNormals(const Scene &scene, intersect_t triangle) {
+  static inline vec3_t getNormals(const scene_t &scene, intersect_t triangle) {
     return scene.triangles[triangle].calculateNormal();
   }
   
-  static color_t shade(const Scene &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_color) {
+  static color_t shade(const scene_t &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_color) {
     // TODO duplicated code
     const Vector3 light_vector = light.position - P;
-		const float light_distance = light_vector.length();
-		const Vector3 L = light_vector / light_distance;
+    const float light_distance = light_vector.length();
+    const Vector3 L = light_vector / light_distance;
 
     if (intersection_distance < light_distance)
       return {0.f, 0.f, 0.f};
 
-    return mat_color * light.color * (std::max(L.dot(N), 0.f) / (light_distance * light_distance));
+    return mat_color * light.color * L.dot(N) / (light_distance * light_distance);
+  }
+
+  static void addBackgroundcolor(color_t &result_color, const intersect_t intersected_triangle, const Color bg) {
+    // can be no-op because the tracer already returns the background color if there have not been __ANY__ intersections
   }
 
   static inline distance_t max_distance() {
@@ -136,6 +211,10 @@ public:
     return b;
   }
 
+  static inline bool_t booleanAnd(bool_t a, bool_t b) {
+    return a && b;
+  }
+
   /**
    * True if angle between v1 and v2 is larger than 90 degrees
    */
@@ -144,7 +223,9 @@ public:
   }
 };
 
-inline std::ostream &operator<<(std::ostream &o, const Ray &r) {
+template<class scene_t>
+inline std::ostream &operator<<(std::ostream &o, const Ray<scene_t> &r) {
   o << "Origin: " << r.origin << "\nDirection: " << r.direction;
   return o;
 }
+#endif // PRAY_RAY_HPP

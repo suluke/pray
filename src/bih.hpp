@@ -5,9 +5,10 @@
 
 // http://ainc.de/Research/BIH.pdf
 
-template<class ray_t>
+template<class ray_t, class SCENE_T>
 struct Bih
 {
+	using scene_t = SCENE_T;
 	struct Node
 	{
 		enum Type
@@ -90,13 +91,14 @@ struct Bih
 #endif
 	};
 
-	std::vector<TriangleIndex> triangles;
-
 	AABox3 scene_aabb;
 	std::vector<Node> nodes;
 
-	void build(const Scene &scene);
-	typename ray_t::intersect_t intersect(const Scene &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
+	void build(scene_t &scene);
+	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
+
+	void printAnalysis() const;
+	size_t hash() const;
 };
 
 #include "bih.impl.hpp"

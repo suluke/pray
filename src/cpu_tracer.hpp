@@ -6,16 +6,12 @@
 #include "image.hpp"
 
 template<class ray_t, class accel_t>
-class CpuTracer {
-  const Scene &scene;
-  accel_t acceleration_structure;
-public:
-  CpuTracer(const Scene &scene) : scene(scene) {}
-  void preprocess();
-  void render(ImageView &image) const;
+struct CpuTracer {
+  const WhittedScene &scene;
+  const accel_t &acceleration_structure;
 
-private:
-  typename ray_t::color_t trace(const Scene &scene, const ray_t &ray) const;
+  CpuTracer(const WhittedScene &scene, const accel_t &acceleration_structure) : scene(scene), acceleration_structure(acceleration_structure) {}
+  typename ray_t::color_t trace(const WhittedScene &scene, const ray_t &ray) const;
 };
 
 #include "cpu_tracer.impl.hpp"
