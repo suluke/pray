@@ -64,7 +64,7 @@ struct naive_sampler {
     float max_y = (float) image.img.resolution.h;
 
 #ifdef WITH_OMP
-    #pragma omp parallel for schedule(guided, 10) collapse(2)
+	#pragma omp parallel for schedule(dynamic, 30) collapse(2)
 #endif
     for(long local_y = 0; local_y < image.resolution.h; local_y += ray_t::dim::h) {
       for(long x = 0; x < image.resolution.w; x += ray_t::dim::w) {
@@ -89,7 +89,7 @@ struct interpolating_sampler {
     float max_y = (float) image.img.resolution.h;
 
 #ifdef WITH_OMP
-    #pragma omp parallel for schedule(guided, 10) collapse(2)
+	#pragma omp parallel for schedule(dynamic, 30) collapse(2)
 #endif
     for (long local_y = 0; local_y < image.resolution.h; local_y += ray_t::dim::h) {
       for (long x = 0; x < image.resolution.w; x += ray_t::dim::w) {
