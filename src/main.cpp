@@ -18,6 +18,7 @@ struct PrayTypes {
 	using ray_t = Ray<scene_t>;
 #endif
 #ifdef WITH_BIH
+	BihPOD<scene_t> bih;
 	using accel_t = Bih<ray_t, scene_t>;
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;

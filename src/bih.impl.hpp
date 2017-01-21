@@ -22,12 +22,12 @@ struct BihBuilder
 
 	void build()
 	{
-		bih.scene_aabb.clear();
+		bih.pod.scene_aabb.clear();
 		triangle_data.reserve(scene.triangles.size());
 		for(const auto &t : scene.triangles)
 		{
 			auto aabb = t.calculateAabb();
-			bih.scene_aabb.insert(aabb);
+			bih.pod.scene_aabb.insert(aabb);
 			triangle_data.emplace_back(aabb, t.calculateCentroid());
 		}
 
@@ -36,13 +36,13 @@ struct BihBuilder
 
 		// https://de.wikipedia.org/wiki/Bin%C3%A4rbaum#Abz.C3.A4hlungen
 		// The bih is a binary tree with (at most) scene.triangles.size() leaves.
-		bih.nodes.reserve(scene.triangles.size() + scene.triangles.size() - 1);
+		bih.pod.nodes.reserve(scene.triangles.size() + scene.triangles.size() - 1);
 
-		bih.nodes.emplace_back();
+		bih.pod.nodes.emplace_back();
 #ifdef DEBUG
-		bih.nodes.back().parent = nullptr;
+		bih.pod.nodes.back().parent = nullptr;
 #endif
-		buildNode(bih.nodes.back(), bih.scene_aabb, triangles.begin(), triangles.end());
+		buildNode(bih.pod.nodes.back(), bih.pod.scene_aabb, triangles.begin(), triangles.end());
 
 		static_assert(std::is_trivial<Triangle>::value, "Triangle should be trivial");
 		std::vector<Triangle> reordered_triangles(scene.triangles.size());
@@ -50,7 +50,7 @@ struct BihBuilder
 		scene.triangles = std::move(reordered_triangles);
 	}
 
-	void buildNode(typename bih_t::Node &current_node, const AABox3 &initial_aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const unsigned retry_depth = 0u)
+	void buildNode(typename bih_t::pod_t::Node &current_node, const AABox3 &initial_aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const unsigned retry_depth = 0u)
 	{
 		ASSERT(initial_aabb.isValid());
 
@@ -110,15 +110,15 @@ struct BihBuilder
 			}
 
 			// allocate child nodes (this is a critical section)
-			const auto children_index = bih.nodes.size();
-			ASSERT(bih.nodes.capacity() - bih.nodes.size() >= 2u); // we don't want relocation (breaks references)
+			const auto children_index = bih.pod.nodes.size();
+			ASSERT(bih.pod.nodes.capacity() - bih.pod.nodes.size() >= 2u); // we don't want relocation (breaks references)
 			static_assert(std::is_trivial<typename bih_t::Node>::value, "Bih::Node should be trivial, otherwise the critical section is not as small as it could be");
-			bih.nodes.emplace_back(); bih.nodes.emplace_back();
+			bih.pod.nodes.emplace_back(); bih.pod.nodes.emplace_back();
 
 			current_node.makeSplitNode(split_axis, children_index, left_plane, right_plane);
 
-			auto &child1 = bih.nodes[children_index+0];
-			auto &child2 = bih.nodes[children_index+1];
+			auto &child1 = bih.pod.nodes[children_index+0];
+			auto &child2 = bih.pod.nodes[children_index+1];
 
 #ifdef DEBUG
 			current_node.index = node_index;
@@ -171,7 +171,7 @@ struct IntersectionResult
 template<class ray_t, class scene_t>
 typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
-	const auto active_mask = ray.intersectAABB(scene_aabb);
+	const auto active_mask = ray.intersectAABB(pod.scene_aabb);
 	if(!ray_t::isAny(active_mask)) return ray_t::getNoIntersection();
 
 	const Vector3 direction_sign = ray.getSubrayDirection(ray_t::subrays_count / 2).sign();
@@ -189,11 +189,11 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 		float plane;
 		unsigned split_axis;
 		typename ray_t::bool_t active_mask;
-		const Node *node;
+		const typename pod_t::Node *node;
 		AABox3 aabb;
 
 		StackElement() = default;
-		StackElement(float plane, unsigned split_axis, typename ray_t::bool_t active_mask, const Node &node, AABox3 aabb) : plane(plane), split_axis(split_axis), active_mask(active_mask), node(&node), aabb(aabb) {}
+		StackElement(float plane, unsigned split_axis, typename ray_t::bool_t active_mask, const typename pod_t::Node &node, AABox3 aabb) : plane(plane), split_axis(split_axis), active_mask(active_mask), node(&node), aabb(aabb) {}
 	};
 	static_assert(std::is_trivial<StackElement>::value, "StackElement should be trivial, otherwise we pay for stack initialization");
 
@@ -231,18 +231,18 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 
 	struct Current
 	{
-		const Node *node;
+		const typename pod_t::Node *node;
 		AABox3 aabb;
 		typename ray_t::bool_t active_mask;
 
-		Current(const Bih<ray_t, scene_t>::Node &node, const AABox3 &aabb, const typename ray_t::bool_t &active_mask) : node(&node), aabb(aabb), active_mask(active_mask) {}
+		Current(const typename Bih<ray_t, scene_t>::pod_t::Node &node, const AABox3 &aabb, const typename ray_t::bool_t &active_mask) : node(&node), aabb(aabb), active_mask(active_mask) {}
 	};
 
-	Current current(this->nodes[0u], scene_aabb, active_mask);
+	Current current(pod.nodes[0u], pod.scene_aabb, active_mask);
 
 	for(;;)
 	{
-		if(current.node->getType() == Bih<ray_t, scene_t>::Node::Leaf)
+		if(current.node->getType() == Bih<ray_t, scene_t>::pod_t::Node::Leaf)
 		{
 			for(unsigned i = 0u; i < current.node->getLeafData().children_count; ++i)
 			{
@@ -264,8 +264,8 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 		{
 			const auto split_axis = current.node->getType();
 
-			const auto &left_child = this->nodes[current.node->getChildrenIndex()+0];
-			const auto &right_child = this->nodes[current.node->getChildrenIndex()+1];
+			const auto &left_child = pod.nodes[current.node->getChildrenIndex()+0];
+			const auto &right_child = pod.nodes[current.node->getChildrenIndex()+1];
 
 			const auto left_plane = current.node->getSplitData().left_plane;
 			const auto right_plane = current.node->getSplitData().right_plane;
@@ -342,9 +342,9 @@ void Bih<ray_t, scene_t>::printAnalysis() const
 {
 	size_t inner_nodes_count = 0u, non_overlapping_inner_nodes_count = 0u, leaves_count = 0u, max_leaf_children_count = 0u;
 
-	for(auto &n : nodes)
+	for(auto &n : pod.nodes)
 	{
-		if(n.getType() == Node::Leaf)
+		if(n.getType() == pod_t::Node::Leaf)
 		{
 			++leaves_count;
 			max_leaf_children_count = std::max<size_t>(max_leaf_children_count, n.getLeafData().children_count);
@@ -358,7 +358,7 @@ void Bih<ray_t, scene_t>::printAnalysis() const
 
 	std::cout << "inner nodes: " << inner_nodes_count << " (non-overlapping: " << non_overlapping_inner_nodes_count << ")\n"
 		<< "leaves: " << leaves_count << " max children count: " << max_leaf_children_count << "\n"
-		<< "reserved storage: " << nodes.capacity() << " actual storage: " << nodes.size() << "\n";
+		<< "reserved storage: " << pod.nodes.capacity() << " actual storage: " << pod.nodes.size() << "\n";
 }
 
 #include <sstream>
@@ -368,23 +368,23 @@ size_t Bih<ray_t, scene_t>::hash() const
 {
 	std::stringstream s;
 
-	s << scene_aabb.min << " " << scene_aabb.max << " ";
+	s << pod.scene_aabb.min << " " << pod.scene_aabb.max << " ";
 
-	const std::function<void(const Node&)> f = [&](const Node &n)
+	const std::function<void(const typename pod_t::Node&)> f = [&](const typename pod_t::Node &n)
 	{
 		s << n.getType() << " ";
-		if(n.getType() == Node::Leaf)
+		if(n.getType() == pod_t::Node::Leaf)
 		{
 			for(auto i=0u; i<n.getLeafData().children_count; ++i) s << n.getChildrenIndex()+i << " ";
 		}
 		else
 		{
 			s << n.getSplitData().left_plane << " " << n.getSplitData().right_plane << " ";
-			f(nodes[n.getChildrenIndex()+0]);
-			f(nodes[n.getChildrenIndex()+1]);
+			f(pod.nodes[n.getChildrenIndex()+0]);
+			f(pod.nodes[n.getChildrenIndex()+1]);
 		}
 	};
-	f(nodes.front());
+	f(pod.nodes.front());
 
 	std::hash<std::string> hash_fn;
 	return hash_fn(s.str());

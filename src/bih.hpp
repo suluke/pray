@@ -5,8 +5,8 @@
 
 // http://ainc.de/Research/BIH.pdf
 
-template<class ray_t, class SCENE_T>
-struct Bih
+template<class SCENE_T>
+struct BihPOD
 {
 	using scene_t = SCENE_T;
 	struct Node
@@ -93,7 +93,17 @@ struct Bih
 
 	AABox3 scene_aabb;
 	std::vector<Node> nodes;
+};
 
+template<class ray_t, class SCENE_T>
+struct Bih
+{
+	using scene_t = SCENE_T;
+	using pod_t = BihPOD<scene_t>;
+	using Node = typename pod_t::Node;
+	
+	pod_t pod; // created by auto default constructor
+	
 	void build(scene_t &scene);
 	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
 
