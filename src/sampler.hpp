@@ -5,7 +5,8 @@
 namespace sampler {
   template<class ray_t>
   static inline std::enable_if_t<ray_t::dim::w == 1 && ray_t::dim::h == 1, ray_t>
-      cast(const Camera &cam, const Vector3 &left, const Vector3 &top, const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y)
+      cast(const Camera &cam, const Vector3 &left, const Vector3 &top,
+           const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y)
   {
     auto origin = cam.position;
     auto direction = Vector3((top * (1.f - (2 * y + 1) / max_y) + left * (1.f - (2 * x + 1) / max_x) + cam.direction).normalize());
@@ -14,7 +15,8 @@ namespace sampler {
   
   template<class ray_t>
   static inline std::enable_if_t<ray_t::dim::w != 1 || ray_t::dim::h != 1, ray_t>
-      cast(const Camera &cam, const Vector3 &left, const Vector3 &top, const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y)
+      cast(const Camera &cam, const Vector3 &left, const Vector3 &top,
+           const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y)
   {
     auto origin = typename ray_t::location_t(cam.position);
     auto direction = typename ray_t::vec3_t{};
@@ -51,6 +53,100 @@ namespace sampler {
     direction.normalize();
     return {origin, direction};
   }
+
+  /// If cast in sparse mode, ray dimensions change
+  template<typename dim>
+  struct sparse_dim {
+    static const unsigned w = (dim::w <= dim::h ? dim::w * 2 : dim::w);
+    static const unsigned h = (dim::h <  dim::w ? dim::h * 2 : dim::h);
+  };
+
+  template<class ray_t>
+  static inline std::enable_if_t<ray_t::dim::w == 1 && ray_t::dim::h == 1, ray_t>
+      sparse_cast(const Camera &cam, const Vector3 &left, const Vector3 &top,
+                  typename ray_t::dim_t x, const typename ray_t::dim_t y,
+                  float max_x, float max_y, bool inverse = false)
+  {
+    // For odd rows, we cast the ray for the right of two neighboring pixels 
+    if ((y % 2 == 1 && x % 2 == 0) ^ inverse) {
+      ++x;
+    }
+    return cast<ray_t>(cam, left, top, x, y, max_x, max_y);
+  }
+
+  /// Casts ray-packs where half of the pixels are skipped
+  template<class ray_t>
+  static inline std::enable_if_t<ray_t::dim::w != 1 || ray_t::dim::h != 1, ray_t>
+      sparse_cast(const Camera &cam, const Vector3 &left, const Vector3 &top,
+                  const typename ray_t::dim_t x, const typename ray_t::dim_t y,
+                  float max_x, float max_y, bool inverse = false)
+  {
+    auto origin = typename ray_t::location_t(cam.position);
+    auto direction = typename ray_t::vec3_t{};
+    alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
+    alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
+    alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
+    for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
+      X[i] = cam.direction.x;
+      Y[i] = cam.direction.y;
+      Z[i] = cam.direction.z;
+    }
+    using sparse = sampler::sparse_dim<typename ray_t::dim>;
+    auto i = unsigned(0);
+    for (unsigned i_y = 0; i_y < sparse::h; ++i_y) {
+      float f_y = 1.f - (2 * (y + i_y) + 1) / max_y;
+      auto t = top * f_y;
+      for (unsigned i_x = 0; i_x < sparse::w; ++i_x) {
+        if (((i_x % 2 == 0 && i_y % 2 == 0) || (i_x % 2 == 1 && i_y % 2 == 1)) ^ inverse) {
+          float f_x = 1.f - (2 * (x + i_x) + 1) / max_x;
+          auto l = left * f_x;
+          X[i] += t.x + l.x;
+          Y[i] += t.y + l.y;
+          Z[i] += t.z + l.z;
+          ++i;
+        }
+      }
+    }
+    direction.x = simd::load_ps(X.data());
+    direction.y = simd::load_ps(Y.data());
+    direction.z = simd::load_ps(Z.data());
+    direction.normalize();
+    return {origin, direction};
+  }
+
+  template<class ray_t>
+  static inline std::enable_if_t<ray_t::dim::w == 1 && ray_t::dim::h == 1>
+      sparse_writeColorToImage(typename ray_t::color_t c, ImageView &image,
+                               IntDimension2::dim_t x, IntDimension2::dim_t y, IntDimension2::dim_t global_y, bool inverse = false)
+  {
+    if ((global_y % 2 == 1 && x % 2 == 0) ^ inverse) {
+      ++x;
+    }
+    image.setPixel(x, y, c);
+  }
+  
+  template<class ray_t>
+  static inline std::enable_if_t<ray_t::dim::w != 1 && ray_t::dim::h != 1>
+      sparse_writeColorToImage(typename ray_t::color_t c, ImageView &image,
+                               IntDimension2::dim_t x, IntDimension2::dim_t y, IntDimension2::dim_t global_y, bool inverse = false)
+  {
+    using sparse = sampler::sparse_dim<typename ray_t::dim>;
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
+    simd::store_ps(R.data(), c.x);
+    simd::store_ps(G.data(), c.y);
+    simd::store_ps(B.data(), c.z);
+    unsigned idx = 0;
+    for (unsigned i_y = 0; i_y < sparse::h && i_y + y < image.resolution.h; ++i_y) {
+      for (unsigned i_x = 0; i_x < sparse::w && i_x + x < image.resolution.w; ++i_x) {
+        if (((i_x % 2 == 0 && i_y % 2 == 0) || (i_x % 2 == 1 && i_y % 2 == 1)) ^ inverse) {
+          image.setPixel(x + i_x, y + i_y, {R[idx], G[idx], B[idx]});
+          ++idx;
+        }
+      }
+    }
+  }
 }
 
 template<class scene_t, class tracer_t, class ray_t>
@@ -83,41 +179,45 @@ struct interpolating_sampler {
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
     Vector3 left, right, bottom, top;
     const float aspect = (float) image.resolution.h / image.resolution.w;
+    auto w = image.resolution.w, h = image.resolution.h;
     scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
-    float max_x = (float) image.resolution.w;
-    float max_y = (float) image.img.resolution.h;
+    float max_x = (float) w;
+    float max_y = (float) h;
+
+    using sparse = sampler::sparse_dim<typename ray_t::dim>;
 
 #ifdef WITH_OMP
 	#pragma omp parallel for schedule(dynamic, 30) collapse(2)
 #endif
-    for (long local_y = 0; local_y < image.resolution.h; local_y += ray_t::dim::h) {
-      for (long x = 0; x < image.resolution.w; x += ray_t::dim::w) {
-        // FIXME the current modulo checks will break the image for SSERays
-        // because the loop stride is not 1 any more but 2 or 4
-        if (x == 0 || x == image.resolution.w-1 || local_y == 0 || image.resolution.h - 1 == local_y ||
-           (x%2 == 0 && local_y%2 == 1) || (x%2 == 1 && local_y%2 == 0))
-        {
-          auto y = image.getGlobalY(local_y);
-          ray_t ray = sampler::cast<ray_t>(scene.camera, left, top, x, y, max_x, max_y);
-          auto c = tracer.trace(scene, ray);
-          writeColorToImage(c, image, x, local_y);
-        }
+    for (long local_y = 0; local_y < h; local_y += sparse::h) {
+      for (long x = 0; x < w; x += sparse::w) {
+        auto y = image.getGlobalY(local_y);
+        auto ray = sampler::sparse_cast<ray_t>(scene.camera, left, top, x, y, max_x, max_y);
+        auto c = tracer.trace(scene, ray);
+        sampler::sparse_writeColorToImage<ray_t>(c, image, x, local_y, y);
       }
     }
 #ifdef WITH_OMP
     #pragma omp parallel for collapse(2)
 #endif
-    for(long y = 1; y < image.resolution.h-1; ++y) {
-      for(long x = 1; x < image.resolution.w-1; ++x) {
-        if (x == 0 || x == image.resolution.w-1 || y == 0 || image.resolution.h -1 == y || (x%2 == 0 && y%2 == 1) || (x%2 == 1 && y%2 == 0)) {
+    for(long y = 0; y < h; ++y) {
+      for(long x = 0; x < w; ++x) {
+        // This is a bit fragile since it relies on the duplicated pattern
+        // from sparse_cast (i.e. checkers pattern where 0,0 is the first
+        // set pixel
+        if ((x%2 == 0 && y%2 == 0) || (x%2 == 1 && y%2 == 1)) {
           continue;
         } else {
-          Color c = image.getPixel(x,y);
-          c += image.getPixel(x-1,y) * 0.25f;
-          c += image.getPixel(x,y-1) * 0.25f;
-          c += image.getPixel(x+1,y) * 0.25f;
-          c += image.getPixel(x,y+1) * 0.25f;
+          // TODO maybe it's nicer (and faster) to have 5 different loops
+          // for left/top/right/bottom edges plus inner pixels
+          Color c{0.f, 0.f, 0.f};
+          int n = 0;
+          x > 0   ? c += image.getPixel(x-1,y), ++n : 0;
+          y > 1   ? c += image.getPixel(x,y-1), ++n : 0;
+          x < w-1 ? c += image.getPixel(x+1,y), ++n : 0;
+          y < h-1 ? c += image.getPixel(x,y+1), ++n : 0;
+          c /= n;
           image.setPixel(x, y, c);
         }
       }

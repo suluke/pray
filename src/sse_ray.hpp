@@ -31,8 +31,8 @@ struct SSERay {
   static constexpr unsigned subrays_count = simd::REGISTER_CAPACITY_FLOAT;
 
   const location_t origin;
-  simd::Vec3Pack direction;
-  simd::Vec3Pack dir_inv;
+  const simd::Vec3Pack direction;
+  const simd::Vec3Pack dir_inv;
 
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 

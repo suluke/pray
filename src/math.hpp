@@ -141,6 +141,7 @@ struct Color
 
 	Color &operator+=(const Color &a) { return *this = *this + a; }
 	Color &operator-=(const Color &a) { return *this = *this - a; }
+	Color &operator/=(float a) { return *this = *this / a; }
 };
 
 static_assert(std::is_trivial<Color>::value, "math types should be trivial");
