@@ -69,7 +69,9 @@ static void traceScene(const PathScene &scene, ImageView &img, const PathTypes::
   #endif
   
 	auto cudaTracer  = CudaPathTracer(scene, opts.path_opts, accel.pod);
-  (void) cudaTracer;
+	cudaTracer.initialize();
+  cudaTracer.render(img);
+	cudaTracer.finalize();
 #endif
 	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;

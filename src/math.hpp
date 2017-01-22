@@ -26,7 +26,7 @@ struct Vector3
 	constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
 
 	template<class T> component_t &operator[](T index) { ASSERT(index < 3); return *(&x + index); }
-	template<class T> constexpr const component_t &operator[](T index) const { ASSERT(index < 3); return *(&x + index); }
+	template<class T> const component_t &operator[](T index) const { ASSERT(index < 3); return *(&x + index); }
 
 	constexpr Vector3 operator-() const { return Vector3(-x, -y, -z); }
 	constexpr Vector3 operator+(const Vector3 &a) const { return Vector3(x+a.x, y+a.y, z+a.z); }

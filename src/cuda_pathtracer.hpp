@@ -5,24 +5,44 @@
 #include "scene.hpp"
 #include "ray.hpp"
 #include "bih.hpp"
+#include "cuda.hpp"
+
 
 struct CudaPathTracer {
-  using accel_t = BihPOD<PathScene>;
-  using ray_t = Ray<PathScene>;
+	using scene_t = PathScene;
+  using accel_t = BihPOD<scene_t>;
+  using ray_t = Ray<scene_t>;
+	using material_t = EmissionMaterial;
+	
+	using Node = accel_t::Node;
   
+	// references (cannot be used in __device__ functions)
   const PathScene &scene;
-  const RenderOptions::Path &opts;
-  const accel_t &acceleration_structure;
+  const accel_t &bih;
+	
+	// RenderOptions will be copied to device!
+	const RenderOptions::Path opts;
+	
+	// device data (not valid on cpu!)
+	AABox3* d_scene_aabb;
+	cuda::vector<Node> d_nodes;
+	cuda::vector<Triangle> d_triangles;
+	cuda::vector<material_t> d_materials;
 
-  CudaPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &acceleration_structure) : scene(scene), opts(opts), acceleration_structure(acceleration_structure) {}
-  typename Ray<PathScene>::color_t trace(const PathScene &scene, const Ray<PathScene> &ray, unsigned depth = 0) const;
+  CudaPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &bih) : scene(scene), bih(bih), opts(opts) {}
+	void render(ImageView &image);
+	
+	void initialize();
+	void finalize();
+	
+	#ifdef __CUDACC__
+    __device__ void d_render();
+	#endif
 
 private:
-  // Relevant: https://github.com/s9w/articles/blob/master/perf%20cpp%20random.md
-  //std::function<float()> sampling_rand = std::bind(std::uniform_real_distribution<float>(0, 1), std::default_random_engine());
-  typename ray_t::vec3_t sampleHemisphere(const typename ray_t::vec3_t &X, const typename ray_t::vec3_t &Y, const typename ray_t::vec3_t &Z) const;
+	#ifdef __CUDACC__
+		// more __device__ functions
+	#endif
 };
-
-//#include "cuda_pathtracer.impl.hpp"
 
 #endif /* PRAY_CUDA_PATHTRACER_TRACER_H */
