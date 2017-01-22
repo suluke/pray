@@ -24,13 +24,8 @@ struct PrayTypes {
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
-#ifdef WITH_SUBSAMPLING
 	template <class tracer_t>
-	using sampler_t = interpolating_sampler<scene_t, tracer_t, ray_t>;
-#else
-	template <class tracer_t>
-	using sampler_t = naive_sampler<scene_t, tracer_t, ray_t>;
-#endif // WITH_SUBSAMPLING
+	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };
 #ifndef WITH_SSE_PT
 template<>
@@ -42,13 +37,8 @@ struct PrayTypes<PathScene> {
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
-#ifdef WITH_SUBSAMPLING
 	template <class tracer_t>
-	using sampler_t = interpolating_sampler<scene_t, tracer_t, ray_t>;
-#else
-	template <class tracer_t>
-	using sampler_t = naive_sampler<scene_t, tracer_t, ray_t>;
-#endif // WITH_SUBSAMPLING
+	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };
 #endif // not WITH_SSE_PT
 

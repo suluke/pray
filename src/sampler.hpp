@@ -150,7 +150,7 @@ namespace sampler {
 }
 
 template<class scene_t, class tracer_t, class ray_t>
-struct naive_sampler {
+struct standard_sampler {
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
     Vector3 left, right, bottom, top;
     const float aspect = (float) image.resolution.h / image.resolution.w;
