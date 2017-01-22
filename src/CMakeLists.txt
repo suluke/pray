@@ -23,8 +23,9 @@ set(PRAY_SOURCES
 
 if (WITH_CUDA)
   cuda_compile(cuda_files
-    cuda_renderer.hpp
-    cuda_renderer.cu)
+    cuda_pathtracer.hpp
+    cuda_pathtracer.impl.hpp
+    cuda_pathtracer.cu)
   list(APPEND PRAY_SOURCES ${cuda_files})
 endif()
 
@@ -51,4 +52,8 @@ if (WITH_OMP)
   endif()
 elseif(NOT MSVC)
   target_compile_options(pray PRIVATE -Wno-error=unknown-pragmas)
+endif()
+
+if (WITH_CUDA)
+  target_link_libraries(pray ${CUDA_CUDART_LIBRARY})
 endif()

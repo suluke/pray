@@ -56,7 +56,7 @@ struct BihBuilder
 
 #ifdef DEBUG
 		// for conditional breakpoints
-		auto node_index = &current_node - &bih.nodes[0];
+		auto node_index = &current_node - &bih.pod.nodes[0];
 #endif
 
 		const auto children_count = std::distance(triangles_begin, triangles_end);

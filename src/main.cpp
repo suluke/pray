@@ -5,6 +5,7 @@
 #include "bih.hpp"
 #include "cpu_tracer.hpp"
 #include "cpu_pathtracer.hpp"
+#include "cuda_pathtracer.hpp"
 #include "ray.hpp"
 #include "sse_ray.hpp"
 #include "sampler.hpp"
@@ -61,9 +62,18 @@ static void traceScene(const WhittedScene &scene, ImageView &img, const WhittedT
 }
 
 static void traceScene(const PathScene &scene, ImageView &img, const PathTypes::accel_t &accel, const RenderOptions &opts) {
-	auto tracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
-	using sampler = PathTypes::sampler_t<decltype(tracer)>;
-	sampler::render(scene, img, tracer);
+#ifdef WITH_CUDA
+
+  #ifndef WITH_BIH
+    #error "WITH_CUDA requires also WITH_BIH"
+  #endif
+  
+	auto cudaTracer  = CudaPathTracer(scene, opts.path_opts, accel.pod);
+  (void) cudaTracer;
+#endif
+	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
+	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
+	sampler::render(scene, img, cpuTracer);
 }
 
 template<class scene_t>

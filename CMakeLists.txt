@@ -77,7 +77,14 @@ set(CUDA_NVCC_FLAGS
   ${CUDA_NVCC_FLAGS}
   -std=c++11
   --expt-relaxed-constexpr
+  -libcudart
   -gencode arch=compute_35,code=compute_35
+  -D_FORCE_INLINES
+  
+  # to avoid error "identifier __builtin_ia32_mwaitx is undefined
+  # https://github.com/tensorflow/tensorflow/issues/1066
+  -D_MWAITXINTRIN_H_INCLUDED
+  -D_FORCE_INLINES
   )
 set(CUDA_PROPAGATE_HOST_FLAGS off)
 
