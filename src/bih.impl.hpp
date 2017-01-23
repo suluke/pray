@@ -181,7 +181,7 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 
 	IntersectionResult<ray_t> intersection_result;
 
-	// keen this a VALUE (as opposed to reference)!!!
+	// keep this a VALUE (as opposed to reference)!!!
 	const auto triangles_data = scene.triangles.data();
 
 	struct StackElement
