@@ -15,15 +15,15 @@ namespace sampler {
 
   template<class ray_t>
   static inline std::enable_if_t<ray_t::dim::w != 1 || ray_t::dim::h != 1, bool>
-  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y, auto c) {
+  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y, typename ray_t::color_t c) {
 	  return false;
   }
 
   template<class ray_t>
   static inline std::enable_if_t<ray_t::dim::w == 1 || ray_t::dim::h == 1, bool>
-  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y, auto c) {
+  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y, typename ray_t::color_t c) {
 	  //TODO this uses that rays are cast in a checkered pattern
-
+	  return false;
   }
   
   template<class ray_t>
@@ -222,8 +222,9 @@ struct interpolating_sampler {
 #ifdef WITH_OMP
     #pragma omp parallel for collapse(2)
 #endif
-    for(long y = 0; y < h; ++y) {
-      for(long x = 0; x < w; ++x) {
+	for(long local_y = 0; local_y < h; local_y += sparse::h) {
+	  for(long x = 0; x < w; x += sparse::w) {
+		auto y = image.getGlobalY(local_y);
         // This is a bit fragile since it relies on the duplicated pattern
         // from sparse_cast (i.e. checkers pattern where 0,0 is the first
         // set pixel
