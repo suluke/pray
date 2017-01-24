@@ -12,6 +12,19 @@ namespace sampler {
     auto direction = Vector3((top * (1.f - (2 * y + 1) / max_y) + left * (1.f - (2 * x + 1) / max_x) + cam.direction).normalize());
     return {origin, direction};
   }
+
+  template<class ray_t>
+  static inline std::enable_if_t<ray_t::dim::w != 1 || ray_t::dim::h != 1, bool>
+  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y, auto c) {
+	  return false;
+  }
+
+  template<class ray_t>
+  static inline std::enable_if_t<ray_t::dim::w == 1 || ray_t::dim::h == 1, bool>
+  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, float max_x, float max_y, auto c) {
+	  //TODO this uses that rays are cast in a checkered pattern
+
+  }
   
   template<class ray_t>
   static inline std::enable_if_t<ray_t::dim::w != 1 || ray_t::dim::h != 1, ray_t>
@@ -176,6 +189,7 @@ struct standard_sampler {
 
 template<class scene_t, class tracer_t, class ray_t>
 struct interpolating_sampler {
+
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
     Vector3 left, right, bottom, top;
     const float aspect = (float) image.resolution.h / image.resolution.w;
@@ -194,7 +208,14 @@ struct interpolating_sampler {
       for (long x = 0; x < w; x += sparse::w) {
         auto y = image.getGlobalY(local_y);
         auto ray = sampler::sparse_cast<ray_t>(scene.camera, left, top, x, y, max_x, max_y);
-        auto c = tracer.trace(scene, ray);
+		auto c = tracer.trace(scene, ray);
+		if (sampler::error<ray_t>(x,y,max_x,max_y,c)) {
+			std::cout<<"should not happen :)";
+		} else {
+			auto ray_inverse = sampler::sparse_cast<ray_t>(scene.camera, left, top, x, y, max_x, max_y,true);
+			auto c_inverse = tracer.trace(scene,ray_inverse);
+			sampler::sparse_writeColorToImage<ray_t>(c_inverse,image,x,local_y,y,true);
+		}
         sampler::sparse_writeColorToImage<ray_t>(c, image, x, local_y, y);
       }
     }
@@ -221,7 +242,7 @@ struct interpolating_sampler {
           image.setPixel(x, y, c);
         }
       }
-    }
+	}
   }
 };
 
