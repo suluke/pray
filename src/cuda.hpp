@@ -5,6 +5,13 @@
 #include <cuda_runtime_api.h>
 #include <cuda.h>
 
+#ifdef __CUDACC__
+	#define __cuda__ __device__ __host__
+#else
+	#define __cuda__
+#endif
+
+
 namespace cuda
 {
   template<class content_t>

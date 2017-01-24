@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <ostream>
 #include "debug.hpp"
+#include "cuda.hpp"
 
 
 struct approx
@@ -22,29 +23,29 @@ struct Vector3
   
 	component_t x, y, z;
 
-	Vector3() = default;
-	constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
+	__cuda__ Vector3() = default;
+	__cuda__ constexpr Vector3(float x, float y, float z) : x(x), y(y), z(z) {}
 
 	template<class T> component_t &operator[](T index) { ASSERT(index < 3); return *(&x + index); }
 	template<class T> const component_t &operator[](T index) const { ASSERT(index < 3); return *(&x + index); }
 
-	constexpr Vector3 operator-() const { return Vector3(-x, -y, -z); }
-	constexpr Vector3 operator+(const Vector3 &a) const { return Vector3(x+a.x, y+a.y, z+a.z); }
-	constexpr Vector3 operator-(const Vector3 &a) const { return Vector3(x-a.x, y-a.y, z-a.z); }
-	constexpr Vector3 operator*(component_t a) const { return Vector3(x*a, y*a, z*a); }
-	constexpr Vector3 operator/(component_t a) const { return Vector3(x/a, y/a, z/a); }
+	__cuda__ constexpr Vector3 operator-() const { return Vector3(-x, -y, -z); }
+	__cuda__ constexpr Vector3 operator+(const Vector3 &a) const { return Vector3(x+a.x, y+a.y, z+a.z); }
+	__cuda__ constexpr Vector3 operator-(const Vector3 &a) const { return Vector3(x-a.x, y-a.y, z-a.z); }
+	__cuda__ constexpr Vector3 operator*(component_t a) const { return Vector3(x*a, y*a, z*a); }
+	__cuda__ constexpr Vector3 operator/(component_t a) const { return Vector3(x/a, y/a, z/a); }
 
-	Vector3 &operator*=(component_t a) { return *this = *this * a; }
-	Vector3 &operator/=(component_t a) { return *this = *this / a; }
+	__cuda__ Vector3 &operator*=(component_t a) { return *this = *this * a; }
+	__cuda__ Vector3 &operator/=(component_t a) { return *this = *this / a; }
 
-	constexpr component_t dot(const Vector3 &a) const { return x*a.x+y*a.y+z*a.z; }
-	constexpr Vector3 cross(const Vector3 &a) const { return Vector3(y*a.z-z*a.y, z*a.x-x*a.z, x*a.y-y*a.x); }
+	__cuda__ constexpr component_t dot(const Vector3 &a) const { return x*a.x+y*a.y+z*a.z; }
+	__cuda__ constexpr Vector3 cross(const Vector3 &a) const { return Vector3(y*a.z-z*a.y, z*a.x-x*a.z, x*a.y-y*a.x); }
 
-	constexpr component_t lengthSquared() const { return x*x + y*y + z*z; }
-	component_t length() const { return sqrt(lengthSquared()); }
-	Vector3 &normalize() { ASSERT(length() != approx(0)); return *this /= length(); }
+	__cuda__ constexpr component_t lengthSquared() const { return x*x + y*y + z*z; }
+	__cuda__ component_t length() const { return sqrt(lengthSquared()); }
+	__cuda__ Vector3 &normalize() { ASSERT(length() != approx(0)); return *this /= length(); }
 
-	Vector3 sign() const { return Vector3(copysign(1.f, x), copysign(1.f, y), copysign(1.f, z)); }
+	__cuda__ Vector3 sign() const { return Vector3(copysign(1.f, x), copysign(1.f, y), copysign(1.f, z)); }
 };
 
 static_assert(std::is_trivial<Vector3>::value, "math types should be trivial");

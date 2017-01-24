@@ -5,6 +5,7 @@
 #include "debug.hpp"
 #include "math.hpp"
 #include "image.hpp"
+#include "cuda.h"
 
 #include <cstdint>
 #include <limits>
@@ -78,7 +79,7 @@ struct Camera
 	Vector3 direction = Vector3(0.f, 0.f, -1.f);
 	float fov = acos(-1.f) / 2.f;
 
-	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
+	__cuda__ void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
 	{
 		const Vector3 global_up(0.f, 1.f, 0.f);
 		const Vector3 local_left = direction.cross(global_up).normalize();
