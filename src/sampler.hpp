@@ -214,7 +214,7 @@ struct interpolating_sampler {
           Color c{0.f, 0.f, 0.f};
           int n = 0;
           x > 0   ? c += image.getPixel(x-1,y), ++n : 0;
-          y > 1   ? c += image.getPixel(x,y-1), ++n : 0;
+		  y > 0   ? c += image.getPixel(x,y-1), ++n : 0;
           x < w-1 ? c += image.getPixel(x+1,y), ++n : 0;
           y < h-1 ? c += image.getPixel(x,y+1), ++n : 0;
           c /= n;
