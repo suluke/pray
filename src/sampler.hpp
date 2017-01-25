@@ -309,7 +309,7 @@ struct adaptive_sampler {
 	  for(long x = 0; x < w; x += sparse::w) {
 		auto y = image.getGlobalY(local_y);
 		if (!sampler::error<ray_t>(x,y,x+sparse::w,y+sparse::h,image)) {
-			for (long i = y; i < (y+sparse::h) && i < h; ++i) {
+			for (long i = y; i < (y+sparse::h) && i < h; ++ki) {
 				for (long j = x; j < (x+sparse::w) && j < w; ++j) {
 					// This is a bit fragile since it relies on the duplicated pattern
 					// from sparse_cast (i.e. checkers pattern where 0,0 is the first
@@ -330,9 +330,6 @@ struct adaptive_sampler {
 					}
 				}
 			}
-			//auto ray_inverse = sampler::sparse_cast<ray_t>(scene.camera, left, top, x, y, max_x, max_y,true);
-			//auto c_inverse = tracer.trace(scene,ray_inverse);
-			//sampler::sparse_writeColorToImage<ray_t>(c_inverse,image,x,local_y,y,true);
         } else {
 			auto ray_inverse = sampler::sparse_cast<ray_t>(scene.camera, left, top, x, y, max_x, max_y,true);
 			auto c_inverse = tracer.trace(scene,ray_inverse);
