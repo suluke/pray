@@ -139,6 +139,7 @@ struct Color
 	constexpr Color operator*(float a) const { return Color(r*a, g*a, b*a); }
 	constexpr Color operator/(float a) const { return Color(r/a, g/a, b/a); }
 
+	Color &operator*=(const Color &a) { return *this = *this * a; }
 	Color &operator+=(const Color &a) { return *this = *this + a; }
 	Color &operator-=(const Color &a) { return *this = *this - a; }
 	Color &operator/=(float a) { return *this = *this / a; }
