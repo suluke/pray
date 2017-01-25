@@ -126,7 +126,7 @@ namespace sampler {
   error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t max_x, const typename ray_t::dim_t max_y, ImageView &image) {
 	  //TODO this uses that rays are cast in a checkered pattern and x is always even
 	  const float threshold = 100.f;
-	  Color color;
+	  Color color{};
 	  for (long i=x;i<max_x;i+=1) {
 		  for (long j=y;j<max_y;j+=1) {
 			  color += image.getPixel(i,j);
@@ -135,7 +135,7 @@ namespace sampler {
 	  color /= (max_x * max_y / 2);
 	  for (long i=x;i<max_x;i+=1) {
 		  for (long j=y;j<max_y;j+=1) {
-			  if (!(x%2 == 0 && y%2 == 0) || !(x%2 == 1 && y%2 == 1)) {
+			  if (!(i%2 == 0 && j%2 == 0) || !(i%2 == 1 && j%2 == 1)) {
 				  continue;
 			  } else if (sampler::difference(image.getPixel(i,j),color)>threshold) {
 				  return true;
@@ -149,8 +149,8 @@ namespace sampler {
   static inline std::enable_if_t<ray_t::dim::w == 1 || ray_t::dim::h == 1, bool>
   error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t max_x, const typename ray_t::dim_t max_y, ImageView &image) {
 	  //TODO this uses that rays are cast in a checkered pattern and x is always even
-	  const float threshold = 1000.f;
-	  Color color;
+	  const float threshold = 100.f;
+	  Color color{};
 	  for (long i=x;i<max_x;i+=1) {
 		  for (long j=y;j<max_y;j+=1) {
 			  color += image.getPixel(i,j);
