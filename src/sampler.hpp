@@ -231,6 +231,54 @@ struct standard_sampler {
 
 template<class scene_t, class tracer_t, class ray_t>
 struct interpolating_sampler {
+  static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
+	Vector3 left, right, bottom, top;
+	const float aspect = (float) image.resolution.h / image.resolution.w;
+	auto w = image.resolution.w, h = image.resolution.h;
+	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
+	float max_x = (float) w;
+	float max_y = (float) h;
+	using sparse = sampler::sparse_dim<typename ray_t::dim>;
+#ifdef WITH_OMP
+	#pragma omp parallel for schedule(dynamic, 30) collapse(2)
+#endif
+	for (long local_y = 0; local_y < h; local_y += sparse::h) {
+	  for (long x = 0; x < w; x += sparse::w) {
+		auto y = image.getGlobalY(local_y);
+		auto ray = sampler::sparse_cast<ray_t>(scene.camera, left, top, x, y, max_x, max_y);
+		auto c = tracer.trace(scene, ray);
+		sampler::sparse_writeColorToImage<ray_t>(c, image, x, local_y, y);
+	  }
+	}
+#ifdef WITH_OMP
+	#pragma omp parallel for collapse(2)
+#endif
+	for(long y = 0; y < h; ++y) {
+	  for(long x = 0; x < w; ++x) {
+		// This is a bit fragile since it relies on the duplicated pattern
+		// from sparse_cast (i.e. checkers pattern where 0,0 is the first
+		// set pixel
+		if ((x%2 == 0 && y%2 == 0) || (x%2 == 1 && y%2 == 1)) {
+		  continue;
+		} else {
+		  // TODO maybe it's nicer (and faster) to have 5 different loops
+		  // for left/top/right/bottom edges plus inner pixels
+		  Color c{0.f, 0.f, 0.f};
+		  int n = 0;
+		  x > 0   ? c += image.getPixel(x-1,y), ++n : 0;
+		  y > 1   ? c += image.getPixel(x,y-1), ++n : 0;
+		  x < w-1 ? c += image.getPixel(x+1,y), ++n : 0;
+		  y < h-1 ? c += image.getPixel(x,y+1), ++n : 0;
+		  c /= n;
+		  image.setPixel(x, y, c);
+		}
+	  }
+	}
+  }
+};
+
+template<class scene_t, class tracer_t, class ray_t>
+struct adaptive_sampler {
 
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
     Vector3 left, right, bottom, top;
