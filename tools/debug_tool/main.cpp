@@ -31,10 +31,10 @@ static bool bih_draw_intersected_nodes = true;
 
 static void bih_rebuild()
 {
-	auto current_node_index = bih.nodes.empty() ? 0 : bih_current_node - &bih.nodes[0];
+	auto current_node_index = bih.pod.nodes.empty() ? 0 : bih_current_node - &bih.pod.nodes[0];
 	bih = Bih_t();
 	bih.build(scene);
-	bih_current_node = &bih.nodes[current_node_index];
+	bih_current_node = &bih.pod.nodes[current_node_index];
 }
 
 static void init()
@@ -153,7 +153,7 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 			if(bih_depth == depth)
 			{
 				glColor3f(0.f, 1.f, 0.f);
-				draw_triangle(scene.triangles[bih.triangles[node.getChildrenIndex()]]);
+				draw_triangle(scene.triangles[node.getChildrenIndex()]);
 			}
 		}
 		else if(debug_mode_parameter == "draw_single")
@@ -161,15 +161,15 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 			if(depth == 1 || &node == bih_current_node)
 			{
 				glColor3f(0.f, 1.f, 0.f);
-				draw_triangle(scene.triangles[bih.triangles[node.getChildrenIndex()]]);
+				draw_triangle(scene.triangles[node.getChildrenIndex()]);
 			}
 		}
 		else if(debug_mode_parameter == "intersect")
 		{
-			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.nodes[0]) != bih_intersected_nodes.end())
+			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.pod.nodes[0]) != bih_intersected_nodes.end())
 			{
 				glColor3f(0.f, 1.f, 0.f);
-				draw_triangle(scene.triangles[bih.triangles[node.getChildrenIndex()]]);
+				draw_triangle(scene.triangles[node.getChildrenIndex()]);
 			}
 		}
 	}
@@ -190,8 +190,8 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 				draw_box(child2_box);
 			}
 
-			draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
-			draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, depth+2);
+			draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
+			draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+1], child2_box, depth+2);
 		}
 		else if(debug_mode_parameter == "draw_single")
 		{
@@ -209,24 +209,24 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 				glVertex3fv(&v.x);
 				glEnd();
 
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, 1);
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, 1);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+0], child1_box, 1);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+1], child2_box, 1);
 			}
 			else
 			{
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, depth);
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, depth);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+0], child1_box, depth);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+1], child2_box, depth);
 			}
 		}
 		else if(debug_mode_parameter == "intersect")
 		{
-			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.nodes[0]) != bih_intersected_nodes.end())
+			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.pod.nodes[0]) != bih_intersected_nodes.end())
 			{
 				glColor3f(1.f, 0.f, 0.f);
 				draw_box(deduced_box);
 
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, depth+2);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+1], child2_box, depth+2);
 			}
 		}
 	}
@@ -298,7 +298,7 @@ static void display()
 			bih.intersect(scene, bih_ray, &distance);
 		}
 
-		draw_bih_node(bih.nodes[0], bih.scene_aabb, 0);
+		draw_bih_node(bih.pod.nodes[0], bih.pod.scene_aabb, 0);
 
 		glDisable(GL_BLEND);
 	}
