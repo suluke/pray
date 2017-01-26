@@ -116,9 +116,9 @@ namespace sampler {
 
   float difference(const Color& c1,const Color& c2) {
 	  //std::cout << "Debug: " << " Color1(" << c1.r << "," << c1.g << "," << c1.b << ")" << " Color2(" << c2.r << "," << c2.g << "," << c2.b << ")\n";
-	  auto square = c1-c2;
-	  square = square * square;
-	  return square.r + square.g + square.b; //Returns squared distance
+	  auto diff = c1-c2;
+	  diff = diff.abs(diff);
+	  return diff.r + diff.g + diff.b; //Returns sum of distances
   }
 
 
@@ -126,16 +126,16 @@ namespace sampler {
   static inline std::enable_if_t<ray_t::dim::w != 1 || ray_t::dim::h != 1, bool>
   error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t end_x, const typename ray_t::dim_t end_y, ImageView &image) {
 	  //TODO this uses that rays are cast in a checkered pattern and x is always even
-	  const float threshold = 2.f;
+	  const float threshold = 0.1f;
 	  Color color{};
-	  for (long i=x;i<end_x;i+=1) {
-		  for (long j=y;j<end_y;j+=1) {
+	  for (long j=y;j<end_y;j+=1) {
+		  for (long i=x;i<end_x;i+=1) {
 			  color += image.getPixel(i,j);
 		  }
 	  }
 	  color /= ((end_x - x) * (end_y - y) / 2);
-	  for (long i=x;i<end_x;i+=1) {
-		  for (long j=y;j<end_y;j+=1) {
+	  for (long j=y;j<end_y;j+=1) {
+		  for (long i=x;i<end_x;i+=1) {
 			  if (!((i%2 == 0 && j%2 == 0) || (i%2 == 1 && j%2 == 1))) {
 				  continue;
 			  } else if (sampler::difference(image.getPixel(i,j),color)>threshold) {
@@ -150,16 +150,16 @@ namespace sampler {
   static inline std::enable_if_t<ray_t::dim::w == 1 || ray_t::dim::h == 1, bool>
   error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t end_x, const typename ray_t::dim_t end_y, ImageView &image) {
 	  //TODO this uses that rays are cast in a checkered pattern and x is always even
-	  const float threshold = 2.f;
+	  const float threshold = 0.1f;
 	  Color color{};
-	  for (long i=x;i<end_x;i+=1) {
-		  for (long j=y;j<end_y;j+=1) {
+	  for (long j=y;j<end_y;j+=1) {
+		  for (long i=x;i<end_x;i+=1) {
 			  color += image.getPixel(i,j);
 		  }
 	  }
 	  color /= ((end_x - x) * (end_y - y) / 2);
-	  for (long i=x;i<end_x;i+=1) {
-		  for (long j=y;j<end_y;j+=1) {
+	  for (long j=y;j<end_y;j+=1) {
+		  for (long i=x;i<end_x;i+=1) {
 			  if (!((i%2 == 0 && j%2 == 0) || (i%2 == 1 && j%2 == 1))) {
 				  continue;
 			  } else if (sampler::difference(image.getPixel(i,j),color)>threshold) {
@@ -293,7 +293,7 @@ struct adaptive_sampler {
     using sparse = sampler::sparse_dim<typename ray_t::dim>;
 
 #ifdef WITH_OMP
-	#pragma omp parallel for schedule(dynamic, 30) collapse(2)
+	#pragma omp parallel for schedule(dynamic, 150) collapse(2)
 #endif
     for (long local_y = 0; local_y < h; local_y += sparse::h) {
       for (long x = 0; x < w; x += sparse::w) {
@@ -304,7 +304,7 @@ struct adaptive_sampler {
       }
     }
 #ifdef WITH_OMP
-    #pragma omp parallel for collapse(2)
+	#pragma omp parallel for schedule(dynamic, 150) collapse(2)
 #endif
 	for(long local_y = 0; local_y < h; local_y += sparse::h) {
 	  for(long x = 0; x < w; x += sparse::w) {
