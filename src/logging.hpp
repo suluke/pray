@@ -97,7 +97,7 @@ struct StageLogger {
 #define STR(x)   #x
 #define print_opt(x) do {                              \
     auto f(std::cout.flags());                         \
-    std::cout << std::left << std::setw(27) << #x ": ";\
+    std::cout << std::left << std::setw(16) << #x ": ";\
     if (strcmp(#x, STR(x))) {                          \
       if (strcmp(STR(x), "")) {                        \
         std::cout << STR(x)"\n";                       \
@@ -116,7 +116,7 @@ struct StageLogger {
     print_opt(WITH_CUDA);
     print_opt(WITH_SSE);
     print_opt(WITH_SSE_PT);
-    print_opt(WITH_BIH);
+    print_opt(ACCELERATOR);
     print_opt(SAMPLER);
     print_opt(WITH_TIMING);
     print_opt(WITH_CONFDUMP);

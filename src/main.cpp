@@ -19,11 +19,7 @@ struct PrayTypes {
 #else
 	using ray_t = Ray<scene_t>;
 #endif
-#ifdef WITH_BIH
-	using accel_t = KdTree<ray_t, scene_t>;
-#else
-	using accel_t = DummyAcceleration<ray_t, scene_t>;
-#endif
+	using accel_t = ACCELERATOR<ray_t, scene_t>;
 	template <class tracer_t>
 	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };
@@ -32,11 +28,7 @@ template<>
 struct PrayTypes<PathScene> {
 	using scene_t = PathScene;
 	using ray_t = Ray<scene_t>;
-#ifdef WITH_BIH
-	using accel_t = KdTree<ray_t, scene_t>;
-#else
-	using accel_t = DummyAcceleration<ray_t, scene_t>;
-#endif
+	using accel_t = ACCELERATOR<ray_t, scene_t>;
 	template <class tracer_t>
 	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };

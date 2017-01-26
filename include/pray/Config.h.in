@@ -7,9 +7,7 @@
 #cmakedefine WITH_SSE
 #cmakedefine WITH_SSE_PT
 #define SAMPLER ${SAMPLER}_sampler
-#cmakedefine WITH_BIH
-#cmakedefine WITH_BIH_SMART_TRAVERSION
-#cmakedefine WITH_BIH_SMART_TRAVERSION_ITERATIVE
+#define ACCELERATOR ${ACCELERATOR}
 #cmakedefine WITH_TIMING
 #cmakedefine WITH_CONFDUMP
 #cmakedefine WITH_PROGRESS
