@@ -3,6 +3,7 @@
 #include "image.hpp"
 #include "dummy_acceleration.hpp"
 #include "bih.hpp"
+#include "kdtree.hpp"
 #include "cpu_tracer.hpp"
 #include "cpu_pathtracer.hpp"
 #include "cuda_pathtracer.hpp"
@@ -19,8 +20,7 @@ struct PrayTypes {
 	using ray_t = Ray<scene_t>;
 #endif
 #ifdef WITH_BIH
-	BihPOD<scene_t> bih;
-	using accel_t = Bih<ray_t, scene_t>;
+	using accel_t = KdTree<ray_t, scene_t>;
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
@@ -33,7 +33,7 @@ struct PrayTypes<PathScene> {
 	using scene_t = PathScene;
 	using ray_t = Ray<scene_t>;
 #ifdef WITH_BIH
-	using accel_t = Bih<ray_t, scene_t>;
+	using accel_t = KdTree<ray_t, scene_t>;
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif

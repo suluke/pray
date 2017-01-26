@@ -45,7 +45,7 @@ struct BihBuilder
 		buildNode(bih.pod.nodes.back(), bih.pod.scene_aabb, triangles.begin(), triangles.end());
 
 		static_assert(std::is_trivial<Triangle>::value, "Triangle should be trivial");
-		std::vector<Triangle> reordered_triangles(scene.triangles.size());
+		std::vector<Triangle> reordered_triangles(triangles.size());
 		for(size_t i=0u; i<triangles.size(); ++i) reordered_triangles[i] = scene.triangles[triangles[i]];
 		scene.triangles = std::move(reordered_triangles);
 	}
@@ -56,7 +56,7 @@ struct BihBuilder
 
 #ifdef DEBUG
 		// for conditional breakpoints
-		auto node_index = &current_node - &bih.pod.nodes[0];
+		const auto node_index = &current_node - &bih.pod.nodes[0];
 #endif
 
 		const auto children_count = std::distance(triangles_begin, triangles_end);
@@ -64,7 +64,7 @@ struct BihBuilder
 		const bool leaf_children_count_reached = children_count <= 4u; //TODO: how to pass this constant as a parameter? (pls not template...)
 
 		/* retry_depth counts how often we retried to split a node with a smaller aabb. If is is too great (magic number), the triangles are very close to each
-		   other and a split will most likely never be found (due to float inprecision). The speedup wouldn't be to great anyways... */
+		   other and a split will most likely never be found (due to float imprecision). The speedup wouldn't be to great anyways... */
 		const bool maximum_retry_depth_reached = retry_depth == 16u; //TODO: tweak this parameter? or find a better criterium (floating point inaccuracy reached (nextafter(aabb.min, +1.f) == aabb.max or something like that...))?
 
 		if(leaf_children_count_reached || maximum_retry_depth_reached)
@@ -160,14 +160,6 @@ void Bih<ray_t, scene_t>::build(scene_t &scene)
 extern std::vector<size_t> bih_intersected_nodes;
 #endif
 
-// move to global namespace and use this intead of float *out_distance?
-template<class ray_t>
-struct IntersectionResult
-{
-	typename ray_t::intersect_t triangle = ray_t::getNoIntersection();
-	typename ray_t::distance_t distance = ray_t::max_distance();
-};
-
 template<class ray_t, class scene_t>
 typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
@@ -179,7 +171,14 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 	std::array<bool, 3> direction_sign_equal;
 	ray.isDirectionSignEqualForAllSubrays(direction_sign, &direction_sign_equal);
 
-	IntersectionResult<ray_t> intersection_result;
+	// move to global namespace and use this intead of float *out_distance?
+	struct IntersectionResult
+	{
+		typename ray_t::intersect_t triangle = ray_t::getNoIntersection();
+		typename ray_t::distance_t distance = ray_t::max_distance();
+	};
+
+	IntersectionResult intersection_result;
 
 	// keep this a VALUE (as opposed to reference)!!!
 	const auto triangles_data = scene.triangles.data();

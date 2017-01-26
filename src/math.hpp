@@ -95,6 +95,12 @@ struct AABox3
 		return (min + max) / 2.f;
 	}
 
+	float calculateSurfaceArea() const
+	{
+		const auto d = max - min;
+		return 2*d.x*d.y + 2*d.x*d.z + 2*d.y*d.z;
+	}
+
 	bool isValid() const
 	{
 		return min.x <= max.x && min.y <= max.y && min.z <= max.z;
