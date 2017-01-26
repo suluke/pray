@@ -115,6 +115,7 @@ namespace sampler {
   }
 
   float difference(const Color& c1,const Color& c2) {
+	  //std::cout << "Debug: " << " Color1(" << c1.r << "," << c1.g << "," << c1.b << ")" << " Color2(" << c2.r << "," << c2.g << "," << c2.b << ")\n";
 	  auto square = c1-c2;
 	  square = square * square;
 	  return square.r + square.g + square.b; //Returns squared distance
@@ -123,19 +124,19 @@ namespace sampler {
 
   template<class ray_t>
   static inline std::enable_if_t<ray_t::dim::w != 1 || ray_t::dim::h != 1, bool>
-  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t max_x, const typename ray_t::dim_t max_y, ImageView &image) {
+  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t end_x, const typename ray_t::dim_t end_y, ImageView &image) {
 	  //TODO this uses that rays are cast in a checkered pattern and x is always even
-	  const float threshold = 100.f;
+	  const float threshold = 2.f;
 	  Color color{};
-	  for (long i=x;i<max_x;i+=1) {
-		  for (long j=y;j<max_y;j+=1) {
+	  for (long i=x;i<end_x;i+=1) {
+		  for (long j=y;j<end_y;j+=1) {
 			  color += image.getPixel(i,j);
 		  }
 	  }
-	  color /= (max_x * max_y / 2);
-	  for (long i=x;i<max_x;i+=1) {
-		  for (long j=y;j<max_y;j+=1) {
-			  if (!(i%2 == 0 && j%2 == 0) || !(i%2 == 1 && j%2 == 1)) {
+	  color /= ((end_x - x) * (end_y - y) / 2);
+	  for (long i=x;i<end_x;i+=1) {
+		  for (long j=y;j<end_y;j+=1) {
+			  if (!((i%2 == 0 && j%2 == 0) || (i%2 == 1 && j%2 == 1))) {
 				  continue;
 			  } else if (sampler::difference(image.getPixel(i,j),color)>threshold) {
 				  return true;
@@ -147,19 +148,19 @@ namespace sampler {
 
   template<class ray_t>
   static inline std::enable_if_t<ray_t::dim::w == 1 || ray_t::dim::h == 1, bool>
-  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t max_x, const typename ray_t::dim_t max_y, ImageView &image) {
+  error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t end_x, const typename ray_t::dim_t end_y, ImageView &image) {
 	  //TODO this uses that rays are cast in a checkered pattern and x is always even
-	  const float threshold = 100.f;
+	  const float threshold = 2.f;
 	  Color color{};
-	  for (long i=x;i<max_x;i+=1) {
-		  for (long j=y;j<max_y;j+=1) {
+	  for (long i=x;i<end_x;i+=1) {
+		  for (long j=y;j<end_y;j+=1) {
 			  color += image.getPixel(i,j);
 		  }
 	  }
-	  color /= (max_x * max_y / 2);
-	  for (long i=x;i<max_x;i+=1) {
-		  for (long j=y;j<max_y;j+=1) {
-			  if (!(x%2 == 0 && y%2 == 0) || !(x%2 == 1 && y%2 == 1)) {
+	  color /= ((end_x - x) * (end_y - y) / 2);
+	  for (long i=x;i<end_x;i+=1) {
+		  for (long j=y;j<end_y;j+=1) {
+			  if (!((i%2 == 0 && j%2 == 0) || (i%2 == 1 && j%2 == 1))) {
 				  continue;
 			  } else if (sampler::difference(image.getPixel(i,j),color)>threshold) {
 				  return true;
@@ -309,7 +310,7 @@ struct adaptive_sampler {
 	  for(long x = 0; x < w; x += sparse::w) {
 		auto y = image.getGlobalY(local_y);
 		if (!sampler::error<ray_t>(x,y,x+sparse::w,y+sparse::h,image)) {
-			for (long i = y; i < (y+sparse::h) && i < h; ++ki) {
+			for (long i = y; i < (y+sparse::h) && i < h; ++i) {
 				for (long j = x; j < (x+sparse::w) && j < w; ++j) {
 					// This is a bit fragile since it relies on the duplicated pattern
 					// from sparse_cast (i.e. checkers pattern where 0,0 is the first
@@ -322,7 +323,7 @@ struct adaptive_sampler {
 					  Color c{0.f, 0.f, 0.f};
 					  int n = 0;
 					  j > 0   ? c += image.getPixel(j-1,i), ++n : 0;
-					  i > 1   ? c += image.getPixel(j,i-1), ++n : 0;
+					  i > 0   ? c += image.getPixel(j,i-1), ++n : 0;
 					  j < w-1 ? c += image.getPixel(j+1,i), ++n : 0;
 					  i < h-1 ? c += image.getPixel(j,i+1), ++n : 0;
 					  c /= n;
