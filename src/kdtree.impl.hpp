@@ -357,12 +357,12 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 					// no need to pass old_active_mask here, updateIntersection handles this correctly
 					// however, should ray_t ever get wider than one register, adding the mask might improve the performance if used correctly
 					ray_t::updateIntersections(&intersection_result.triangle, triangle_index, &intersection_result.distance, distance);
-				}
 
-				//TODO: what to do about that?
-				if(direction_sign_equal[0] && direction_sign_equal[1] && direction_sign_equal[2] && i < current.node->getLeafData().non_overlap_count)
-				{
-					active_mask = ray_t::booleanAnd(active_mask, intersected);
+					//TODO: what to do about that?
+					if(direction_sign_equal[0] && direction_sign_equal[1] && direction_sign_equal[2] && i < current.node->getLeafData().non_overlap_count)
+					{
+						active_mask = ray_t::booleanAnd(active_mask, ray_t::booleanNot(intersected));
+					}
 				}
 			}
 		}
@@ -390,7 +390,6 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 				if(ray_t::isAny(intersect_left))
 				{
 					current = Current(left_child, left_aabb);
-					active_mask = intersect_left;
 					continue;
 				}
 				else

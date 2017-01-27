@@ -255,6 +255,10 @@ public:
     return simd::castps_si(simd::and_ps(simd::castsi_ps(a), simd::castsi_ps(b)));
   }
 
+  static inline bool_t booleanNot(bool_t a) {
+	  return simd::castps_si(simd::not_ps(simd::castsi_ps(a)));
+  }
+
   static inline bool_t isOppositeDirection(const vec3_t v1, const vec3_t v2) {
     return simd::castps_si(simd::cmple_ps(v1.dot(v2), simd::setzero_ps()));
   }

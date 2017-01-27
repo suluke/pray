@@ -172,6 +172,10 @@ struct Ray {
     return a && b;
   }
 
+  static inline bool_t booleanNot(bool_t a) {
+	  return !a;
+  }
+
   /**
    * True if angle between v1 and v2 is larger than 90 degrees
    */
