@@ -52,7 +52,9 @@ namespace cuda
   {
     vector<content_t> cudavec;
     cudavec.vec_size = stdvec.size();
-    
+		
+		std::cout << "size of array: " << cudavec.vec_size << "\n";
+		
     // alloc memory on device
     cudaMalloc((void**) &cudavec.vec_pointer, sizeof(content_t) * cudavec.vec_size);
     cuda::checkForError(__FILE__, __func__, __LINE__);
@@ -73,7 +75,7 @@ namespace cuda
 
   private:
     content_t* vec_pointer;
-    size_t vec_size;
+    typename std::vector<content_t>::size_type vec_size;
   };
 	
 	
@@ -88,7 +90,7 @@ namespace cuda
     // copy data to device
     cudaMemcpy(ptr, &obj, sizeof(content_t), cudaMemcpyHostToDevice);
     cuda::checkForError(__FILE__, __func__, __LINE__);
-      
+		
     return ptr;
 	}
 	

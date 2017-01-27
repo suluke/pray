@@ -11,8 +11,8 @@ __global__ void kernel();
 __device__ void render();
 __device__ Color trace();
 
-
-__global__ void kernel()
+template <class scene_t, class accel_t, class opts_t>
+__global__ void kernel(scene_t* scene, accel_t* accel, opts_t* opts, CudaImage* image)
 {
   //d_render(*image);
 }
@@ -85,6 +85,10 @@ void CudaPathTracer<ray_t, accel_t>::render(ImageView &image)
 	
 	// copy objects to device
 	CudaImage* d_image = cuda::create<CudaImage>(cudaImage);
+	scene_cuda_t* d_scene = cuda::create<scene_cuda_t>(scene);
+	accel_cuda_t* d_accel = cuda::create<accel_cuda_t>(accel);
+	renderopts_t* d_opts = cuda::create<renderopts_t>(opts);
+	
 	
 	// configure execution
 	// max. 1024 Threads per Block (may ask API)
@@ -93,11 +97,14 @@ void CudaPathTracer<ray_t, accel_t>::render(ImageView &image)
 	
 	// start kernel
 	//      <<< BLOCKS, THREADS >>>
-	kernel<<<dimGrid, 1>>>();
+	kernel<scene_cuda_t, accel_cuda_t><<<dimGrid, 1>>>(d_scene, d_accel, d_opts, d_image);
   cuda::checkForError(__FILE__, __func__, __LINE__);
 	
 	// destroy objects on device
 	cuda::destroy<CudaImage>(d_image);
+	cuda::destroy<scene_cuda_t>(d_scene);
+	cuda::destroy<accel_cuda_t>(d_accel);
+	cuda::destroy<renderopts_t>(d_opts);
 	
 	// copy back and free image memory
 	cudaImage.finalize();
@@ -106,21 +113,15 @@ void CudaPathTracer<ray_t, accel_t>::render(ImageView &image)
 template<class ray_t, class accel_t>
 void CudaPathTracer<ray_t, accel_t>::initialize()
 {
-	accel_cuda_t cudaAccel(accel);
-	cudaAccel.initialize();
-	
-	CudaScene<material_t> cudaScene(scene);
-	cudaScene.initialize();
+	accel.initialize();
+	scene.initialize();
 }
 
 template<class ray_t, class accel_t>
 void CudaPathTracer<ray_t, accel_t>::finalize()
 {
-	accel_cuda_t cudaAccel(accel);
-	cudaAccel.finalize();
-	
-	CudaScene<material_t> cudaScene(scene);
-	cudaScene.finalize();
+	accel.finalize();
+	scene.finalize();
 }
 
 template class CudaPathTracer<Ray<Scene<EmissionMaterial> >, Bih<Ray<Scene<EmissionMaterial> >, Scene<EmissionMaterial> > >;

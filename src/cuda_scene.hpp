@@ -15,12 +15,12 @@
 using TriangleIndex = uint32_t;
 using MaterialIndex = uint32_t;
 
-template<class material_t>
 struct CudaScene
 {
-	using scene_t = Scene<material_t>;
+	using scene_t = PathScene;
+	using material_t = EmissionMaterial;
 	
-  scene_t &scene;
+  const scene_t &scene;
   
 	cuda::vector<Triangle> triangles;
 	cuda::vector<material_t> materials;
@@ -28,7 +28,7 @@ struct CudaScene
 	Camera* camera;
 	Color* background_color;
   
-  CudaScene(scene_t) : scene(scene) {};
+  CudaScene(const scene_t &scene) : scene(scene) {};
   
   void initialize()
   {

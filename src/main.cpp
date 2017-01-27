@@ -65,11 +65,6 @@ static void traceScene(const WhittedScene &scene, Image &image, const WhittedTyp
 
 static void traceScene(const PathScene &scene, Image &image, const PathTypes::accel_t &accel, const RenderOptions &opts) {
 #ifdef WITH_CUDA
-
-  #ifndef WITH_BIH
-    #error "WITH_CUDA requires also WITH_BIH"
-  #endif
-  
   ImageView img(image, 0, opts.resolution.h);
   
 	auto cudaTracer  = CudaPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);

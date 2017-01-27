@@ -11,14 +11,14 @@ struct CudaBih
 	using pod_t = BihPOD<scene_t>;
 	using Node = typename pod_t::Node;
 	
-	pod_t &bih;
+	const pod_t &bih;
 	
 	using accel_pod_t = pod_t;
 	
 	cuda::vector<Node> nodes;
 	AABox3* scene_aabb;
 	
-	CudaBih(pod_t &bih) : bih(bih) {}
+	CudaBih(const pod_t &bih) : bih(bih) {}
 	
 	void initialize()
 	{
