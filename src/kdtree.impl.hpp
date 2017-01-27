@@ -141,6 +141,7 @@ struct KdTreeBuilder
 		current_node.makeLeafNode(children_index, non_overlap_count, children_count);
 
 #ifdef DEBUG
+		current_node.index = &current_node - &kdtree.pod.nodes[0];
 		current_node.child1 = current_node.child2 = nullptr;
 #endif
 	}

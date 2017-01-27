@@ -75,6 +75,7 @@ struct BihBuilder
 			current_node.makeLeafNode(children_index, children_count);
 
 #ifdef DEBUG
+			current_node.index = node_index;
 			current_node.child1 = current_node.child2 = nullptr;
 #endif
 		}
