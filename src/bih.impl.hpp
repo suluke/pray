@@ -246,7 +246,7 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 	for(;;)
 	{
 #ifdef DEBUG_TOOL
-		bih_intersected_nodes.push_back(current.node - &bih.pod.nodes[0]);
+		bih_intersected_nodes.push_back(current.node - &pod.nodes[0]);
 #endif
 
 		if(current.node->getType() == Bih<ray_t, scene_t>::pod_t::Node::Leaf)

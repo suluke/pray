@@ -203,6 +203,8 @@ struct KdTreeBuilder
 			const auto right_overlapping_begin = overlapping_begin;
 			const auto right_overlapping_end = overlapping_end;
 
+			(void)right_overlapping_begin;
+
 			if(left_begin == left_end)
 			{
 				buildLeaf(current_node, right_begin, right_end, right_overlapping_end);
@@ -337,7 +339,7 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 	for(;;)
 	{
 #ifdef DEBUG_TOOL
-		kdtree_intersected_nodes.push_back(current.node - &kdtree.pod.nodes[0]);
+		kdtree_intersected_nodes.push_back(current.node - &pod.nodes[0]);
 #endif
 
 		if(current.node->getType() == KdTree<ray_t, scene_t>::pod_t::Node::Leaf)
