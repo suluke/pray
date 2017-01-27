@@ -47,7 +47,7 @@ struct KdTreeBuilder
 #ifdef DEBUG
 		kdtree.pod.nodes.back().parent = nullptr;
 #endif
-		buildNode(kdtree.pod.nodes.back(), kdtree.pod.scene_aabb, triangles.cbegin(), triangles.cend());
+		buildNode(kdtree.pod.nodes.back(), kdtree.pod.scene_aabb, triangles.cbegin(), triangles.cend(), triangles.cend());
 
 		static_assert(std::is_trivial<Triangle>::value, "Triangle should be trivial");
 		std::vector<Triangle> reordered_triangles(out_triangles.size());
@@ -132,19 +132,20 @@ struct KdTreeBuilder
 		return std::get<float>(min_plane);
 	}
 
-	void buildLeaf(typename kdtree_t::pod_t::Node &current_node, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const size_t triangles_count)
+	void buildLeaf(typename kdtree_t::pod_t::Node &current_node, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const TrianglesIt triangles_overlap_end)
 	{
 		const auto children_index = out_triangles.size();
-		const auto children_count = triangles_count;
-		for(auto it = triangles_begin; it != triangles_end; ++it) out_triangles.push_back(*it);
-		current_node.makeLeafNode(children_index, children_count);
+		const auto non_overlap_count = std::distance(triangles_begin, triangles_end);
+		const auto children_count = non_overlap_count + std::distance(triangles_end, triangles_overlap_end);
+		for(auto it = triangles_begin; it != triangles_overlap_end; ++it) out_triangles.push_back(*it);
+		current_node.makeLeafNode(children_index, non_overlap_count, children_count);
 
 #ifdef DEBUG
 		current_node.child1 = current_node.child2 = nullptr;
 #endif
 	}
 
-	void buildNode(typename kdtree_t::pod_t::Node &current_node, const AABox3 &initial_aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
+	void buildNode(typename kdtree_t::pod_t::Node &current_node, const AABox3 &initial_aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const TrianglesIt triangles_overlap_end)
 	{
 		ASSERT(initial_aabb.isValid());
 
@@ -157,7 +158,7 @@ struct KdTreeBuilder
 
 		unsigned split_axis;
 		float cost_split;
-		const auto split_plane = findSplitPlane(&split_axis, &cost_split, &triangles_count, initial_aabb, triangles_begin, triangles_end);
+		const auto split_plane = findSplitPlane(&split_axis, &cost_split, &triangles_count, initial_aabb, triangles_begin, triangles_overlap_end);
 
 		const auto cost_leaf = cost_intersect_triangle * triangles_count;
 
@@ -165,14 +166,14 @@ struct KdTreeBuilder
 		{
 			// build a leaf
 
-			buildLeaf(current_node, triangles_begin, triangles_end, triangles_count);
+			buildLeaf(current_node, triangles_begin, triangles_end, triangles_overlap_end);
 		}
 		else
 		{
 			// build a node
 
 			//TODO: yeah, this is a copy...
-			std::list<TriangleIndex> node_triangles(triangles_begin, triangles_end);
+			std::list<TriangleIndex> node_triangles(triangles_begin, triangles_overlap_end);
 
 			const auto o = std::partition(node_triangles.begin(), node_triangles.end(),
 			[&](TriangleIndex t)
@@ -190,27 +191,28 @@ struct KdTreeBuilder
 				return triangle_data[t].centroid[split_axis] < split_plane;
 			});
 
+			//TODO: sooo much efficiency...
+			const auto left_overlapping_begin = node_triangles.insert(p, overlapping_begin, overlapping_end);
+			const auto left_overlapping_end = p;
+
 			const auto left_begin = node_triangles.begin();
-			const auto left_end = p;
+			const auto left_end = left_overlapping_begin;
 			const auto right_begin = p;
 			const auto right_end = overlapping_begin;
 
+			const auto right_overlapping_begin = overlapping_begin;
+			const auto right_overlapping_end = overlapping_end;
+
 			if(left_begin == left_end)
 			{
-				buildLeaf(current_node, right_begin, overlapping_end, triangles_count);
+				buildLeaf(current_node, right_begin, right_end, right_overlapping_end);
 				return;
 			}
 			if(right_begin == right_end)
 			{
-				//TODO: sooo much efficiency...
-				node_triangles.insert(left_end, overlapping_begin, overlapping_end);
-
-				buildLeaf(current_node, left_begin, left_end, triangles_count);
+				buildLeaf(current_node, left_begin, left_end, left_overlapping_end);
 				return;
 			}
-
-			//TODO: sooo much efficiency...
-			node_triangles.insert(left_end, overlapping_begin, overlapping_end);
 
 			const auto children_index = kdtree.pod.nodes.size();
 			ASSERT(kdtree.pod.nodes.capacity() - kdtree.pod.nodes.size() >= 2u); // we don't want relocation (breaks references)
@@ -234,8 +236,8 @@ struct KdTreeBuilder
 			child2_initial_aabb.min[split_axis] = split_plane;
 
 			// recursion
-			buildNode(child1, child1_initial_aabb, left_begin, left_end);
-			buildNode(child2, child2_initial_aabb, right_begin, overlapping_end);
+			buildNode(child1, child1_initial_aabb, left_begin, left_end, left_overlapping_end);
+			buildNode(child2, child2_initial_aabb, right_begin, right_end, right_overlapping_end);
 		}
 	}
 };
@@ -358,7 +360,7 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 				}
 
 				//TODO: what to do about that?
-				if(direction_sign_equal[0] && direction_sign_equal[1] && direction_sign_equal[2])
+				if(direction_sign_equal[0] && direction_sign_equal[1] && direction_sign_equal[2] && i < current.node->getLeafData().non_overlap_count)
 				{
 					active_mask = ray_t::booleanAnd(active_mask, intersected);
 				}
@@ -388,6 +390,7 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 				if(ray_t::isAny(intersect_left))
 				{
 					current = Current(left_child, left_aabb);
+					active_mask = intersect_left;
 					continue;
 				}
 				else

@@ -28,6 +28,7 @@ struct KdTreePOD
 
 		struct LeafData
 		{
+			uint32_t non_overlap_count;
 			uint32_t children_count;
 		};
 
@@ -37,9 +38,10 @@ struct KdTreePOD
 			data.split.plane = plane;
 		}
 
-		void makeLeafNode(uint32_t children_index, uint32_t children_count)
+		void makeLeafNode(uint32_t children_index, uint32_t non_overlap_count, uint32_t children_count)
 		{
 			setTypeAndChildrenIndex(Leaf, children_index);
+			data.leaf.non_overlap_count = non_overlap_count;
 			data.leaf.children_count = children_count;
 		}
 
