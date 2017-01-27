@@ -5,6 +5,10 @@
 #include <cuda_runtime_api.h>
 #include <cuda.h>
 
+#include <exception>
+#include <string>
+#include <sstream>
+
 #ifdef __CUDACC__
 	#define __cuda__ __device__ __host__
 #else
@@ -14,6 +18,20 @@
 
 namespace cuda
 {
+  inline void checkForError(const char* file, const char* func, int line)
+  {
+    // error handling
+    cudaError_t error = cudaGetLastError();
+    if (error)
+    {
+      std::stringstream msg; 
+      msg << "CUDA error occured: " << cudaGetErrorString(error) << " (" << file << ":" << line << ":" << func << ")\n";
+      throw std::runtime_error(msg.str().c_str());
+    }
+    
+    
+  }
+  
   template<class content_t>
   struct vector {
   
@@ -37,8 +55,10 @@ namespace cuda
     
     // alloc memory on device
     cudaMalloc((void**) &cudavec.vec_pointer, sizeof(content_t) * cudavec.vec_size);
+    cuda::checkForError(__FILE__, __func__, __LINE__);
     // copy data to device
     cudaMemcpy(cudavec.vec_pointer, stdvec.data(), sizeof(content_t) * cudavec.vec_size, cudaMemcpyHostToDevice);
+    cuda::checkForError(__FILE__, __func__, __LINE__);
       
     return cudavec;
   }
@@ -46,6 +66,7 @@ namespace cuda
   void destroy()
   {
     cudaFree(vec_pointer);
+    cuda::checkForError(__FILE__, __func__, __LINE__);
 		vec_pointer = 0;
 		vec_size = 0;
   }
@@ -63,8 +84,10 @@ namespace cuda
     
     // alloc memory on device
     cudaMalloc((void**) &ptr, sizeof(content_t));
+    cuda::checkForError(__FILE__, __func__, __LINE__);
     // copy data to device
     cudaMemcpy(ptr, &obj, sizeof(content_t), cudaMemcpyHostToDevice);
+    cuda::checkForError(__FILE__, __func__, __LINE__);
       
     return ptr;
 	}
@@ -73,6 +96,7 @@ namespace cuda
 	void destroy(content_t* ptr)
 	{
 		cudaFree(ptr);
+    cuda::checkForError(__FILE__, __func__, __LINE__);
 	}
 }
 

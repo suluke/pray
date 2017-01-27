@@ -1,7 +1,8 @@
 #ifndef PRAY_CUDA_RAY_HPP
 #define PRAY_CUDA_RAY_HPP
 #pragma once
-#include "scene.hpp" // includes math and image
+
+#include "cuda_scene.hpp" // includes math and image
 
 #include <pmmintrin.h>
 
@@ -102,14 +103,6 @@ struct CudaRay {
 		return t < maximum_distance;
 	}
 
-	__device__ static CudaRay getShadowRay(Light light, location_t P, distance_t *ld) {
-		const Vector3 light_vector = light.position - P;
-		const float light_distance = light_vector.length();
-		const Vector3 L = light_vector / light_distance;
-		*ld = light_distance;
-		return {P + L * 0.001f, L};
-	}
-
 	__device__ static inline color_t getMaterialColors(const scene_t &scene, intersect_t triangle) {
 		const auto material_index = scene.triangles[triangle].material_index;
 		ASSERT(material_index != MaterialIndex_Invalid);
@@ -118,18 +111,6 @@ struct CudaRay {
 
 	__device__ static inline vec3_t getNormals(const scene_t &scene, intersect_t triangle) {
 		return scene.triangles[triangle].calculateNormal();
-	}
-	
-	__device__ static color_t shade(const scene_t &scene, const location_t &P, intersect_t triangle, const Light &light, distance_t intersection_distance, vec3_t N, color_t mat_color) {
-		// TODO duplicated code
-		const Vector3 light_vector = light.position - P;
-		const float light_distance = light_vector.length();
-		const Vector3 L = light_vector / light_distance;
-
-		if (intersection_distance < light_distance)
-			return {0.f, 0.f, 0.f};
-
-		return mat_color * light.color * L.dot(N) / (light_distance * light_distance);
 	}
 
 	__device__ static void addBackgroundcolor(color_t &result_color, const intersect_t intersected_triangle, const Color bg) {

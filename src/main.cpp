@@ -55,27 +55,34 @@ struct PrayTypes<PathScene> {
 using WhittedTypes = PrayTypes<WhittedScene>;
 using PathTypes = PrayTypes<PathScene>;
 
-static void traceScene(const WhittedScene &scene, ImageView &img, const WhittedTypes::accel_t &accel, const RenderOptions &opts) {
+static void traceScene(const WhittedScene &scene, Image &image, const WhittedTypes::accel_t &accel, const RenderOptions &opts) {
+  ImageView img(image, 0, opts.resolution.h);
+  
 	auto tracer = CpuTracer<WhittedTypes::ray_t, WhittedTypes::accel_t>(scene, accel);
 	using sampler = WhittedTypes::sampler_t<decltype(tracer)>;
 	sampler::render(scene, img, tracer);
 }
 
-static void traceScene(const PathScene &scene, ImageView &img, const PathTypes::accel_t &accel, const RenderOptions &opts) {
+static void traceScene(const PathScene &scene, Image &image, const PathTypes::accel_t &accel, const RenderOptions &opts) {
 #ifdef WITH_CUDA
 
   #ifndef WITH_BIH
     #error "WITH_CUDA requires also WITH_BIH"
   #endif
   
-	auto cudaTracer  = CudaPathTracer(scene, opts.path_opts, accel.pod);
+  ImageView img(image, 0, opts.resolution.h);
+  
+	auto cudaTracer  = CudaPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
 	cudaTracer.initialize();
   cudaTracer.render(img);
 	cudaTracer.finalize();
-#endif
+#else
+  ImageView img(image, 0, opts.resolution.h);
+  
 	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
 	sampler::render(scene, img, cpuTracer);
+#endif
 }
 
 template<class scene_t>
@@ -84,7 +91,6 @@ static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) 
 #ifdef WITH_PROGRESS
 	logger.image = &image;
 #endif
-	ImageView img(image, 0, opts.resolution.h);
 
 	scene_t scene;
 	if (!LoadScene(opts, &scene)) return 1;
@@ -99,7 +105,7 @@ static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) 
 	accel.build(scene);
 
 	logger.startRendering();
-	traceScene(scene, img, accel, opts);
+	traceScene(scene, image, accel, opts);
 
 	logger.startOutput();
 #ifndef DISABLE_OUTPUT

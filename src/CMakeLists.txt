@@ -24,6 +24,9 @@ set(PRAY_SOURCES
 if (WITH_CUDA)
   cuda_compile(cuda_files
     cuda_ray.hpp
+    cuda_scene.hpp
+    cuda_image.hpp
+    cuda_bih.hpp
     cuda_pathtracer.hpp
     cuda_pathtracer.cu)
   list(APPEND PRAY_SOURCES ${cuda_files})
