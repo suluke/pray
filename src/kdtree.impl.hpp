@@ -41,10 +41,7 @@ struct KdTreeBuilder
 		//triangles.reserve(scene.triangles.size() * scene.triangles.size());
 		for(TriangleIndex i=0u; i<scene.triangles.size(); ++i) triangles.push_back(i);
 
-		// https://de.wikipedia.org/wiki/Bin%C3%A4rbaum#Abz.C3.A4hlungen
-		// The bih is a binary tree with (at most) scene.triangles.size() leaves.
-		kdtree.pod.nodes.reserve(scene.triangles.size() + scene.triangles.size() - 1);
-		kdtree.pod.nodes.reserve(10000u);
+		kdtree.pod.nodes.reserve(2 * (scene.triangles.size() + scene.triangles.size() - 1)); //TODO: find a good number here, we MUST NOT reallocate in buildNode!!!
 
 		kdtree.pod.nodes.emplace_back();
 #ifdef DEBUG
@@ -54,7 +51,7 @@ struct KdTreeBuilder
 
 		static_assert(std::is_trivial<Triangle>::value, "Triangle should be trivial");
 		std::vector<Triangle> reordered_triangles(out_triangles.size());
-		for(size_t i=0u; i<triangles.size(); ++i) reordered_triangles[i] = scene.triangles[out_triangles[i]];
+		for(size_t i=0u; i<out_triangles.size(); ++i) reordered_triangles[i] = scene.triangles[out_triangles[i]];
 		scene.triangles = std::move(reordered_triangles);
 	}
 
@@ -90,13 +87,17 @@ struct KdTreeBuilder
 		return std::min(cost(p_l, p_r, n_l + n_p, n_r), cost(p_l, p_r, n_l, n_r + n_p));
 	}
 
-	float findSplitPlane(unsigned *out_split_axis, float *out_cost, const AABox3 &aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
+	float findSplitPlane(unsigned *out_split_axis, float *out_cost, size_t *out_triangles_count, const AABox3 &aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
 	{
 		auto min_cost = std::numeric_limits<float>::max();
 		auto min_plane = std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
 
+		size_t count = 0u;
+
 		for(auto it = triangles_begin; it != triangles_end; ++it)
 		{
+			++count;
+
 			for(auto i = 0u; i < 6u; ++i)
 			{
 				const auto split = getPerfectSplit(*it, aabb, i);
@@ -127,6 +128,7 @@ struct KdTreeBuilder
 
 		*out_split_axis = std::get<unsigned>(min_plane);
 		*out_cost = min_cost;
+		*out_triangles_count = count; // just an optimization so that we don't have to iterate through the triangles list multiple times
 		return std::get<float>(min_plane);
 	}
 
@@ -151,14 +153,11 @@ struct KdTreeBuilder
 		const auto node_index = &current_node - &kdtree.pod.nodes[0];
 #endif
 
-		//TODO: calc this more efficiently (maybe in findSplitPlane)
-		const auto triangles_count = std::distance(triangles_begin, triangles_end);
-
-		std::cout << triangles_count << "\n";
+		size_t triangles_count;
 
 		unsigned split_axis;
 		float cost_split;
-		const auto split_plane = findSplitPlane(&split_axis, &cost_split, initial_aabb, triangles_begin, triangles_end);
+		const auto split_plane = findSplitPlane(&split_axis, &cost_split, &triangles_count, initial_aabb, triangles_begin, triangles_end);
 
 		const auto cost_leaf = cost_intersect_triangle * triangles_count;
 
@@ -175,25 +174,26 @@ struct KdTreeBuilder
 			//TODO: yeah, this is a copy...
 			std::list<TriangleIndex> node_triangles(triangles_begin, triangles_end);
 
-			const auto overlapping_begin = std::partition(node_triangles.begin(), node_triangles.end(),
+			const auto o = std::partition(node_triangles.begin(), node_triangles.end(),
 			[&](TriangleIndex t)
 			{
 				const bool overlapping = triangle_data[t].aabb.min[split_axis] < split_plane && triangle_data[t].aabb.max[split_axis] > split_plane;
 				return !overlapping;
 			});
+
+			const auto overlapping_begin = o;
 			const auto overlapping_end = node_triangles.end();
 
-			const auto left_begin = node_triangles.begin();
-			const auto left_end = std::partition(node_triangles.begin(), overlapping_begin,
+			const auto p = std::partition(node_triangles.begin(), overlapping_begin,
 			[&](TriangleIndex t)
 			{
 				return triangle_data[t].centroid[split_axis] < split_plane;
 			});
 
-			const auto right_begin = left_end;
+			const auto left_begin = node_triangles.begin();
+			const auto left_end = p;
+			const auto right_begin = p;
 			const auto right_end = overlapping_begin;
-
-			std::cout << "l: " << std::distance(left_begin, left_end) << " r: " << std::distance(right_begin, right_end) << " o: " << std::distance(overlapping_begin, overlapping_end) << "\n";
 
 			if(left_begin == left_end)
 			{
@@ -254,6 +254,10 @@ extern std::vector<size_t> kdtree_intersected_nodes;
 template<class ray_t, class scene_t>
 typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
+#ifdef DEBUG_TOOL
+	kdtree_intersected_nodes.clear();
+#endif
+
 	auto active_mask = ray.intersectAABB(pod.scene_aabb);
 	if(!ray_t::isAny(active_mask)) return ray_t::getNoIntersection();
 
@@ -330,6 +334,10 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 
 	for(;;)
 	{
+#ifdef DEBUG_TOOL
+		kdtree_intersected_nodes.push_back(current.node - &kdtree.pod.nodes[0]);
+#endif
+
 		if(current.node->getType() == KdTree<ray_t, scene_t>::pod_t::Node::Leaf)
 		{
 			const auto old_active_mask = active_mask;

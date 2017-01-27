@@ -19,6 +19,8 @@ set(PRAY_SOURCES
   dummy_acceleration.hpp
   bih.hpp
   bih.impl.hpp
+  kdtree.hpp
+  kdtree.impl.hpp
   )
 
 if (WITH_CUDA)

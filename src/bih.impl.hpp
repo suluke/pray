@@ -163,6 +163,10 @@ extern std::vector<size_t> bih_intersected_nodes;
 template<class ray_t, class scene_t>
 typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 {
+#ifdef DEBUG_TOOL
+	bih_intersected_nodes.clear();
+#endif
+
 	const auto active_mask = ray.intersectAABB(pod.scene_aabb);
 	if(!ray_t::isAny(active_mask)) return ray_t::getNoIntersection();
 
@@ -241,6 +245,10 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 
 	for(;;)
 	{
+#ifdef DEBUG_TOOL
+		bih_intersected_nodes.push_back(current.node - &bih.pod.nodes[0]);
+#endif
+
 		if(current.node->getType() == Bih<ray_t, scene_t>::pod_t::Node::Leaf)
 		{
 			for(unsigned i = 0u; i < current.node->getLeafData().children_count; ++i)
