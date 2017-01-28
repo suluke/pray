@@ -107,7 +107,8 @@ struct KdTreeBuilder
 				for(auto it = triangles_begin; it != triangles_end; ++it)
 				{
 					const auto &data = triangle_data[*it];
-					const bool overlapping = data.aabb.min[std::get<unsigned>(split)] < std::get<float>(split) && data.aabb.max[std::get<unsigned>(split)] > std::get<float>(split);
+					const bool overlapping = (data.aabb.min[std::get<unsigned>(split)] < std::get<float>(split) && data.aabb.max[std::get<unsigned>(split)] > std::get<float>(split)) ||
+						(data.aabb.min[std::get<unsigned>(split)] == std::get<float>(split) && data.aabb.max[std::get<unsigned>(split)] == std::get<float>(split));
 					if(overlapping) ++p;
 					else
 					{
@@ -179,7 +180,8 @@ struct KdTreeBuilder
 			const auto o = std::partition(node_triangles.begin(), node_triangles.end(),
 			[&](TriangleIndex t)
 			{
-				const bool overlapping = triangle_data[t].aabb.min[split_axis] < split_plane && triangle_data[t].aabb.max[split_axis] > split_plane;
+				const bool overlapping = (triangle_data[t].aabb.min[split_axis] < split_plane && triangle_data[t].aabb.max[split_axis] > split_plane) ||
+					(triangle_data[t].aabb.min[split_axis] == split_plane && triangle_data[t].aabb.max[split_axis] == split_plane);
 				return !overlapping;
 			});
 
