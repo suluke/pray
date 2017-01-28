@@ -107,23 +107,169 @@ __device__ inline float CudaRenderer<accel_t, accel_cuda_t>::sampling_rand()
 
 __device__ typename CudaBih::ray_t::intersect_t CudaBih::intersect(const typename CudaBih::scene_t &scene, const typename CudaBih::ray_t &ray, typename CudaBih::ray_t::distance_t *out_distance) const
 {
-	// TODO: this is the simple intersect, not using the Bih so far!
-	typename ray_t::intersect_t intersected_triangle = ray_t::getNoIntersection();
-	auto minimum_distance = ray_t::max_distance();
+	const auto active_mask = ray.intersectAABB(*scene_aabb);
+	if(!active_mask) return ray_t::getNoIntersection();
 
-	for(TriangleIndex triangle_index = 0u; triangle_index < index_cast<TriangleIndex>(scene.triangles.size()); ++triangle_index)
+	const Vector3 direction_sign = ray.getSubrayDirection(ray_t::subrays_count / 2).sign();
+
+	std::array<bool, 3> direction_sign_equal;
+	ray.isDirectionSignEqualForAllSubrays(direction_sign, &direction_sign_equal);
+
+	IntersectionResult<ray_t> intersection_result;
+
+	// keen this a VALUE (as opposed to reference)!!!
+	const auto triangles_data = scene.triangles.data();
+
+	struct StackElement
 	{
-		const Triangle &triangle = scene.triangles[triangle_index];
+		float plane;
+		unsigned split_axis;
+		bool active_mask;
+		const Node *node;
+		AABox3 aabb;
 
-		typename ray_t::distance_t distance;
-		if(ray.intersectTriangle(triangle, &distance))
+		StackElement() = default;
+		StackElement(float plane, unsigned split_axis, bool active_mask, const Node &node, AABox3 aabb) : plane(plane), split_axis(split_axis), active_mask(active_mask), node(&node), aabb(aabb) {}
+	};
+
+	struct Stack
+	{
+		std::array<StackElement, 128u> node_stack;
+		int node_stack_pointer = -1;
+
+		bool empty()
 		{
-			ray_t::updateIntersections(&intersected_triangle, triangle_index, &minimum_distance, distance);
+			return node_stack_pointer == -1;
+		}
+
+		bool full()
+		{
+			return node_stack_pointer == (int) node_stack.size() - 1;
+		}
+
+		// Can't use template<class... Args> here because templates are not allowed inside functions.
+		// http://stackoverflow.com/questions/3449112/why-cant-templates-be-declared-in-a-function
+		void push(const StackElement &element)
+		{
+			ASSERT(!full());
+			node_stack[++node_stack_pointer] = element;
+		}
+
+		StackElement &pop()
+		{
+			ASSERT(!empty());
+			return node_stack[node_stack_pointer--];
+		}
+	};
+
+	Stack node_stack;
+
+	struct Current
+	{
+		const Node *node;
+		const AABox3 aabb;
+		bool active_mask;
+
+		Current(const Node &node, const AABox3 &aabb, const bool &active_mask) : node(&node), aabb(aabb), active_mask(active_mask) {}
+	};
+
+	Current current(nodes[0u], *scene_aabb, active_mask);
+
+	for(;;)
+	{
+		if(current.node->getType() == Bih<ray_t, scene_t>::pod_t::Node::Leaf)
+		{
+			for(unsigned i = 0u; i < current.node->getLeafData().children_count; ++i)
+			{
+				const TriangleIndex triangle_index = current.node->getChildrenIndex() + i;
+				const Triangle &triangle = triangles_data[triangle_index];
+
+				typename ray_t::distance_t distance = ray_t::max_distance();
+				const auto intersected = (ray.intersectTriangle(triangle, &distance) && current.active_mask);
+
+				if(intersected)
+				{
+					// no need to pass current.active_mask here, updateIntersection handles this correctly
+					// however, should ray_t ever get wider than one register, adding the mask might improve the performance if used correctly
+					ray_t::updateIntersections(&intersection_result.triangle, triangle_index, &intersection_result.distance, distance);
+				}
+			}
+		}
+		else
+		{
+			const auto split_axis = current.node->getType();
+
+			const auto &left_child = nodes[current.node->getChildrenIndex()+0];
+			const auto &right_child = nodes[current.node->getChildrenIndex()+1];
+
+			const auto left_plane = current.node->getSplitData().left_plane;
+			const auto right_plane = current.node->getSplitData().right_plane;
+
+			auto left_aabb = current.aabb;
+			left_aabb.max[split_axis] = left_plane;
+			auto right_aabb = current.aabb;
+			right_aabb.min[split_axis] = right_plane;
+
+			// Ignore direction_sign_equal[split_axis] here since the code would be the same. This is handeled on pop below.
+			// The code in both cases is duplicated but with swapped left/right parameters. This gave a speedup of ~800ms on my machine with the sponza scene, no sse (lukasf)!
+			if(direction_sign[split_axis] >= 0.f)
+			{
+				node_stack.push(StackElement(right_plane, split_axis, current.active_mask, right_child, right_aabb));
+
+				const auto intersect_left = (ray.intersectAABB(left_aabb) && current.active_mask);
+				if(intersect_left)
+				{
+					current = Current(left_child, left_aabb, intersect_left);
+					continue;
+				}
+				else
+				{
+					//TODO: handle right_child here, don't push it on the stack and pop it directly afterwards down below
+				}
+			}
+			else
+			{
+				node_stack.push(StackElement(left_plane, split_axis, current.active_mask, left_child, left_aabb));
+
+				const auto intersect_right = (ray.intersectAABB(right_aabb) && current.active_mask);
+				if(intersect_right)
+				{
+					current = Current(right_child, right_aabb, intersect_right);
+					continue;
+				}
+				else
+				{
+					//TODO: handle left_child here, don't push it on the stack and pop it directly afterwards down below
+				}
+			}
+		}
+
+		for(;;)
+		{
+			if(node_stack.empty()) goto finish; // this goto is totally valid, I need to jump out of two loops!
+
+			const auto &top = node_stack.pop(); // the reference is valid as long as nothing is pushed on the stack
+
+			const auto smart_test_result = !direction_sign_equal[top.split_axis] || // always handle nodes for which !direction_sign_equal[split_axis]
+				// using here that intersection_result.distance is default-initialized with ray_t::max_distance()
+				(ray.intersectAxisPlane(top.plane, top.split_axis, intersection_result.distance) && top.active_mask);
+
+			if(smart_test_result)
+			{
+				const auto intersect_node = (ray.intersectAABB(top.aabb) && top.active_mask);
+				if(intersect_node)
+				{
+					current = Current(*top.node, top.aabb, top.active_mask);
+					break;
+				}
+			}
 		}
 	}
 
-	*out_distance = minimum_distance;
-	return intersected_triangle;
+	finish:
+
+	*out_distance = intersection_result.distance;
+	return intersection_result.triangle;
 }
 
 

@@ -34,6 +34,11 @@ namespace cuda
 			return vec_size;
 		}
 		
+		__device__ content_t* data() const
+		{
+			return vec_pointer;
+		}
+		
 		__device__ const content_t& operator [](int idx) const
 		{
 			ASSERT(vec_pointer != nullptr);
