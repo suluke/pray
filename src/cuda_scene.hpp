@@ -4,7 +4,7 @@
 
 #include "math.hpp"
 #include "scene.hpp"
-#include "cuda.h"
+#include "cuda_lib.hpp"
 
 #include <cstdint>
 #include <limits>
@@ -19,27 +19,26 @@ struct CudaScene
 {
 	using scene_t = PathScene;
 	using material_t = EmissionMaterial;
-	
-  const scene_t &scene;
   
 	cuda::vector<Triangle> triangles;
 	cuda::vector<material_t> materials;
 
 	Camera* camera;
 	Color* background_color;
+	
+	CudaScene(const CudaScene&);
+	CudaScene(const CudaScene&&);
   
-  CudaScene(const scene_t &scene) : scene(scene) {};
-  
-  void initialize()
-  {
-    // allocate memory and copy data
+  CudaScene(const scene_t &scene)
+	{
+		// allocate memory and copy data
     triangles = cuda::vector<Triangle>::create(scene.triangles);
     materials = cuda::vector<material_t>::create(scene.materials);
     camera = cuda::create<Camera>(scene.camera);
 		background_color = cuda::create<Color>(scene.background_color);
-  }
+	};
 
-  void finalize()
+  ~CudaScene()
   {
     // free memory
     triangles.destroy();

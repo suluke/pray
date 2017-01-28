@@ -10,8 +10,7 @@
 
 #ifdef DEBUG
 	#ifdef __CUDACC__
-		#warning "Asserts disabled because of CUDA"
-		#define ASSERT(exp) do {} while(false)
+		#define ASSERT(exp) do { if(!(exp)) printf("Assertion failed: " #exp " at(" __FILE__ ":%d)\n", __LINE__); } while(false)
 	#else
 		#define ASSERT(exp) do { if(!(exp)) std::cerr << "Assertion failed: " << #exp " at(" __FILE__ ":" << __LINE__ << ")\n"; } while(false)
 	#endif

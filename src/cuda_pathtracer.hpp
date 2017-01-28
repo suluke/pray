@@ -6,29 +6,21 @@
 #include "ray.hpp"
 #include "bih.hpp"
 
-#include "cuda_bih.hpp"
-#include "cuda_scene.hpp"
+#include "cuda_renderer.hpp"
 
-template<class ray_t, class accel_t>
+template<class accel_t, class accel_cuda_t>
 struct CudaPathTracer {
-	using scene_t = PathScene;
-	using scene_cuda_t = CudaScene;
-	using accel_cuda_t = CudaBih<scene_t>;
-  using accel_pod_t = BihPOD<scene_t>;
-	using renderopts_t = RenderOptions::Path;
-  //using ray_t = CudaRay<CudaScene>;
+	using scene_t = typename accel_t::scene_t;
+	using accel_pod_t = typename accel_t::pod_t;
 	using material_t = EmissionMaterial;
 	
-	scene_cuda_t scene;
-	accel_cuda_t accel;
+	const CudaRenderer<accel_pod_t, accel_cuda_t> renderer;    // struct with device pointers
+	CudaRenderer<accel_pod_t, accel_cuda_t>* d_renderer; // device pointer to struct
 	
-	const renderopts_t &opts;
-
-  CudaPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &accel) : scene(scene_cuda_t(scene)), accel(accel_cuda_t(accel.pod)), opts(opts) {}
+  CudaPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &accel);
+	~CudaPathTracer();
+	
 	void render(ImageView &image);
-	
-	void initialize();
-	void finalize();
 };
 
 

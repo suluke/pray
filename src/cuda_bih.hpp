@@ -2,32 +2,29 @@
 #define PRAY_CUDA_BIH_H
 #pragma once
 
-#include "cuda.hpp"
+#include "cuda_lib.hpp"
+#include "scene.hpp"
 #include "bih.hpp"
 
-template<class scene_t>
 struct CudaBih
 {
-	using pod_t = BihPOD<scene_t>;
-	using Node = typename pod_t::Node;
-	
-	const pod_t &bih;
-	
-	using accel_pod_t = pod_t;
+	using accel_t = BihPOD<PathScene>;
+	using Node = typename accel_t::Node;
 	
 	cuda::vector<Node> nodes;
 	AABox3* scene_aabb;
 	
-	CudaBih(const pod_t &bih) : bih(bih) {}
+	CudaBih(const CudaBih&);
+	CudaBih(const CudaBih&&);
 	
-	void initialize()
+	CudaBih(const accel_t &pod)
 	{
 		// allocate memory and copy data
-		nodes = cuda::vector<Node>::create(bih.nodes);
-		scene_aabb = cuda::create<AABox3>(bih.scene_aabb);
+		nodes = cuda::vector<Node>::create(pod.nodes);
+		scene_aabb = cuda::create<AABox3>(pod.scene_aabb);
 	}
 	
-	void finalize()
+	~CudaBih()
 	{
 		// free memory
 		nodes.destroy();

@@ -3,6 +3,7 @@
 #include "image.hpp"
 #include "dummy_acceleration.hpp"
 #include "bih.hpp"
+#include "cuda_bih.hpp"
 #include "cpu_tracer.hpp"
 #include "cpu_pathtracer.hpp"
 #include "cuda_pathtracer.hpp"
@@ -67,10 +68,8 @@ static void traceScene(const PathScene &scene, Image &image, const PathTypes::ac
 #ifdef WITH_CUDA
   ImageView img(image, 0, opts.resolution.h);
   
-	auto cudaTracer  = CudaPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
-	cudaTracer.initialize();
+	auto cudaTracer  = CudaPathTracer< PathTypes::accel_t, CudaBih >(scene, opts.path_opts, accel);
   cudaTracer.render(img);
-	cudaTracer.finalize();
 #else
   ImageView img(image, 0, opts.resolution.h);
   

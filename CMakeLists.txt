@@ -78,8 +78,8 @@ set(CUDA_NVCC_FLAGS
   -std=c++11
   --expt-relaxed-constexpr
   -libcudart
-  # -gencode arch=compute_35,code=compute_35
-  -gencode arch=compute_20,code=sm_20
+  # -gencode arch=compute_35,code=compute_35 # for pc189
+  -gencode arch=compute_20,code=sm_20 # for Marcels device
   
   # to avoid error "identifier __builtin_ia32_mwaitx is undefined
   # https://github.com/tensorflow/tensorflow/issues/1066

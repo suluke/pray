@@ -2,12 +2,15 @@
 #define PRAY_CUDA_RAY_HPP
 #pragma once
 
-#include "cuda_scene.hpp" // includes math and image
+#include "cuda_scene.hpp"
+
+#include <cuda_runtime_api.h>
+#include <cuda.h>
 
 #include <pmmintrin.h>
 
-template<class scene_t>
 struct CudaRay {
+	using scene_t = PathScene;
 	using dim_t = IntDimension2::dim_t;
 	using intersect_t = TriangleIndex;
 	using color_t = Color;
