@@ -211,10 +211,10 @@ struct ParallelRecursion
 
 	// call this function from the worker threads
 	template<class T>
-	void recurse(const T &function, const Args &args)
+	void recurse(const T &function, const Args &args, bool predicate = true)
 	{
 		ThreadPool::thread_index thread;
-		if(thread_pool.reserve_idle(&thread))
+		if(predicate && thread_pool.reserve_idle(&thread))
 		{
 			// we successfully reserved an idle thread, use it to run the function asynchronously
 			argument_storage[thread] = args;
