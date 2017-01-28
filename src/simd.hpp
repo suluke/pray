@@ -1,3 +1,6 @@
+#ifndef PRAY_SIMD_HPP
+#define PRAY_SIMD_HPP
+#pragma once
 #include <array>
 
 #ifdef DEBUG
@@ -14,6 +17,7 @@ namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = 32u;
   static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
   static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
+  static constexpr auto REQUIRED_ALIGNMENT = REGISTER_SIZE_BYTES;
 
   using floatty = __m256;
   using intty = __m256i;
@@ -67,6 +71,7 @@ namespace simd {
 
   // memory
   static constexpr auto load_ps = _mm256_load_ps;
+  static constexpr auto load_si = _mm256_load_si256;
   static constexpr auto store_ps = _mm256_store_ps;
   static constexpr auto store_si = _mm256_store_si256;
 }
@@ -79,6 +84,7 @@ namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = 16u;
   static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
   static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
+  static constexpr auto REQUIRED_ALIGNMENT = REGISTER_SIZE_BYTES;
 
   using floatty = __m128;
   using intty = __m128i;
@@ -125,6 +131,7 @@ namespace simd {
 
   // memory
   static constexpr auto load_ps = _mm_load_ps;
+  static constexpr auto load_si = _mm_load_si128;
   static constexpr auto store_ps = _mm_store_ps;
   static constexpr auto store_si = _mm_store_si128;
 }
@@ -142,9 +149,16 @@ namespace simd {
   }
 
   static inline float extract_ps(floatty x, unsigned i) {
-    alignas(32) std::array<float, REGISTER_CAPACITY_FLOAT> X;
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<float, REGISTER_CAPACITY_FLOAT> X;
     store_ps(X.data(), x);
     ASSERT(i < (unsigned) REGISTER_CAPACITY_FLOAT);
+    return X[i];
+  }
+
+  static inline int extract_si(intty x, unsigned i) {
+    alignas(simd::REQUIRED_ALIGNMENT) std::array<int32_t, REGISTER_CAPACITY_I32> X;
+    store_si((intty *) X.data(), x);
+    ASSERT(i < (unsigned) REGISTER_CAPACITY_I32);
     return X[i];
   }
 }
@@ -191,7 +205,15 @@ namespace simd {
     Vec3Pack operator*(component_t a) const {
       return Vec3Pack(mul_ps(x, a), mul_ps(y, a), mul_ps(z, a));
     }
+    Vec3Pack operator*(float A) const {
+      const auto a = simd::set1_ps(A);
+      return Vec3Pack(mul_ps(x, a), mul_ps(y, a), mul_ps(z, a));
+    }
     Vec3Pack operator/(component_t a) const {
+      return Vec3Pack(div_ps(x, a), div_ps(y, a), div_ps(z, a));
+    }
+    Vec3Pack operator/(float A) const {
+      const auto a = simd::set1_ps(A);
       return Vec3Pack(div_ps(x, a), div_ps(y, a), div_ps(z, a));
     }
     Vec3Pack operator/(Vec3Pack v) const {
@@ -231,9 +253,16 @@ inline std::ostream &operator<<(std::ostream &o, const simd::floatty &f) {
   }
   return o;
 }
+inline std::ostream &operator<<(std::ostream &o, const simd::intty &f) {
+  for (unsigned i = 0; i < simd::REGISTER_CAPACITY_I32; ++i) {
+    o << simd::extract_si(f, i) << ", ";
+  }
+  return o;
+}
 inline std::ostream &operator<<(std::ostream &o, const simd::Vec3Pack &v) {
   for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
     o << "(" << simd::extract_ps(v.x, i) << ", " << simd::extract_ps(v.y, i) << ", " << simd::extract_ps(v.z, i) << ")";
   }
   return o;
 }
+#endif // PRAY_SIMD_HPP

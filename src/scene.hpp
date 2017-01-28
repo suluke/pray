@@ -31,6 +31,7 @@ struct Triangle
 	std::array<Vector3, 3> vertices;
 	MaterialIndex material_index;
 
+	Triangle() = default;
 	Triangle(const std::array<Vector3, 3> &vertices, MaterialIndex material_index) : vertices(vertices), material_index(material_index) {}
 
 	Vector3 calculateNormal() const

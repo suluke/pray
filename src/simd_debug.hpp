@@ -1,3 +1,6 @@
+#ifndef PRAY_SIMD_DEBUG_HPP
+#define PRAY_SIMD_DEBUG_HPP
+
 #define _CONCAT2(s1, s2) s1 ## s2
 #define _CONCAT3(s1, s2, s3) s1 ## s2 ## s3
 #define _CONCAT4(s1, s2, s3, s4) s1 ## s2 ## s3 ## s4
@@ -65,6 +68,7 @@ namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = MACRO_REGISTER_SIZE_BYTES;
   static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
   static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
+  static constexpr auto REQUIRED_ALIGNMENT = MACRO_REGISTER_SIZE_BYTES;
 
   using floatty = CONCAT2(__m, MACRO_REGISTER_SIZE_BITS);
   using intty = CONCAT3(__m, MACRO_REGISTER_SIZE_BITS, i);
@@ -99,7 +103,8 @@ namespace simd {
 
   // memory
   static inline floatty load_ps(const float *addr) { return CONCAT2(MACRO_INTRIN_PREFIX, load_ps)(addr); }
+  static inline intty load_si(const CONCAT3(__m, MACRO_REGISTER_SIZE_BITS, i) *addr) { return CONCAT3(MACRO_INTRIN_PREFIX, load_si, MACRO_REGISTER_SIZE_BITS)(addr); }
   static inline void store_ps(float *addr, floatty val) { CONCAT2(MACRO_INTRIN_PREFIX, store_ps)(addr, val); }
   static inline void store_si(intty *addr, intty val) { CONCAT3(MACRO_INTRIN_PREFIX, store_si, MACRO_REGISTER_SIZE_BITS)(addr, val); }
 }
-
+#endif // PRAY_SIMD_DEBUG_HPP

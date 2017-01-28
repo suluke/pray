@@ -1,12 +1,12 @@
-#ifndef PRAY_BIH_H
-#define PRAY_BIH_H
+#ifndef PRAY_KDTREE_H
+#define PRAY_KDTREE_H
 
 #include "scene.hpp"
 
-// http://ainc.de/Research/BIH.pdf
+// http://dcgi.fel.cvut.cz/home/havran/ARTICLES/ingo06rtKdtree.pdf
 
 template<class SCENE_T>
-struct BihPOD
+struct KdTreePOD
 {
 	using scene_t = SCENE_T;
 	struct Node
@@ -23,24 +23,25 @@ struct BihPOD
 
 		struct SplitData
 		{
-			float left_plane, right_plane;
+			float plane;
 		};
 
 		struct LeafData
 		{
+			uint32_t non_overlap_count;
 			uint32_t children_count;
 		};
 
-		void makeSplitNode(unsigned split_axis, uint32_t children_index, float left_plane, float right_plane)
+		void makeSplitNode(unsigned split_axis, uint32_t children_index, float plane)
 		{
 			setTypeAndChildrenIndex(static_cast<Type>(split_axis), children_index);
-			data.split.left_plane = left_plane;
-			data.split.right_plane = right_plane;
+			data.split.plane = plane;
 		}
 
-		void makeLeafNode(uint32_t children_index, uint32_t children_count)
+		void makeLeafNode(uint32_t children_index, uint32_t non_overlap_count, uint32_t children_count)
 		{
 			setTypeAndChildrenIndex(Leaf, children_index);
+			data.leaf.non_overlap_count = non_overlap_count;
 			data.leaf.children_count = children_count;
 		}
 
@@ -86,7 +87,6 @@ struct BihPOD
 #ifdef DEBUG
 		// for debugging
 		Node *parent, *child1, *child2;
-		float split_point;
 		unsigned index;
 #endif
 	};
@@ -96,21 +96,21 @@ struct BihPOD
 };
 
 template<class ray_t, class SCENE_T>
-struct Bih
+struct KdTree
 {
 	using scene_t = SCENE_T;
-	using pod_t = BihPOD<scene_t>;
+	using pod_t = KdTreePOD<scene_t>;
 	using Node = typename pod_t::Node;
-	
+
 	pod_t pod; // created by auto default constructor
-	
-	void build(scene_t &scene, ThreadPool &thread_pool);
+
+	void build(scene_t &scene);
 	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
 
 	void printAnalysis() const;
 	size_t hash() const;
 };
 
-#include "bih.impl.hpp"
+#include "kdtree.impl.hpp"
 
 #endif

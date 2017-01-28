@@ -1,4 +1,4 @@
-add_executable(pray
+set(PRAY_SOURCES
   debug.hpp
   ext.cpp
   ext.hpp
@@ -15,10 +15,24 @@ add_executable(pray
   cpu_tracer.impl.hpp
   cpu_pathtracer.hpp
   cpu_pathtracer.impl.hpp
+  sampler.hpp
   dummy_acceleration.hpp
   bih.hpp
   bih.impl.hpp
+  kdtree.hpp
+  kdtree.impl.hpp
   )
+
+if (WITH_CUDA)
+  cuda_compile(cuda_files
+    cuda_pathtracer.hpp
+    cuda_pathtracer.impl.hpp
+    cuda_pathtracer.cu)
+  list(APPEND PRAY_SOURCES ${cuda_files})
+endif()
+
+add_executable(pray ${PRAY_SOURCES})
+
 
 set_target_properties(pray PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
@@ -40,4 +54,8 @@ if (WITH_OMP)
   endif()
 elseif(NOT MSVC)
   target_compile_options(pray PRIVATE -Wno-error=unknown-pragmas)
+endif()
+
+if (WITH_CUDA)
+  target_link_libraries(pray ${CUDA_CUDART_LIBRARY})
 endif()

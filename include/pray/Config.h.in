@@ -5,13 +5,13 @@
 #cmakedefine WITH_OMP
 #cmakedefine WITH_CUDA
 #cmakedefine WITH_SSE
-#cmakedefine WITH_SUBSAMPLING
-#cmakedefine WITH_BIH
+#cmakedefine WITH_SSE_PT
+#define SAMPLER ${SAMPLER}_sampler
+#define ACCELERATOR ${ACCELERATOR}
 #cmakedefine WITH_BIH_PARALLEL_BUILD
-#cmakedefine WITH_BIH_SMART_TRAVERSION
-#cmakedefine WITH_BIH_SMART_TRAVERSION_ITERATIVE
 #cmakedefine WITH_TIMING
 #cmakedefine WITH_CONFDUMP
+#cmakedefine WITH_PROGRESS
 #cmakedefine DISABLE_RENDERING
 #cmakedefine DISABLE_OUTPUT
 

@@ -1,10 +1,16 @@
+#ifndef PRAY_SSE_RAY_HPP
+#define PRAY_SSE_RAY_HPP
+#pragma once
+
 #include "simd.hpp"
 #include <array>
 
 struct SSEColor : public simd::Vec3Pack {
+  SSEColor() : simd::Vec3Pack() {}
   SSEColor(const Color &c) : simd::Vec3Pack(c.r, c.g, c.b) {}
-  SSEColor(const simd::Vec3Pack &c) {}
+  SSEColor(const simd::Vec3Pack &c) : simd::Vec3Pack(c) {}
   SSEColor(simd::floatty r, simd::floatty g, simd::floatty b) : simd::Vec3Pack(r, g, b) {}
+  SSEColor(float r, float g, float b) : simd::Vec3Pack(r, g, b) {}
 };
 
 template<class scene_t>
@@ -17,48 +23,18 @@ struct SSERay {
   using distance_t = simd::floatty;
   using angle_t = simd::floatty;
   using bool_t = simd::intty;
+  using material_t = simd::intty;
+  using mask_t = simd::intty;
 
   using dim = ConstDim2<simd::REGISTER_CAPACITY_FLOAT == 8 ? 4 : 2, 2>;
 
   static constexpr unsigned subrays_count = simd::REGISTER_CAPACITY_FLOAT;
 
   const location_t origin;
-  simd::Vec3Pack direction;
-  simd::Vec3Pack dir_inv;
+  const simd::Vec3Pack direction;
+  const simd::Vec3Pack dir_inv;
 
-  SSERay(const Camera &cam, const Vector3 &left, const Vector3 &top, const dim_t x, const dim_t y, float max_x, float max_y) : origin(cam.position) {
-    alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> X;
-    alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Y;
-    alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> Z;
-    for (unsigned i = 0; i < simd::REGISTER_CAPACITY_FLOAT; ++i) {
-      X[i] = cam.direction.x;
-      Y[i] = cam.direction.y;
-      Z[i] = cam.direction.z;
-    }
-    for (unsigned i_x = 0; i_x < dim::w; ++i_x) {
-      float f_x = 1.f - (2 * (x + i_x) + 1) / max_x;
-      auto l = left * f_x;
-      for (unsigned i_y = 0; i_y < dim::h; ++i_y) {
-        X[i_y * dim::w + i_x] += l.x;
-        Y[i_y * dim::w + i_x] += l.y;
-        Z[i_y * dim::w + i_x] += l.z;
-      }
-    }
-    for (unsigned i_y = 0; i_y < dim::h; ++i_y) {
-      float f_y = 1.f - (2 * (y + i_y) + 1) / max_y;
-      auto t = top * f_y;
-      for (unsigned i_x = 0; i_x < dim::w; ++i_x) {
-        X[i_y * dim::w + i_x] += t.x;
-        Y[i_y * dim::w + i_x] += t.y;
-        Z[i_y * dim::w + i_x] += t.z;
-      }
-    }
-    direction.x = simd::load_ps(X.data());
-    direction.y = simd::load_ps(Y.data());
-    direction.z = simd::load_ps(Z.data());
-    direction.normalize();
-    dir_inv = vec3_t(1.f, 1.f, 1.f) / direction;
-  }
+  SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 
   inline bool_t intersectTriangle(const Triangle &triangle, distance_t *out_distance) const {
     // http://www.cs.virginia.edu/~gfx/Courses/2003/ImageSynthesis/papers/Acceleration/Fast%20MinimumStorage%20RayTriangle%20Intersection.pdf
@@ -159,8 +135,6 @@ struct SSERay {
   }
 
 private:
-  SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
-
   static distance_t getLambert(simd::Vec3Pack L, simd::Vec3Pack N, distance_t light_dist_squared) {
     // can't remove the simd::max_ps here since the ray_t::isOppositeDirection(shadow_ray.direction, N) in CpuTracer is reduced with isAll
     return simd::div_ps(simd::max_ps(L.dot(N), simd::set1_ps(0.f)), light_dist_squared);
@@ -281,6 +255,10 @@ public:
     return simd::castps_si(simd::and_ps(simd::castsi_ps(a), simd::castsi_ps(b)));
   }
 
+  static inline bool_t booleanNot(bool_t a) {
+	  return simd::castps_si(simd::not_ps(simd::castsi_ps(a)));
+  }
+
   static inline bool_t isOppositeDirection(const vec3_t v1, const vec3_t v2) {
     return simd::castps_si(simd::cmple_ps(v1.dot(v2), simd::setzero_ps()));
   }
@@ -293,9 +271,9 @@ inline std::ostream &operator<<(std::ostream &o, const SSERay<scene_t> &r) {
 }
 
 inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::dim_t x, IntDimension2::dim_t y) {
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
-  alignas(32) std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> R;
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> G;
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> B;
   simd::store_ps(R.data(), c.x);
   simd::store_ps(G.data(), c.y);
   simd::store_ps(B.data(), c.z);
@@ -307,3 +285,4 @@ inline void writeColorToImage(const SSEColor &c, ImageView &img, IntDimension2::
     }
   }
 }
+#endif // PRAY_SSE_RAY_HPP
