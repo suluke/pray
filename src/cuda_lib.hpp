@@ -29,17 +29,16 @@ namespace cuda
   struct vector {
 	public:
 		// hide code from other compilers than nvcc
-		#ifdef __CUDACC__
-			__device__ size_t size()
-			{
-				return vec_size;
-			}
-			
-			content_t& operator [](int idx)
-			{
-				return *(vec_pointer + sizeof(content_t) * idx);
-			}
-		#endif
+		__device__ size_t size() const
+		{
+			return vec_size;
+		}
+		
+		__device__ const content_t& operator [](int idx) const
+		{
+			ASSERT(vec_pointer != nullptr);
+			return *(vec_pointer + idx);
+		}
 		
 		static vector<content_t> create(const std::vector<content_t> &stdvec)
 		{
@@ -47,13 +46,13 @@ namespace cuda
 			cudavec.vec_size = stdvec.size();
 			
 			// alloc memory on device
-			cudaMalloc((void**) &cudavec.vec_pointer, sizeof(content_t) * cudavec.vec_size);
+			cudaMalloc((void**) &cudavec.vec_pointer, sizeof(content_t) * stdvec.size());
 			cuda::checkForError(__FILE__, __func__, __LINE__);
 			// copy data to device
-			cudaMemcpy(cudavec.vec_pointer, stdvec.data(), sizeof(content_t) * cudavec.vec_size, cudaMemcpyHostToDevice);
+			cudaMemcpy(cudavec.vec_pointer, stdvec.data(), sizeof(content_t) * stdvec.size(), cudaMemcpyHostToDevice);
 			cuda::checkForError(__FILE__, __func__, __LINE__);
 				
-			return cudavec;
+			return std::move(cudavec);
 		}
 		
 		void destroy()

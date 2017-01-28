@@ -10,7 +10,7 @@
 #include <pmmintrin.h>
 
 struct CudaRay {
-	using scene_t = PathScene;
+	using scene_t = CudaScene;
 	using dim_t = IntDimension2::dim_t;
 	using intersect_t = TriangleIndex;
 	using color_t = Color;
@@ -132,24 +132,8 @@ struct CudaRay {
 		}
 	}
 
-	__device__ static inline bool isNoIntersection(intersect_t intersect) {
-		return intersect == TriangleIndex_Invalid;
-	}
-
 	__device__ static inline intersect_t getNoIntersection() {
 		return TriangleIndex_Invalid;
-	}
-
-	__device__ static inline bool isAll(bool_t b) {
-		return b;
-	}
-
-	__device__ static inline bool isAny(bool_t b) {
-		return b;
-	}
-
-	__device__ static inline bool_t booleanAnd(bool_t a, bool_t b) {
-		return a && b;
 	}
 
 	/**

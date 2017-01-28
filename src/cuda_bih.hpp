@@ -3,12 +3,16 @@
 #pragma once
 
 #include "cuda_lib.hpp"
+#include "cuda_scene.hpp"
+#include "cuda_ray.hpp"
 #include "scene.hpp"
 #include "bih.hpp"
 
 struct CudaBih
 {
 	using accel_t = BihPOD<PathScene>;
+	using scene_t = CudaScene;
+	using ray_t = CudaRay;
 	using Node = typename accel_t::Node;
 	
 	cuda::vector<Node> nodes;
@@ -30,6 +34,9 @@ struct CudaBih
 		nodes.destroy();
 		cuda::destroy<AABox3>(scene_aabb);
 	}
+	
+	
+	__device__ ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
 };
 
 #endif

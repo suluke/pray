@@ -20,7 +20,7 @@ constexpr auto TriangleIndex_Invalid = std::numeric_limits<TriangleIndex>::max()
 constexpr auto MaterialIndex_Invalid = std::numeric_limits<MaterialIndex>::max();
 
 template<class T, class U>
-inline T index_cast(U index)
+inline T __cuda__ index_cast(U index)
 {
 	ASSERT(index >= std::numeric_limits<T>::min());
 	ASSERT(index <= std::numeric_limits<T>::max());
@@ -35,7 +35,7 @@ struct Triangle
 	Triangle() = default;
 	Triangle(const std::array<Vector3, 3> &vertices, MaterialIndex material_index) : vertices(vertices), material_index(material_index) {}
 
-	Vector3 calculateNormal() const
+	__cuda__ Vector3 calculateNormal() const
 	{
 		// clockwise order...
 		return (vertices[1] - vertices[0]).cross(vertices[2] - vertices[0]).normalize();
@@ -73,13 +73,14 @@ struct Light
 	Light(const Vector3 &position, const Color &color) : position(position), color(color) {}
 };
 
+
 struct Camera
 {
 	Vector3 position = Vector3(0.f, 0.f, 0.f);
 	Vector3 direction = Vector3(0.f, 0.f, -1.f);
 	float fov = acos(-1.f) / 2.f;
 
-	void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
+	__cuda__ void calculateFrustumVectors(float aspect, Vector3 *left, Vector3 *right, Vector3 *bottom, Vector3 *top) const
 	{
 		const Vector3 global_up(0.f, 1.f, 0.f);
 		const Vector3 local_left = direction.cross(global_up).normalize();
