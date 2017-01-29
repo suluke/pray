@@ -40,6 +40,7 @@ struct PrayTypes<PathScene> {
 	using ray_t = Ray<scene_t>;
 #ifdef WITH_BIH
 	using accel_t = Bih<ray_t, scene_t>;
+	using accel_cuda_t = CudaBih;
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
 #endif
@@ -68,7 +69,7 @@ static void traceScene(const PathScene &scene, Image &image, const PathTypes::ac
 #ifdef WITH_CUDA
   ImageView img(image, 0, opts.resolution.h);
   
-	auto cudaTracer  = CudaPathTracer< PathTypes::accel_t, CudaBih >(scene, opts.path_opts, accel);
+	auto cudaTracer  = CudaPathTracer< PathTypes::accel_t, PathTypes::accel_cuda_t >(scene, opts.path_opts, accel);
   cudaTracer.render(img);
 #else
   ImageView img(image, 0, opts.resolution.h);

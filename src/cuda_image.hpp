@@ -9,6 +9,7 @@
 #include <exception>
 
 
+
 struct CudaImage
 {
 	using dim_t = Image::dim_t;
@@ -53,6 +54,10 @@ struct CudaImage
 		
 		cudaMemcpy(pixels_start, pixels, pixels_size, cudaMemcpyDeviceToHost);
     cuda::checkForError(__FILE__, __func__, __LINE__);
+		
+		#ifdef WITH_PROGRESS
+			writtenPixels += viewResolution.w * viewResolution.h;
+		#endif
 	}
 	
 	#ifdef __CUDACC__
@@ -60,7 +65,7 @@ struct CudaImage
 	{
 		pixels[3 * (y * viewResolution.w + x) + 0] = lroundf(min(1.f, c.r) * 255.f);
 		pixels[3 * (y * viewResolution.w + x) + 1] = lroundf(min(1.f, c.g) * 255.f);
-		pixels[3 * (y * viewResolution.w + x) + 2] = lroundf(min(1.f, c.b) * 255.f);
+		pixels[3 * (y * viewResolution.w + x) + 2] = lroundf(min(1.f, c.b) * 255.f);		
 	}
 
 	__device__ dim_t getGlobalY(dim_t y) {

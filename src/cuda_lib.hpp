@@ -92,8 +92,27 @@ namespace cuda
 	template<class content_t>
 	void destroy(content_t* ptr)
 	{
+		ASSERT(ptr != nullptr);
 		cudaFree(ptr);
     cuda::checkForError(__FILE__, __func__, __LINE__);
+	}
+	
+	template<class T> 
+  __device__ inline void swap(T &a, T &b)
+	{
+		T c(a);
+		a=b;
+		b=c;
+	}
+	
+	template<class T>
+	__device__ inline const T& min(const T &a, const T &b) {
+		return (a < b) ? a : b;
+	}
+	
+	template<class T>
+	__device__ inline const T& max(const T &a, const T &b) {
+		return (a < b) ? b : a;
 	}
 }
 

@@ -56,7 +56,13 @@ struct StageLogger {
 		progressPrinter = std::thread([](const StageLogger *logger) {
 			while (!logger->renderFinished) {
 				std::this_thread::sleep_for(StageLogger::progressRefreshTime);
-				auto percent = logger->image->writtenPixels * 100 / (logger->opts.resolution.w * logger->opts.resolution.h);
+				
+				unsigned int writtenPixelsSum = logger->image->writtenPixels;
+#ifdef WITH_CUDA
+				writtenPixelsSum += cudaWrittenPixels;
+#endif
+
+				auto percent = writtenPixelsSum * 100 / (logger->opts.resolution.w * logger->opts.resolution.h);
 				if (percent == 100) break;
 				auto f(std::cout.flags());
 				std::cout << std::string(StageLogger::progressWidth, '\b');

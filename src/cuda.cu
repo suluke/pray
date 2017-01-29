@@ -16,7 +16,7 @@
 template<class accel_t, class accel_cuda_t>
 __global__ void kernel_render(CudaRenderer<accel_t, accel_cuda_t>* d_renderer, CudaImage* d_image)
 {
-  d_renderer->render(d_image);
+	d_renderer->render(d_image);
 }
 
 template<class accel_t, class accel_cuda_t>
@@ -36,7 +36,7 @@ __device__ void CudaRenderer<accel_t, accel_cuda_t>::render(CudaImage* image)
 	long x = ray_t::dim::w * blockIdx.x;
 
 	auto y = image->getGlobalY(local_y);
-  
+	
 	auto direction = Vector3((top * (1.f - (2 * y + 1) / max_y) + left * (1.f - (2 * x + 1) / max_x) + scene.camera->direction).normalize());
 	ray_t ray(scene.camera->position, direction);
 	
@@ -47,56 +47,56 @@ __device__ void CudaRenderer<accel_t, accel_cuda_t>::render(CudaImage* image)
 template<class accel_t, class accel_cuda_t>
 __device__ Color CudaRenderer<accel_t, accel_cuda_t>::trace(CudaRay ray, unsigned int depth)
 {
-  typename ray_t::distance_t intersection_distance;
-  const auto intersected_triangle = accel.intersect(scene, ray, &intersection_distance);
+	typename ray_t::distance_t intersection_distance;
+	const auto intersected_triangle = accel.intersect(scene, ray, &intersection_distance);
 	
-  if (intersected_triangle == TriangleIndex_Invalid)
-    return *(scene.background_color);
+	if (intersected_triangle == TriangleIndex_Invalid)
+		return *(scene.background_color);
 
-  const auto &triangle = scene.triangles[intersected_triangle];
-  const auto material_index = triangle.material_index;
-  auto &material = scene.materials[material_index];
+	const auto &triangle = scene.triangles[intersected_triangle];
+	const auto material_index = triangle.material_index;
+	auto &material = scene.materials[material_index];
 
-  if (material.isEmission)
-    return material.color;
-  if (depth >= opts.max_depth)
-    return Color {0, 0, 0};
+	if (material.isEmission)
+		return material.color;
+	if (depth >= opts.max_depth)
+		return Color {0, 0, 0};
 
-  const auto N = ray_t::getNormals(scene, intersected_triangle);
-  const auto X = (triangle.vertices[1] - triangle.vertices[0]).normalize();
-  const auto Y = N.cross(X).normalize();
-  const auto &Z = N;
-  const auto P = ray.getIntersectionPoint(intersection_distance) + N * 0.0001f;
+	const auto N = ray_t::getNormals(scene, intersected_triangle);
+	const auto X = (triangle.vertices[1] - triangle.vertices[0]).normalize();
+	const auto Y = N.cross(X).normalize();
+	const auto &Z = N;
+	const auto P = ray.getIntersectionPoint(intersection_distance) + N * 0.0001f;
 
-  Color value{0, 0, 0};
-  for (unsigned i = 0; i < opts.num_samples; ++i) {
-    ray_t next(P, sampleHemisphere(X, Y, Z));
-    value += trace(next, depth + 1);
-  }
-  value = material.color * value / opts.num_samples;
-  return value;
+	Color value{0, 0, 0};
+	for (unsigned i = 0; i < opts.num_samples; ++i) {
+		ray_t next(P, sampleHemisphere(X, Y, Z));
+		value += trace(next, depth + 1);
+	}
+	value = material.color * value / opts.num_samples;
+	return value;
 }
 
 template<class accel_t, class accel_cuda_t>
 __device__ Vector3 CudaRenderer<accel_t, accel_cuda_t>::sampleHemisphere(const Vector3 &X, const Vector3 &Y, const Vector3 &Z) 
 {
-  float u1 = sampling_rand();
-  float u2 = sampling_rand();
-  float r = std::sqrt(1.f - u1);
-  float phi = 2 * std::acos(-1.f) * u2;
-  float x = std::cos(phi) * r;
-  float y = std::sin(phi) * r;
-  float z = std::sqrt(u1);
-  return X * x + Y * y + Z * z;
+	float u1 = sampling_rand();
+	float u2 = sampling_rand();
+	float r = std::sqrt(1.f - u1);
+	float phi = 2 * std::acos(-1.f) * u2;
+	float x = std::cos(phi) * r;
+	float y = std::sin(phi) * r;
+	float z = std::sqrt(u1);
+	return X * x + Y * y + Z * z;
 }
 
 template<class accel_t, class accel_cuda_t>
 __device__ inline void CudaRenderer<accel_t, accel_cuda_t>::sampling_init()
 {
 	curand_init(0, /* the seed controls the sequence of random values that are produced */
-              blockIdx.x * blockDim.x + blockIdx.y, /* the sequence number is only important with multiple cores */
-              0, /* the offset is how much extra we advance in the sequence for each call, can be 0 */
-              &randomState);
+							blockIdx.x * blockDim.x + blockIdx.y, /* the sequence number is only important with multiple cores */
+							0, /* the offset is how much extra we advance in the sequence for each call, can be 0 */
+							&randomState);
 }
 
 template<class accel_t, class accel_cuda_t>
@@ -112,66 +112,15 @@ __device__ typename CudaBih::ray_t::intersect_t CudaBih::intersect(const typenam
 
 	const Vector3 direction_sign = ray.getSubrayDirection(ray_t::subrays_count / 2).sign();
 
-	std::array<bool, 3> direction_sign_equal;
-	ray.isDirectionSignEqualForAllSubrays(direction_sign, &direction_sign_equal);
+	bool direction_sign_equal[3];
+	ray.isDirectionSignEqualForAllSubrays(direction_sign, &direction_sign_equal[0]);
 
 	IntersectionResult<ray_t> intersection_result;
 
 	// keen this a VALUE (as opposed to reference)!!!
 	const auto triangles_data = scene.triangles.data();
 
-	struct StackElement
-	{
-		float plane;
-		unsigned split_axis;
-		bool active_mask;
-		const Node *node;
-		AABox3 aabb;
-
-		StackElement() = default;
-		StackElement(float plane, unsigned split_axis, bool active_mask, const Node &node, AABox3 aabb) : plane(plane), split_axis(split_axis), active_mask(active_mask), node(&node), aabb(aabb) {}
-	};
-
-	struct Stack
-	{
-		std::array<StackElement, 128u> node_stack;
-		int node_stack_pointer = -1;
-
-		bool empty()
-		{
-			return node_stack_pointer == -1;
-		}
-
-		bool full()
-		{
-			return node_stack_pointer == (int) node_stack.size() - 1;
-		}
-
-		// Can't use template<class... Args> here because templates are not allowed inside functions.
-		// http://stackoverflow.com/questions/3449112/why-cant-templates-be-declared-in-a-function
-		void push(const StackElement &element)
-		{
-			ASSERT(!full());
-			node_stack[++node_stack_pointer] = element;
-		}
-
-		StackElement &pop()
-		{
-			ASSERT(!empty());
-			return node_stack[node_stack_pointer--];
-		}
-	};
-
 	Stack node_stack;
-
-	struct Current
-	{
-		const Node *node;
-		const AABox3 aabb;
-		bool active_mask;
-
-		Current(const Node &node, const AABox3 &aabb, const bool &active_mask) : node(&node), aabb(aabb), active_mask(active_mask) {}
-	};
 
 	Current current(nodes[0u], *scene_aabb, active_mask);
 
@@ -280,6 +229,33 @@ template<class accel_t, class accel_cuda_t>
 CudaPathTracer<accel_t, accel_cuda_t>::CudaPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &accel) : renderer(scene, accel.pod, opts)
 {
 	d_renderer = cuda::create<CudaRenderer<accel_pod_t, accel_cuda_t>>(renderer);
+	
+	#ifdef DEBUG
+		// device information output
+		int nDevices;
+
+		cudaGetDeviceCount(&nDevices);
+		cuda::checkForError(__FILE__, __func__, __LINE__);
+		
+		for (int i = 0; i < nDevices; i++) {
+			cudaDeviceProp prop;
+			cudaGetDeviceProperties(&prop, i);
+			printf("Device Number: %d\n", i);
+			printf("  Device name: %s\n", prop.name);
+			printf("  Memory Clock Rate (KHz): %d\n", prop.memoryClockRate);
+			printf("  Memory Bus Width (bits): %d\n",prop.memoryBusWidth);
+			printf("  Peak Memory Bandwidth (GB/s): %f\n",2.0*prop.memoryClockRate*(prop.memoryBusWidth/8)/1.0e6);
+			printf("  Major revision number: %d\n", prop.major);
+			printf("  Minor revision number: %d\n", prop.minor);
+			printf("  Total global memory: %u bytes\n", prop.totalGlobalMem);
+			printf("  Number of multiprocessors: %d\n", prop.multiProcessorCount);
+			printf("  Total amount of shared memory per block: %u\n",prop.sharedMemPerBlock);
+			printf("  Total registers per block: %d\n", prop.regsPerBlock);
+			printf("  Warp size: %d\n", prop.warpSize);
+			printf("  Maximum memory pitch: %u\n", prop.memPitch);
+			printf("  Total amount of constant memory: %u\n\n", prop.totalConstMem);
+		}
+	#endif
 }
 
 template<class accel_t, class accel_cuda_t>
@@ -296,6 +272,24 @@ void CudaPathTracer<accel_t, accel_cuda_t>::render(ImageView &image)
 	// copy objects to device
 	CudaImage* d_image = cuda::create<CudaImage>(cudaImage);
 	
+	// adjust stack size limit according
+	size_t stack_size_wish = CudaBih::stack_size + renderer.opts.max_depth * 80 + 1024; // add some number for the other stack frames
+	size_t stack_size_old;
+	size_t stack_size_new;
+	
+	cudaDeviceGetLimit(&stack_size_old, cudaLimitStackSize);
+	cuda::checkForError(__FILE__, __func__, __LINE__);
+	
+	cudaDeviceSetLimit(cudaLimitStackSize, stack_size_wish);
+	cuda::checkForError(__FILE__, __func__, __LINE__);
+	
+	cudaDeviceGetLimit(&stack_size_new, cudaLimitStackSize);
+	cuda::checkForError(__FILE__, __func__, __LINE__);
+	
+	#ifdef DEBUG
+		std::cout << "cudaDeviceSetLimit set from " << stack_size_old << " to " << stack_size_new << " (wanted " << stack_size_wish << ")\n";
+	#endif
+	
 	// configure execution
 	// max. 1024 Threads per Block (may ask API)
 	// Blocks are assigned to GPU processors -> if there are less GPUs than blocks, one GPU has to calculate several blocks
@@ -304,7 +298,7 @@ void CudaPathTracer<accel_t, accel_cuda_t>::render(ImageView &image)
 	// start kernel
 	//      <<< BLOCKS, THREADS >>>
 	kernel_render<accel_pod_t, accel_cuda_t><<<dimGrid, 1>>>(d_renderer, d_image);
-  cuda::checkForError(__FILE__, __func__, __LINE__);
+	cuda::checkForError(__FILE__, __func__, __LINE__);
 	
 	// destroy objects on device
 	cuda::destroy<CudaImage>(d_image);

@@ -73,9 +73,9 @@ struct CudaRay {
 			float i_d = 1.f / direction[i];
 			float t0 = (aabb.min[i] - origin[i]) * i_d;
 			float t1 = (aabb.max[i] - origin[i]) * i_d;
-			if(i_d < 0.f) std::swap(t0, t1);
-			t_min = std::max(t_min, t0);
-			t_max = std::min(t_max, t1);
+			if(i_d < 0.f) cuda::swap(t0, t1);
+			t_min = cuda::max(t_min, t0);
+			t_max = cuda::min(t_max, t1);
 			if(t_max < t_min) return false;
 		}
 		return true;
@@ -87,11 +87,11 @@ struct CudaRay {
 
 	__device__ Vector3 getSubrayDirection(unsigned subray) const { ASSERT(subray == 0); return direction; }
 
-	__device__ void isDirectionSignEqualForAllSubrays(Vector3 test_sign, std::array<bool, 3> *out_result) const {
+	__device__ void isDirectionSignEqualForAllSubrays(Vector3 test_sign, bool *out_result) const {
 		const auto sign = direction.sign();
-		(*out_result)[0] = test_sign.x == sign.x;
-		(*out_result)[1] = test_sign.y == sign.y;
-		(*out_result)[2] = test_sign.z == sign.z;
+		out_result[0] = test_sign.x == sign.x;
+		out_result[1] = test_sign.y == sign.y;
+		out_result[2] = test_sign.z == sign.z;
 	}
 
 	__device__ bool_t intersectAxisPlane(float plane, unsigned axis, distance_t maximum_distance) const {
