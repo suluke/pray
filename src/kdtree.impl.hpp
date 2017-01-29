@@ -71,7 +71,7 @@ struct KdTreeBuilder
 		return std::min(cost(p_l, p_r, n_l + n_p, n_r), cost(p_l, p_r, n_l, n_r + n_p));
 	}
 
-#if 1
+#if 0
 
 	std::tuple<float, unsigned> getPerfectSplit(const TriangleIndex t, const AABox3 &aabb, const unsigned i)
 	{
@@ -156,15 +156,14 @@ struct KdTreeBuilder
 					Start,
 				};
 
-				TriangleIndex triangle;
 				float plane;
 				Type type;
 
-				Event(TriangleIndex triangle, float plane, Type type) : triangle(triangle), plane(plane), type(type) {}
+				Event(float plane, Type type) : plane(plane), type(type) {}
 
 				bool operator<(const Event &o) const
 				{
-					return plane < o.plane || type < o.type;
+					return plane < o.plane || (plane == o.plane && type < o.type);
 				}
 			};
 
@@ -178,41 +177,44 @@ struct KdTreeBuilder
 				{
 					//if(data.aabb.min[k] >= aabb.min[k] && data.aabb.max[k] <= aabb.max[k])
 					{
-						events.emplace_back(*it, data.aabb.min[k], Event::Planar);
+						events.emplace_back(data.aabb.min[k], Event::Planar);
 					}
 				}
 				else
 				{
-					events.emplace_back(*it, std::max(data.aabb.min[k], aabb.min[k]), Event::Start);
-					events.emplace_back(*it, std::min(data.aabb.max[k], aabb.max[k]), Event::End);
+					events.emplace_back(std::max(data.aabb.min[k], aabb.min[k]), Event::Start);
+					events.emplace_back(std::min(data.aabb.max[k], aabb.max[k]), Event::End);
 				}
 			}
 
 			std::sort(events.begin(), events.end());
 
-			size_t n_l = 0u, n_r = triangles_count;
+			size_t p_start = 0u, p_end = 0u;
 
 			for(auto it = events.begin(); it != events.end(); /*noop*/)
 			{
 				const auto plane = it->plane;
 				const auto split = std::make_tuple(plane, k);
 
-				size_t p_start = 0u, p_planar = 0u, p_end = 0u;
+				size_t p_planar = 0u;
 
 				while(it != events.end() && it->plane == plane && it->type == Event::End)    { ++p_end;    ++it; }
 				while(it != events.end() && it->plane == plane && it->type == Event::Planar) { ++p_planar; ++it; }
 				while(it != events.end() && it->plane == plane && it->type == Event::Start)  { ++p_start;  ++it; }
 
-				n_r -= p_planar + p_end;
+				const size_t n_p = p_start - p_end;
+				const size_t n_l = p_start - n_p;
+				const size_t n_r = triangles_count - n_l - n_p;
 
-				const auto c = SAH(aabb, split, n_l, n_r, p_planar);
+				const auto c = SAH(aabb, split, n_l, n_r, n_p + p_planar);
 				if(c < min_cost)
 				{
 					min_cost = c;
 					min_plane = split;
 				}
 
-				n_l += p_start + p_planar;
+				p_start += p_planar;
+				p_end += p_planar;
 			}
 		}
 
