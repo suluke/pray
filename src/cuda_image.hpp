@@ -7,6 +7,7 @@
 #include "math.hpp"
 
 #include <exception>
+#include <cuda_runtime_api.h>
 
 
 

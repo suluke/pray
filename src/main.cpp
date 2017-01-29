@@ -6,12 +6,12 @@
 #include "kdtree.hpp"
 #include "cpu_tracer.hpp"
 #include "cpu_pathtracer.hpp"
-#include "cuda_pathtracer.hpp"
 #include "ray.hpp"
 #include "sse_ray.hpp"
 #include "sampler.hpp"
 
 #ifdef WITH_CUDA
+	#include "cuda_pathtracer.hpp"
 	#include "cuda_bih.hpp"
 	#include "cuda_dummy_acceleration.hpp"
 #endif

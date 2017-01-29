@@ -3,7 +3,6 @@
 #pragma once
 
 #include <cuda_runtime_api.h>
-#include <cuda.h>
 
 #include <exception>
 #include <string>

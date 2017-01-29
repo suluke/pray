@@ -8,7 +8,6 @@
 #include "cuda_dummy_acceleration.hpp"
 
 #include <cuda_runtime_api.h>
-#include <cuda.h>
 #include <curand_kernel.h>
 
 

@@ -5,7 +5,7 @@
 #include "debug.hpp"
 #include "math.hpp"
 #include "image.hpp"
-#include "cuda.h"
+#include "cuda.hpp"
 
 #include <cstdint>
 #include <limits>

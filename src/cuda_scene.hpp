@@ -12,6 +12,8 @@
 #include <vector>
 #include <memory>
 
+#include <cuda_runtime_api.h>
+
 using TriangleIndex = uint32_t;
 using MaterialIndex = uint32_t;
 

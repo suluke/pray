@@ -4,9 +4,6 @@
 
 #include "cuda_scene.hpp"
 
-#include <cuda_runtime_api.h>
-#include <cuda.h>
-
 #include <pmmintrin.h>
 
 struct CudaRay {

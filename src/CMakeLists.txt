@@ -1,4 +1,5 @@
 set(PRAY_SOURCES
+	cuda.hpp
   debug.hpp
   ext.cpp
   ext.hpp

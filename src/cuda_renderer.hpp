@@ -11,6 +11,7 @@
 #include "cuda_bih.hpp"
 #include "cuda_scene.hpp"
 
+#include <cuda_runtime_api.h>
 #include <curand_kernel.h>
 
 template<class accel_t, class accel_cuda_t>
