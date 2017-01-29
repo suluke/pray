@@ -55,22 +55,6 @@ struct KdTreeBuilder
 		scene.triangles = std::move(reordered_triangles);
 	}
 
-	std::tuple<float, unsigned> getPerfectSplit(const TriangleIndex t, const AABox3 &aabb, const unsigned i)
-	{
-		const auto &data = triangle_data[t];
-
-		switch(i)
-		{
-			case 0u: return std::make_tuple(std::max(data.aabb.min[0u], aabb.min[0u]), 0u);
-			case 1u: return std::make_tuple(std::min(data.aabb.max[0u], aabb.max[0u]), 0u);
-			case 2u: return std::make_tuple(std::max(data.aabb.min[1u], aabb.min[1u]), 1u);
-			case 3u: return std::make_tuple(std::min(data.aabb.max[1u], aabb.max[1u]), 1u);
-			case 4u: return std::make_tuple(std::max(data.aabb.min[2u], aabb.min[2u]), 2u);
-			case 5u: return std::make_tuple(std::min(data.aabb.max[2u], aabb.max[2u]), 2u);
-			default: return std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
-		}
-	}
-
 	float cost(const float p_l, const float p_r, const size_t n_l, const size_t n_r)
 	{
 		return /*l(p) * */(cost_traversal_step + cost_intersect_triangle * (p_l * n_l + p_r * n_r));
@@ -85,6 +69,24 @@ struct KdTreeBuilder
 		const auto p_l = v_l.calculateSurfaceArea() / v.calculateSurfaceArea(), p_r = v_r.calculateSurfaceArea() / v.calculateSurfaceArea();
 
 		return std::min(cost(p_l, p_r, n_l + n_p, n_r), cost(p_l, p_r, n_l, n_r + n_p));
+	}
+
+#if 1
+
+	std::tuple<float, unsigned> getPerfectSplit(const TriangleIndex t, const AABox3 &aabb, const unsigned i)
+	{
+		const auto &data = triangle_data[t];
+
+		switch(i)
+		{
+			case 0u: return std::make_tuple(std::max(data.aabb.min[0u], aabb.min[0u]), 0u);
+			case 1u: return std::make_tuple(std::min(data.aabb.max[0u], aabb.max[0u]), 0u);
+			case 2u: return std::make_tuple(std::max(data.aabb.min[1u], aabb.min[1u]), 1u);
+			case 3u: return std::make_tuple(std::min(data.aabb.max[1u], aabb.max[1u]), 1u);
+			case 4u: return std::make_tuple(std::max(data.aabb.min[2u], aabb.min[2u]), 2u);
+			case 5u: return std::make_tuple(std::min(data.aabb.max[2u], aabb.max[2u]), 2u);
+			default: return std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
+		}
 	}
 
 	float findSplitPlane(unsigned *out_split_axis, float *out_cost, size_t *out_triangles_count, const AABox3 &aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
@@ -132,6 +134,95 @@ struct KdTreeBuilder
 		*out_triangles_count = count; // just an optimization so that we don't have to iterate through the triangles list multiple times
 		return std::get<float>(min_plane);
 	}
+
+#else
+
+	float findSplitPlane(unsigned *out_split_axis, float *out_cost, size_t *out_triangles_count, const AABox3 &aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
+	{
+		auto min_cost = std::numeric_limits<float>::max();
+		auto min_plane = std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
+
+		const size_t triangles_count = std::distance(triangles_begin, triangles_end);
+
+		for(auto k = 0u; k < 3u; ++k)
+		{
+			struct Event
+			{
+				// don't reoder enum values, their oder is important in operator<
+				enum Type
+				{
+					End,
+					Planar,
+					Start,
+				};
+
+				TriangleIndex triangle;
+				float plane;
+				Type type;
+
+				Event(TriangleIndex triangle, float plane, Type type) : triangle(triangle), plane(plane), type(type) {}
+
+				bool operator<(const Event &o) const
+				{
+					return plane < o.plane || type < o.type;
+				}
+			};
+
+			std::vector<Event> events;
+			events.reserve(2 * triangles_count);
+
+			for(auto it = triangles_begin; it != triangles_end; ++it)
+			{
+				const auto &data = triangle_data[*it];
+				if(data.aabb.min[k] == data.aabb.max[k])
+				{
+					//if(data.aabb.min[k] >= aabb.min[k] && data.aabb.max[k] <= aabb.max[k])
+					{
+						events.emplace_back(*it, data.aabb.min[k], Event::Planar);
+					}
+				}
+				else
+				{
+					events.emplace_back(*it, std::max(data.aabb.min[k], aabb.min[k]), Event::Start);
+					events.emplace_back(*it, std::min(data.aabb.max[k], aabb.max[k]), Event::End);
+				}
+			}
+
+			std::sort(events.begin(), events.end());
+
+			size_t n_l = 0u, n_r = triangles_count;
+
+			for(auto it = events.begin(); it != events.end(); /*noop*/)
+			{
+				const auto plane = it->plane;
+				const auto split = std::make_tuple(plane, k);
+
+				size_t p_start = 0u, p_planar = 0u, p_end = 0u;
+
+				while(it != events.end() && it->plane == plane && it->type == Event::End)    { ++p_end;    ++it; }
+				while(it != events.end() && it->plane == plane && it->type == Event::Planar) { ++p_planar; ++it; }
+				while(it != events.end() && it->plane == plane && it->type == Event::Start)  { ++p_start;  ++it; }
+
+				n_r -= p_planar + p_end;
+
+				const auto c = SAH(aabb, split, n_l, n_r, p_planar);
+				if(c < min_cost)
+				{
+					min_cost = c;
+					min_plane = split;
+				}
+
+				n_l += p_start + p_planar;
+			}
+		}
+
+		*out_split_axis = std::get<unsigned>(min_plane);
+		*out_cost = min_cost;
+		*out_triangles_count = triangles_count; // just an optimization so that we don't have to iterate through the triangles list multiple times
+		return std::get<float>(min_plane);
+	}
+
+#endif
 
 	void buildLeaf(typename kdtree_t::pod_t::Node &current_node, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const TrianglesIt triangles_overlap_end)
 	{
