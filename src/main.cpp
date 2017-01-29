@@ -4,6 +4,7 @@
 #include "dummy_acceleration.hpp"
 #include "bih.hpp"
 #include "cuda_bih.hpp"
+#include "cuda_dummy_acceleration.hpp"
 #include "cpu_tracer.hpp"
 #include "cpu_pathtracer.hpp"
 #include "cuda_pathtracer.hpp"
@@ -22,8 +23,10 @@ struct PrayTypes {
 #ifdef WITH_BIH
 	BihPOD<scene_t> bih;
 	using accel_t = Bih<ray_t, scene_t>;
+	using accel_cuda_t = CudaBih<accel_t>;
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
+	using accel_cuda_t = CudaDummyAcceleration<accel_t>;
 #endif
 #ifdef WITH_SUBSAMPLING
 	template <class tracer_t>
@@ -40,9 +43,10 @@ struct PrayTypes<PathScene> {
 	using ray_t = Ray<scene_t>;
 #ifdef WITH_BIH
 	using accel_t = Bih<ray_t, scene_t>;
-	using accel_cuda_t = CudaBih;
+	using accel_cuda_t = CudaBih<accel_t>;
 #else
 	using accel_t = DummyAcceleration<ray_t, scene_t>;
+	using accel_cuda_t = CudaDummyAcceleration<accel_t>;
 #endif
 #ifdef WITH_SUBSAMPLING
 	template <class tracer_t>

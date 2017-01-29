@@ -28,6 +28,7 @@ if (WITH_CUDA)
     cuda_scene.hpp
     cuda_image.hpp
     cuda_bih.hpp
+		cuda_dummy_acceleration.hpp
 		cuda_renderer.hpp
     cuda_pathtracer.hpp
     cuda.cu)

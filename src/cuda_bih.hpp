@@ -8,12 +8,13 @@
 #include "scene.hpp"
 #include "bih.hpp"
 
+template<class accel_t>
 struct CudaBih
 {
-	using accel_t = BihPOD<PathScene>;
+	//using accel_t = BihPOD<PathScene>;
 	using scene_t = CudaScene;
 	using ray_t = CudaRay;
-	using Node = typename accel_t::Node;
+	using Node = typename BihPOD<PathScene>::Node;
 	
 	cuda::vector<Node> nodes;
 	AABox3* scene_aabb;
@@ -76,11 +77,11 @@ struct CudaBih
 	CudaBih(const CudaBih&);
 	CudaBih(const CudaBih&&);
 	
-	CudaBih(const accel_t &pod)
+	CudaBih(const accel_t &bih)
 	{
 		// allocate memory and copy data
-		nodes = cuda::vector<Node>::create(pod.nodes);
-		scene_aabb = cuda::create<AABox3>(pod.scene_aabb);
+		nodes = cuda::vector<Node>::create(bih.pod.nodes);
+		scene_aabb = cuda::create<AABox3>(bih.pod.scene_aabb);
 	}
 	
 	~CudaBih()

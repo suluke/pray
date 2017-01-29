@@ -5,6 +5,7 @@
 #include "cuda_scene.hpp"
 #include "cuda_image.hpp"
 #include "cuda_bih.hpp"
+#include "cuda_dummy_acceleration.hpp"
 
 #include <cuda_runtime_api.h>
 #include <cuda.h>
@@ -105,7 +106,8 @@ __device__ inline float CudaRenderer<accel_t, accel_cuda_t>::sampling_rand()
 	return curand_uniform(&randomState);
 }
 
-__device__ typename CudaBih::ray_t::intersect_t CudaBih::intersect(const typename CudaBih::scene_t &scene, const typename CudaBih::ray_t &ray, typename CudaBih::ray_t::distance_t *out_distance) const
+template<class accel_t>
+__device__ typename CudaBih<accel_t>::ray_t::intersect_t CudaBih<accel_t>::intersect(const typename CudaBih<accel_t>::scene_t &scene, const typename CudaBih<accel_t>::ray_t &ray, typename CudaBih<accel_t>::ray_t::distance_t *out_distance) const
 {
 	const auto active_mask = ray.intersectAABB(*scene_aabb);
 	if(!active_mask) return ray_t::getNoIntersection();
@@ -222,13 +224,34 @@ __device__ typename CudaBih::ray_t::intersect_t CudaBih::intersect(const typenam
 }
 
 
+template<class accel_t>
+__device__ typename CudaDummyAcceleration<accel_t>::ray_t::intersect_t CudaDummyAcceleration<accel_t>::intersect(const typename CudaDummyAcceleration<accel_t>::scene_t &scene, const typename CudaDummyAcceleration<accel_t>::ray_t &ray, typename CudaDummyAcceleration<accel_t>::ray_t::distance_t *out_distance) const
+{
+	typename ray_t::intersect_t intersected_triangle = ray_t::getNoIntersection();
+	auto minimum_distance = ray_t::max_distance();
+
+	for(TriangleIndex triangle_index = 0u; triangle_index < index_cast<TriangleIndex>(scene.triangles.size()); ++triangle_index)
+	{
+		const Triangle &triangle = scene.triangles[triangle_index];
+
+		typename ray_t::distance_t distance;
+		if(ray.intersectTriangle(triangle, &distance))
+		{
+			ray_t::updateIntersections(&intersected_triangle, triangle_index, &minimum_distance, distance);
+		}
+	}
+
+	*out_distance = minimum_distance;
+	return intersected_triangle;
+}
+
 
 /* host functions */
 
 template<class accel_t, class accel_cuda_t>
-CudaPathTracer<accel_t, accel_cuda_t>::CudaPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &accel) : renderer(scene, accel.pod, opts)
+CudaPathTracer<accel_t, accel_cuda_t>::CudaPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &accel) : renderer(scene, accel, opts)
 {
-	d_renderer = cuda::create<CudaRenderer<accel_pod_t, accel_cuda_t>>(renderer);
+	d_renderer = cuda::create<CudaRenderer<accel_t, accel_cuda_t>>(renderer);
 	
 	#ifdef DEBUG
 		// device information output
@@ -261,7 +284,7 @@ CudaPathTracer<accel_t, accel_cuda_t>::CudaPathTracer(const PathScene &scene, co
 template<class accel_t, class accel_cuda_t>
 CudaPathTracer<accel_t, accel_cuda_t>::~CudaPathTracer()
 {
-	cuda::destroy<CudaRenderer<accel_pod_t, accel_cuda_t>>(d_renderer);
+	cuda::destroy<CudaRenderer<accel_t, accel_cuda_t>>(d_renderer);
 }
 
 template<class accel_t, class accel_cuda_t>
@@ -273,7 +296,7 @@ void CudaPathTracer<accel_t, accel_cuda_t>::render(ImageView &image)
 	CudaImage* d_image = cuda::create<CudaImage>(cudaImage);
 	
 	// adjust stack size limit according
-	size_t stack_size_wish = CudaBih::stack_size + renderer.opts.max_depth * 80 + 1024; // add some number for the other stack frames
+	size_t stack_size_wish = CudaBih<accel_t>::stack_size + renderer.opts.max_depth * 80 + 1024; // add some number for the other stack frames
 	size_t stack_size_old;
 	size_t stack_size_new;
 	
@@ -297,7 +320,7 @@ void CudaPathTracer<accel_t, accel_cuda_t>::render(ImageView &image)
 	
 	// start kernel
 	//      <<< BLOCKS, THREADS >>>
-	kernel_render<accel_pod_t, accel_cuda_t><<<dimGrid, 1>>>(d_renderer, d_image);
+	kernel_render<accel_t, accel_cuda_t><<<dimGrid, 1>>>(d_renderer, d_image);
 	cuda::checkForError(__FILE__, __func__, __LINE__);
 	
 	// destroy objects on device
@@ -307,6 +330,8 @@ void CudaPathTracer<accel_t, accel_cuda_t>::render(ImageView &image)
 	cudaImage.copyBack();
 }
 
-
-template class CudaPathTracer<Bih<Ray<Scene<EmissionMaterial> >, Scene<EmissionMaterial> >, CudaBih>;
-template class CudaRenderer<BihPOD<Scene<EmissionMaterial> >, CudaBih>;
+// tell NVCC explicit which template combinations to instantiate
+template class CudaRenderer<Bih<Ray<Scene<EmissionMaterial>>, Scene<EmissionMaterial>>, CudaBih<Bih<Ray<Scene<EmissionMaterial>>, Scene<EmissionMaterial>>>>;
+template class CudaPathTracer<Bih<Ray<Scene<EmissionMaterial> >, Scene<EmissionMaterial> >, CudaBih<Bih<Ray<Scene<EmissionMaterial> >, Scene<EmissionMaterial>>>>;
+template class CudaRenderer<DummyAcceleration<Ray<Scene<EmissionMaterial>>, Scene<EmissionMaterial>>, CudaDummyAcceleration<DummyAcceleration<Ray<Scene<EmissionMaterial>>, Scene<EmissionMaterial>>>>;
+template class CudaPathTracer<DummyAcceleration<Ray<Scene<EmissionMaterial> >, Scene<EmissionMaterial> >, CudaDummyAcceleration<DummyAcceleration<Ray<Scene<EmissionMaterial> >, Scene<EmissionMaterial>>>>;
