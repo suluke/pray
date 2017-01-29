@@ -24,17 +24,15 @@ struct CudaRenderer {
 	const accel_cuda_t accel;
 	RenderOptions::Path opts;
 	
-	curandState_t randomState;
-	
 	CudaRenderer(const scene_t &scene, const accel_t &accel, const RenderOptions::Path &opts) : scene(scene_cuda_t(scene)), accel(accel_cuda_t(accel)), opts(opts) {}
 	
 	__device__ void render(CudaImage* image);
-	__device__ Color trace(CudaRay ray, unsigned int depth = 0);
+	__device__ Color trace(CudaRay ray, unsigned int depth = 0, curandState_t* randomState = nullptr);
 	
-	__device__ Vector3 sampleHemisphere(const Vector3 &X, const Vector3 &Y, const Vector3 &Z);
+	__device__ Vector3 sampleHemisphere(const Vector3 &X, const Vector3 &Y, const Vector3 &Z, curandState* randomState);
 	
-	__device__ void sampling_init();
-	__device__ float sampling_rand();
+	__device__ void sampling_init(curandState_t* randomState);
+	__device__ float sampling_rand(curandState_t* randomState);
 };
 
 

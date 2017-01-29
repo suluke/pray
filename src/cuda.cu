@@ -17,15 +17,19 @@
 template<class accel_t, class accel_cuda_t>
 __global__ void kernel_render(CudaRenderer<accel_t, accel_cuda_t>* d_renderer, CudaImage* d_image)
 {
+	// check if out of bounds
+	// blockDim = threads per block
+	if (blockIdx.x * blockDim.x + threadIdx.x > d_image->viewResolution.w)
+		return;
+	if (blockIdx.y * blockDim.y + threadIdx.y > d_image->viewResolution.h)
+		return;
+	
 	d_renderer->render(d_image);
 }
 
 template<class accel_t, class accel_cuda_t>
 __device__ void CudaRenderer<accel_t, accel_cuda_t>::render(CudaImage* image)
 {
-	// initialize random generator for this block/thread
-	sampling_init();
-	
 	Vector3 left, right, bottom, top;
 	const float aspect = (float) image->viewResolution.h / image->viewResolution.w;
 	scene.camera->calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
@@ -33,8 +37,11 @@ __device__ void CudaRenderer<accel_t, accel_cuda_t>::render(CudaImage* image)
 	float max_x = (float) image->viewResolution.w;
 	float max_y = (float) image->resolution.h;
 	
-	long local_y = ray_t::dim::h * blockIdx.y;
-	long x = ray_t::dim::w * blockIdx.x;
+	//long local_y = ray_t::dim::h * blockIdx.y;
+	//long x = ray_t::dim::w * blockIdx.x;
+	
+	long local_y = blockIdx.y * blockDim.y + threadIdx.y;
+	long x = blockIdx.x * blockDim.x + threadIdx.x;
 
 	auto y = image->getGlobalY(local_y);
 	
@@ -46,8 +53,16 @@ __device__ void CudaRenderer<accel_t, accel_cuda_t>::render(CudaImage* image)
 }
 
 template<class accel_t, class accel_cuda_t>
-__device__ Color CudaRenderer<accel_t, accel_cuda_t>::trace(CudaRay ray, unsigned int depth)
+__device__ Color CudaRenderer<accel_t, accel_cuda_t>::trace(CudaRay ray, unsigned int depth, curandState_t* randomState)
 {
+	if (depth == 0)
+	{
+		// initialize random generator for this block/thread
+		curandState_t randomStatePerBlock;
+		randomState = &randomStatePerBlock;
+		sampling_init(randomState);
+	}
+	
 	typename ray_t::distance_t intersection_distance;
 	const auto intersected_triangle = accel.intersect(scene, ray, &intersection_distance);
 	
@@ -71,18 +86,18 @@ __device__ Color CudaRenderer<accel_t, accel_cuda_t>::trace(CudaRay ray, unsigne
 
 	Color value{0, 0, 0};
 	for (unsigned i = 0; i < opts.num_samples; ++i) {
-		ray_t next(P, sampleHemisphere(X, Y, Z));
-		value += trace(next, depth + 1);
+		ray_t next(P, sampleHemisphere(X, Y, Z, randomState));
+		value += trace(next, depth + 1, randomState);
 	}
 	value = material.color * value / opts.num_samples;
 	return value;
 }
 
 template<class accel_t, class accel_cuda_t>
-__device__ Vector3 CudaRenderer<accel_t, accel_cuda_t>::sampleHemisphere(const Vector3 &X, const Vector3 &Y, const Vector3 &Z) 
+__device__ Vector3 CudaRenderer<accel_t, accel_cuda_t>::sampleHemisphere(const Vector3 &X, const Vector3 &Y, const Vector3 &Z, curandState* randomState) 
 {
-	float u1 = sampling_rand();
-	float u2 = sampling_rand();
+	float u1 = sampling_rand(randomState);
+	float u2 = sampling_rand(randomState);
 	float r = std::sqrt(1.f - u1);
 	float phi = 2 * std::acos(-1.f) * u2;
 	float x = std::cos(phi) * r;
@@ -92,18 +107,18 @@ __device__ Vector3 CudaRenderer<accel_t, accel_cuda_t>::sampleHemisphere(const V
 }
 
 template<class accel_t, class accel_cuda_t>
-__device__ inline void CudaRenderer<accel_t, accel_cuda_t>::sampling_init()
+__device__ inline void CudaRenderer<accel_t, accel_cuda_t>::sampling_init(curandState_t* randomState)
 {
 	curand_init(0, /* the seed controls the sequence of random values that are produced */
-							blockIdx.x * blockDim.x + blockIdx.y, /* the sequence number is only important with multiple cores */
+							blockIdx.y * blockDim.y + threadIdx.y * blockIdx.x + threadIdx.x, /* the sequence number is only important with multiple cores */
 							0, /* the offset is how much extra we advance in the sequence for each call, can be 0 */
-							&randomState);
+							randomState);
 }
 
 template<class accel_t, class accel_cuda_t>
-__device__ inline float CudaRenderer<accel_t, accel_cuda_t>::sampling_rand()
+__device__ inline float CudaRenderer<accel_t, accel_cuda_t>::sampling_rand(curandState_t* randomState)
 {
-	return curand_uniform(&randomState);
+	return curand_uniform(randomState);
 }
 
 template<class accel_t>
@@ -296,7 +311,7 @@ void CudaPathTracer<accel_t, accel_cuda_t>::render(ImageView &image)
 	CudaImage* d_image = cuda::create<CudaImage>(cudaImage);
 	
 	// adjust stack size limit according
-	size_t stack_size_wish = CudaBih<accel_t>::stack_size + renderer.opts.max_depth * 80 + 1024; // add some number for the other stack frames
+	size_t stack_size_wish = CudaBih<accel_t>::stack_size + renderer.opts.max_depth * 2048 + 1024; // add some number for the other stack frames
 	size_t stack_size_old;
 	size_t stack_size_new;
 	
@@ -310,17 +325,20 @@ void CudaPathTracer<accel_t, accel_cuda_t>::render(ImageView &image)
 	cuda::checkForError(__FILE__, __func__, __LINE__);
 	
 	#ifdef DEBUG
-		std::cout << "cudaDeviceSetLimit set from " << stack_size_old << " to " << stack_size_new << " (wanted " << stack_size_wish << ")\n";
+		std::cout << "cudaDeviceSetLimit set from " << stack_size_old << " to " << stack_size_new << " (wanted " << stack_size_wish << ")" << std::endl;
 	#endif
+	
+	const unsigned int block_length = 8;
 	
 	// configure execution
 	// max. 1024 Threads per Block (may ask API)
 	// Blocks are assigned to GPU processors -> if there are less GPUs than blocks, one GPU has to calculate several blocks
-	dim3 dimGrid(image.resolution.w, image.resolution.h); // BLOCKS per grid (size of a grid)
+	dim3 dimGrid(std::ceil(image.resolution.w / (float) block_length), std::ceil(image.resolution.h / (float) block_length)); // BLOCKS per grid (size of a grid)
+	dim3 dimBlock(block_length, block_length); // THREADS per block
 	
 	// start kernel
-	//      <<< BLOCKS, THREADS >>>
-	kernel_render<accel_t, accel_cuda_t><<<dimGrid, 1>>>(d_renderer, d_image);
+	// <<< BLOCKS, THREADS >>>
+	kernel_render<accel_t, accel_cuda_t><<<dimGrid, dimBlock>>>(d_renderer, d_image);
 	cuda::checkForError(__FILE__, __func__, __LINE__);
 	
 	// destroy objects on device
