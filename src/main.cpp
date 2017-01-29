@@ -18,6 +18,10 @@
 
 #include "logging.hpp" // This should always be last
 
+#include <thread>
+#include <queue>
+#include <mutex>
+
 template<class scene_t>
 struct PrayTypes {
 #ifdef WITH_SSE
@@ -59,13 +63,63 @@ static void traceScene(const WhittedScene &scene, Image &image, const WhittedTyp
 
 static void traceScene(const PathScene &scene, Image &image, const PathTypes::accel_t &accel, const RenderOptions &opts) {
 #ifdef WITH_CUDA
-	ImageView img(image, 0, opts.resolution.h);
+	std::mutex views_mutex;
+	std::queue<ImageView> views;
+	static const unsigned int view_height = 8 * 8;
 	
+	for (unsigned int i = 0; i < opts.resolution.h; i += view_height)
+	{
+		ImageView img(image, i, std::min(i + view_height, opts.resolution.h));
+		views.push(img);
+	}
+	
+	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
+	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
 	auto cudaTracer  = CudaPathTracer< PathTypes::accel_cuda_t>(scene, opts.path_opts, accel.pod);
-  cudaTracer.render(img);
+	
+	int cuda_num = 0;
+	int cpu_num = 0;
+	
+	std::thread cpuThread([&views, &views_mutex, &cpuTracer, &scene, &cpu_num] () {
+		while (1)
+		{
+			views_mutex.lock();
+			if (views.size() < 1)
+				break;
+			ImageView currentView = views.front();
+			views.pop(); // remove the element we got
+			views_mutex.unlock();
+			
+			sampler::render(scene, currentView, cpuTracer);
+			
+			cpu_num++;
+		}
+	});
+	std::thread cudaThread([&views, &views_mutex, &cudaTracer, &cuda_num] () {
+		while (1)
+		{
+			views_mutex.lock();
+			if (views.size() < 1)
+				break;
+			ImageView currentView = views.front();
+			views.pop(); // remove the element we got
+			views_mutex.unlock();
+			
+			cudaTracer.render(currentView);
+			
+			cuda_num++;
+		}
+	});
+	
+	cpuThread.join();
+	cudaThread.join();
+	
+	#ifdef DEBUG
+		std::cout << cpu_num << " parts process by CPU / " << cuda_num << " parts processed by GPU\n";
+	#endif
 #else
   ImageView img(image, 0, opts.resolution.h);
-  
+	
 	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
 	sampler::render(scene, img, cpuTracer);

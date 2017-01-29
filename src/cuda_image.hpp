@@ -48,9 +48,9 @@ struct CudaImage
 	{
 		if (pixels == nullptr)
 			throw std::runtime_error("CudaImage object was already destroyed");
-			
+		
 		// copy resulting image back
-		uint8_t* pixels_start = image.img.pixels.data() + sizeof(uint8_t) * 3 * viewResolution.w * min_y;
+		uint8_t* pixels_start = image.img.pixels.data() + sizeof(uint8_t) * 3 * resolution.w * min_y;
 		unsigned int pixels_size = sizeof(uint8_t) * 3 * viewResolution.w * viewResolution.h;
 		
 		cudaMemcpy(pixels_start, pixels, pixels_size, cudaMemcpyDeviceToHost);

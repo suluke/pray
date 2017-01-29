@@ -309,6 +309,14 @@ void CudaPathTracer<accel_t, accel_cuda_t>::render(ImageView &image)
 	// copy objects to device
 	CudaImage* d_image = cuda::create<CudaImage>(cudaImage);
 	
+	#ifdef DEBUG
+		// check free memory on device
+		size_t cuda_mem_free;
+		size_t cuda_mem_total;
+		cudaMemGetInfo(&cuda_mem_free, &cuda_mem_total);
+		std::cout << cuda_mem_free << "/" << cuda_mem_free << " Bytes currently free on device" << std::endl;
+	#endif
+	
 	// adjust stack size limit according
 	size_t stack_size_wish = CudaBih<accel_t>::stack_size + renderer.opts.max_depth * 2048 + 1024; // add some number for the other stack frames
 	size_t stack_size_old;
