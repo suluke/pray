@@ -4,6 +4,7 @@
 #include "scene.hpp"
 #include "ray.hpp"
 #include "bih.hpp"
+#include "kdtree.hpp"
 
 #include <functional>
 #include <random>
@@ -19,8 +20,9 @@ static float camera_distance = 5.f;
 static string debug_mode;
 static string debug_mode_parameter;
 
-// "bih"
 typedef Ray<Scene_t> Ray_t;
+
+// "bih"
 typedef Bih<Ray_t, Scene_t> Bih_t;
 static Bih_t bih;
 static int bih_depth = 0; // "draw_all"
@@ -29,12 +31,29 @@ static Ray_t bih_ray(Vector3(0.f, 5.f, -5.f), Vector3(0.f, -1.f, 1.f).normalize(
 std::vector<size_t> bih_intersected_nodes;
 static bool bih_draw_intersected_nodes = true;
 
+// "kdtree"
+typedef KdTree<Ray_t, Scene_t> KdTree_t;
+static KdTree_t kdtree;
+static int kdtree_depth = 0; // "draw_all"
+static KdTree_t::Node *kdtree_current_node = nullptr; // "draw_single"
+static Ray_t kdtree_ray(Vector3(0.f, 5.f, -5.f), Vector3(0.f, -1.f, 1.f).normalize()); // "intersect"
+std::vector<size_t> kdtree_intersected_nodes;
+static bool kdtree_draw_intersected_nodes = true;
+
 static void bih_rebuild()
 {
-	auto current_node_index = bih.nodes.empty() ? 0 : bih_current_node - &bih.nodes[0];
+	auto current_node_index = bih.pod.nodes.empty() ? 0 : bih_current_node - &bih.pod.nodes[0];
 	bih = Bih_t();
 	bih.build(scene);
-	bih_current_node = &bih.nodes[current_node_index];
+	bih_current_node = &bih.pod.nodes[current_node_index];
+}
+
+static void kdtree_rebuild()
+{
+	auto current_node_index = kdtree.pod.nodes.empty() ? 0 : kdtree_current_node - &kdtree.pod.nodes[0];
+	kdtree = KdTree_t();
+	kdtree.build(scene);
+	kdtree_current_node = &kdtree.pod.nodes[current_node_index];
 }
 
 static void init()
@@ -45,6 +64,10 @@ static void init()
 	if(debug_mode == "bih")
 	{
 		bih_rebuild();
+	}
+	if(debug_mode == "kdtree")
+	{
+		kdtree_rebuild();
 	}
 }
 
@@ -99,10 +122,62 @@ static void keyboard(unsigned char key, int x, int y)
 			debug_mode_parameter = *next;
 		}
 
+		/*
 		if(key == 'r')
 		{
 			bih_rebuild();
 		}
+		*/
+	}
+	if(debug_mode == "kdtree")
+	{
+		if(debug_mode_parameter == "draw_all")
+		{
+			if(key == 'i') ++kdtree_depth;
+			if(key == 'k') --kdtree_depth;
+		}
+		else if(debug_mode_parameter == "draw_single")
+		{
+			auto old_current_node = kdtree_current_node;
+			if(key == 'p') kdtree_current_node = kdtree_current_node->parent;
+			if(key == 'l') kdtree_current_node = kdtree_current_node->child1;
+			if(key == 'r') kdtree_current_node = kdtree_current_node->child2;
+			if(key == 'f') ++kdtree_current_node;
+			if(key == 'b') --kdtree_current_node;
+
+			if(old_current_node != kdtree_current_node)
+			{
+				if(kdtree_current_node->getType() == KdTree_t::Node::Leaf)
+				{
+					std::cout << "current: " << kdtree_current_node->index << " p: " << kdtree_current_node->parent->index << " Leaf with " << kdtree_current_node->getLeafData().children_count << " children" << "\n";
+				}
+				else
+				{
+					std::cout << "current: " << kdtree_current_node->index << " p: " << (kdtree_current_node->parent ? kdtree_current_node->parent->index : 13371337) << " l: " << kdtree_current_node->child1->index << " r: " << kdtree_current_node->child2->index << "\n";
+				}
+			}
+		}
+		else if(debug_mode_parameter == "intersect")
+		{
+			if(key == 'i') kdtree_draw_intersected_nodes = !kdtree_draw_intersected_nodes;
+		}
+
+		if(key == 'm')
+		{
+			static std::vector<std::string> parameters = { "draw_all", "draw_single", "intersect" };
+			auto current = std::find(parameters.begin(), parameters.end(), debug_mode_parameter);
+			if(current == parameters.end()) --current;
+			auto next = ++current;
+			if(current == parameters.end()) next = parameters.begin();
+			debug_mode_parameter = *next;
+		}
+
+		/*
+		if(key == 'r')
+		{
+			kdtree_rebuild();
+		}
+		*/
 	}
 	glutPostRedisplay();
 }
@@ -153,7 +228,10 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 			if(bih_depth == depth)
 			{
 				glColor3f(0.f, 1.f, 0.f);
-				draw_triangle(scene.triangles[bih.triangles[node.getChildrenIndex()]]);
+				for(auto i=0u; i<node.getLeafData().children_count; ++i)
+				{
+					draw_triangle(scene.triangles[node.getChildrenIndex()+i]);
+				}
 			}
 		}
 		else if(debug_mode_parameter == "draw_single")
@@ -161,15 +239,21 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 			if(depth == 1 || &node == bih_current_node)
 			{
 				glColor3f(0.f, 1.f, 0.f);
-				draw_triangle(scene.triangles[bih.triangles[node.getChildrenIndex()]]);
+				for(auto i=0u; i<node.getLeafData().children_count; ++i)
+				{
+					draw_triangle(scene.triangles[node.getChildrenIndex()+i]);
+				}
 			}
 		}
 		else if(debug_mode_parameter == "intersect")
 		{
-			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.nodes[0]) != bih_intersected_nodes.end())
+			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.pod.nodes[0]) != bih_intersected_nodes.end())
 			{
 				glColor3f(0.f, 1.f, 0.f);
-				draw_triangle(scene.triangles[bih.triangles[node.getChildrenIndex()]]);
+				for(auto i=0u; i<node.getLeafData().children_count; ++i)
+				{
+					draw_triangle(scene.triangles[node.getChildrenIndex()+i]);
+				}
 			}
 		}
 	}
@@ -190,8 +274,8 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 				draw_box(child2_box);
 			}
 
-			draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
-			draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, depth+2);
+			draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
+			draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+1], child2_box, depth+1);
 		}
 		else if(debug_mode_parameter == "draw_single")
 		{
@@ -209,24 +293,114 @@ static void draw_bih_node(const Bih_t::Node &node, const AABox3 &deduced_box, in
 				glVertex3fv(&v.x);
 				glEnd();
 
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, 1);
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, 1);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+0], child1_box, 1);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+1], child2_box, 1);
 			}
 			else
 			{
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, depth);
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, depth);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+0], child1_box, depth);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+1], child2_box, depth);
 			}
 		}
 		else if(debug_mode_parameter == "intersect")
 		{
-			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.nodes[0]) != bih_intersected_nodes.end())
+			if(bih_draw_intersected_nodes && std::find(bih_intersected_nodes.begin(), bih_intersected_nodes.end(), &node - &bih.pod.nodes[0]) != bih_intersected_nodes.end())
 			{
 				glColor3f(1.f, 0.f, 0.f);
 				draw_box(deduced_box);
 
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
-				draw_bih_node(bih.nodes[node.getChildrenIndex()+1], child2_box, depth+2);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
+				draw_bih_node(bih.pod.nodes[node.getChildrenIndex()+1], child2_box, depth+1);
+			}
+		}
+	}
+}
+
+static void draw_kdtree_node(const KdTree_t::Node &node, const AABox3 &deduced_box, int depth)
+{
+	if(node.getType() == KdTree_t::Node::Leaf)
+	{
+		if(debug_mode_parameter == "draw_all")
+		{
+			if(kdtree_depth == depth)
+			{
+				glColor3f(0.f, 1.f, 0.f);
+				for(auto i=0u; i<node.getLeafData().children_count; ++i)
+				{
+					draw_triangle(scene.triangles[node.getChildrenIndex()+i]);
+				}
+			}
+		}
+		else if(debug_mode_parameter == "draw_single")
+		{
+			if(/*depth == 1 || */&node == kdtree_current_node)
+			{
+				glColor3f(0.f, 1.f, 0.f);
+				for(auto i=0u; i<node.getLeafData().children_count; ++i)
+				{
+					draw_triangle(scene.triangles[node.getChildrenIndex()+i]);
+				}
+			}
+		}
+		else if(debug_mode_parameter == "intersect")
+		{
+			if(kdtree_draw_intersected_nodes && std::find(kdtree_intersected_nodes.begin(), kdtree_intersected_nodes.end(), &node - &kdtree.pod.nodes[0]) != kdtree_intersected_nodes.end())
+			{
+				glColor3f(0.f, 1.f, 0.f);
+				for(auto i=0u; i<node.getLeafData().children_count; ++i)
+				{
+					draw_triangle(scene.triangles[node.getChildrenIndex()+i]);
+				}
+			}
+		}
+	}
+	else
+	{
+		auto child1_box = deduced_box;
+		child1_box.max[node.getType()] = node.getSplitData().plane;
+		auto child2_box = deduced_box;
+		child2_box.min[node.getType()] = node.getSplitData().plane;
+
+		if(debug_mode_parameter == "draw_all")
+		{
+			if(kdtree_depth == depth)
+			{
+				glColor3f(1.f, 0.f, 0.f);
+				draw_box(child1_box);
+				glColor3f(0.f, 0.f, 1.f);
+				draw_box(child2_box);
+			}
+
+			draw_kdtree_node(kdtree.pod.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
+			draw_kdtree_node(kdtree.pod.nodes[node.getChildrenIndex()+1], child2_box, depth+1);
+		}
+		else if(debug_mode_parameter == "draw_single")
+		{
+			if(&node == kdtree_current_node)
+			{
+				glColor3f(1.f, 0.f, 0.f);
+				draw_box(child1_box);
+				glColor3f(0.f, 0.f, 1.f);
+				draw_box(child2_box);
+
+				draw_kdtree_node(kdtree.pod.nodes[node.getChildrenIndex()+0], child1_box, 1);
+				draw_kdtree_node(kdtree.pod.nodes[node.getChildrenIndex()+1], child2_box, 1);
+			}
+			else
+			{
+				draw_kdtree_node(kdtree.pod.nodes[node.getChildrenIndex()+0], child1_box, depth);
+				draw_kdtree_node(kdtree.pod.nodes[node.getChildrenIndex()+1], child2_box, depth);
+			}
+		}
+		else if(debug_mode_parameter == "intersect")
+		{
+			if(kdtree_draw_intersected_nodes && std::find(kdtree_intersected_nodes.begin(), kdtree_intersected_nodes.end(), &node - &kdtree.pod.nodes[0]) != kdtree_intersected_nodes.end())
+			{
+				glColor3f(1.f, 0.f, 0.f);
+				draw_box(deduced_box);
+
+				draw_kdtree_node(kdtree.pod.nodes[node.getChildrenIndex()+0], child1_box, depth+1);
+				draw_kdtree_node(kdtree.pod.nodes[node.getChildrenIndex()+1], child2_box, depth+1);
 			}
 		}
 	}
@@ -298,7 +472,32 @@ static void display()
 			bih.intersect(scene, bih_ray, &distance);
 		}
 
-		draw_bih_node(bih.nodes[0], bih.scene_aabb, 0);
+		draw_bih_node(bih.pod.nodes[0], bih.pod.scene_aabb, 0);
+
+		glDisable(GL_BLEND);
+	}
+
+	if(debug_mode == "kdtree")
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ONE);
+
+		glEnable(GL_DEPTH_TEST);
+		glBegin(GL_LINES);
+		glColor3f(0.f, 0.f, 1.f);
+		glVertex3fv(&kdtree_ray.origin.x);
+		Vector3 e = kdtree_ray.origin + kdtree_ray.direction * 1000.f;
+		glVertex3fv(&e.x);
+		glEnd();
+		glDisable(GL_DEPTH_TEST);
+
+		if(debug_mode_parameter == "intersect")
+		{
+			float distance;
+			kdtree.intersect(scene, kdtree_ray, &distance);
+		}
+
+		draw_kdtree_node(kdtree.pod.nodes[0], kdtree.pod.scene_aabb, 0);
 
 		glDisable(GL_BLEND);
 	}

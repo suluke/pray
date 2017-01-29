@@ -96,6 +96,12 @@ struct AABox3
 		return (min + max) / 2.f;
 	}
 
+	float calculateSurfaceArea() const
+	{
+		const auto d = max - min;
+		return 2*d.x*d.y + 2*d.x*d.z + 2*d.y*d.z;
+	}
+
 	bool isValid() const
 	{
 		return min.x <= max.x && min.y <= max.y && min.z <= max.z;
@@ -140,8 +146,12 @@ struct Color
 	__cuda__ constexpr Color operator*(float a) const { return Color(r*a, g*a, b*a); }
 	__cuda__ constexpr Color operator/(float a) const { return Color(r/a, g/a, b/a); }
 
+	__cuda__ Color abs(const Color &a) const { return Color(std::abs(a.r),std::abs(a.g),std::abs(a.b)); }
+
+	__cuda__ Color &operator*=(const Color &a) { return *this = *this * a; }
 	__cuda__ Color &operator+=(const Color &a) { return *this = *this + a; }
 	__cuda__ Color &operator-=(const Color &a) { return *this = *this - a; }
+	__cuda__ Color &operator/=(float a) { return *this = *this / a; }
 };
 
 static_assert(std::is_trivial<Color>::value, "math types should be trivial");

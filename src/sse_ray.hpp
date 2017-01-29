@@ -31,8 +31,8 @@ struct SSERay {
   static constexpr unsigned subrays_count = simd::REGISTER_CAPACITY_FLOAT;
 
   const location_t origin;
-  simd::Vec3Pack direction;
-  simd::Vec3Pack dir_inv;
+  const simd::Vec3Pack direction;
+  const simd::Vec3Pack dir_inv;
 
   SSERay(location_t origin, simd::Vec3Pack direction) : origin(origin), direction(direction), dir_inv(vec3_t(1.f, 1.f, 1.f) / direction) {}
 
@@ -253,6 +253,10 @@ public:
 
   static inline bool_t booleanAnd(bool_t a, bool_t b) {
     return simd::castps_si(simd::and_ps(simd::castsi_ps(a), simd::castsi_ps(b)));
+  }
+
+  static inline bool_t booleanNot(bool_t a) {
+	  return simd::castps_si(simd::not_ps(simd::castsi_ps(a)));
   }
 
   static inline bool_t isOppositeDirection(const vec3_t v1, const vec3_t v2) {

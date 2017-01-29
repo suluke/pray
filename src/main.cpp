@@ -3,14 +3,19 @@
 #include "image.hpp"
 #include "dummy_acceleration.hpp"
 #include "bih.hpp"
-#include "cuda_bih.hpp"
-#include "cuda_dummy_acceleration.hpp"
+#include "kdtree.hpp"
 #include "cpu_tracer.hpp"
 #include "cpu_pathtracer.hpp"
 #include "cuda_pathtracer.hpp"
 #include "ray.hpp"
 #include "sse_ray.hpp"
 #include "sampler.hpp"
+
+#ifdef WITH_CUDA
+	#include "cuda_bih.hpp"
+	#include "cuda_dummy_acceleration.hpp"
+#endif
+
 #include "logging.hpp" // This should always be last
 
 template<class scene_t>
@@ -20,41 +25,24 @@ struct PrayTypes {
 #else
 	using ray_t = Ray<scene_t>;
 #endif
-#ifdef WITH_BIH
-	BihPOD<scene_t> bih;
-	using accel_t = Bih<ray_t, scene_t>;
-	using accel_cuda_t = CudaBih<accel_t>;
-#else
-	using accel_t = DummyAcceleration<ray_t, scene_t>;
-	using accel_cuda_t = CudaDummyAcceleration<accel_t>;
+	using accel_t = ACCELERATOR<ray_t, scene_t>;
+#ifdef WITH_CUDA
+	using accel_cuda_t = ACCELERATOR_CUDA;
 #endif
-#ifdef WITH_SUBSAMPLING
 	template <class tracer_t>
-	using sampler_t = interpolating_sampler<scene_t, tracer_t, ray_t>;
-#else
-	template <class tracer_t>
-	using sampler_t = naive_sampler<scene_t, tracer_t, ray_t>;
-#endif // WITH_SUBSAMPLING
+	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };
 #ifndef WITH_SSE_PT
 template<>
 struct PrayTypes<PathScene> {
 	using scene_t = PathScene;
 	using ray_t = Ray<scene_t>;
-#ifdef WITH_BIH
-	using accel_t = Bih<ray_t, scene_t>;
-	using accel_cuda_t = CudaBih<accel_t>;
-#else
-	using accel_t = DummyAcceleration<ray_t, scene_t>;
-	using accel_cuda_t = CudaDummyAcceleration<accel_t>;
+	using accel_t = ACCELERATOR<ray_t, scene_t>;
+#ifdef WITH_CUDA
+	using accel_cuda_t = ACCELERATOR_CUDA;
 #endif
-#ifdef WITH_SUBSAMPLING
 	template <class tracer_t>
-	using sampler_t = interpolating_sampler<scene_t, tracer_t, ray_t>;
-#else
-	template <class tracer_t>
-	using sampler_t = naive_sampler<scene_t, tracer_t, ray_t>;
-#endif // WITH_SUBSAMPLING
+	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };
 #endif // not WITH_SSE_PT
 
@@ -71,9 +59,9 @@ static void traceScene(const WhittedScene &scene, Image &image, const WhittedTyp
 
 static void traceScene(const PathScene &scene, Image &image, const PathTypes::accel_t &accel, const RenderOptions &opts) {
 #ifdef WITH_CUDA
-  ImageView img(image, 0, opts.resolution.h);
-  
-	auto cudaTracer  = CudaPathTracer< PathTypes::accel_t, PathTypes::accel_cuda_t >(scene, opts.path_opts, accel);
+	ImageView img(image, 0, opts.resolution.h);
+	
+	auto cudaTracer  = CudaPathTracer< PathTypes::accel_cuda_t>(scene, opts.path_opts, accel.pod);
   cudaTracer.render(img);
 #else
   ImageView img(image, 0, opts.resolution.h);
@@ -90,6 +78,7 @@ static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) 
 #ifdef WITH_PROGRESS
 	logger.image = &image;
 #endif
+	ImageView img(image, 0, opts.resolution.h);
 
 	scene_t scene;
 	if (!LoadScene(opts, &scene)) return 1;
