@@ -6,7 +6,7 @@ template<class kdtree_t>
 struct KdTreeBuilder
 {
 	static constexpr float cost_intersect_triangle = 1.f;
-	static constexpr float cost_traversal_step = 1.f;
+	static constexpr float cost_traversal_step = 8.f;
 
 	typename kdtree_t::scene_t &scene;
 	kdtree_t &kdtree;
@@ -57,7 +57,7 @@ struct KdTreeBuilder
 
 	float cost(const float p_l, const float p_r, const size_t n_l, const size_t n_r)
 	{
-		return /*l(p) * */(cost_traversal_step + cost_intersect_triangle * (p_l * n_l + p_r * n_r));
+		return (n_l == 0 || n_r == 0 ? .8f : 1.f) * (cost_traversal_step + cost_intersect_triangle * (p_l * n_l + p_r * n_r));
 	}
 
 	float SAH(const AABox3 &v, const std::tuple<float, unsigned> split, const size_t n_l, const size_t n_r, const size_t n_p)
@@ -542,27 +542,7 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 template<class ray_t, class scene_t>
 void KdTree<ray_t, scene_t>::printAnalysis() const
 {
-	/*
-	size_t inner_nodes_count = 0u, non_overlapping_inner_nodes_count = 0u, leaves_count = 0u, max_leaf_children_count = 0u;
-
-	for(auto &n : pod.nodes)
-	{
-		if(n.getType() == pod_t::Node::Leaf)
-		{
-			++leaves_count;
-			max_leaf_children_count = std::max<size_t>(max_leaf_children_count, n.getLeafData().children_count);
-		}
-		else
-		{
-			++inner_nodes_count;
-			if(n.getSplitData().left_plane < n.getSplitData().right_plane) ++non_overlapping_inner_nodes_count;
-		}
-	}
-
-	std::cout << "inner nodes: " << inner_nodes_count << " (non-overlapping: " << non_overlapping_inner_nodes_count << ")\n"
-		<< "leaves: " << leaves_count << " max children count: " << max_leaf_children_count << "\n"
-		<< "reserved storage: " << pod.nodes.capacity() << " actual storage: " << pod.nodes.size() << "\n";
-	*/
+	std::cout << "nodes: " << pod.nodes.size() << "\n";
 }
 
 #include <sstream>
