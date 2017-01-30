@@ -19,8 +19,8 @@
 #include "logging.hpp" // This should always be last
 
 #include <thread>
-#include <queue>
-#include <mutex>
+#include <vector>
+#include <atomic>
 
 template<class scene_t>
 struct PrayTypes {
@@ -63,14 +63,15 @@ static void traceScene(const WhittedScene &scene, Image &image, const WhittedTyp
 
 static void traceScene(const PathScene &scene, Image &image, const PathTypes::accel_t &accel, const RenderOptions &opts) {
 #ifdef WITH_CUDA
-	std::mutex views_mutex;
-	std::queue<ImageView> views;
 	static const unsigned int view_height = 8 * 8;
+
+	std::vector<ImageView> views;
+	std::atomic<size_t> views_idx{0};
 	
 	for (unsigned int i = 0; i < opts.resolution.h; i += view_height)
 	{
 		ImageView img(image, i, std::min(i + view_height, opts.resolution.h));
-		views.push(img);
+		views.push_back(img);
 	}
 	
 	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
@@ -80,31 +81,27 @@ static void traceScene(const PathScene &scene, Image &image, const PathTypes::ac
 	int cuda_num = 0;
 	int cpu_num = 0;
 	
-	std::thread cpuThread([&views, &views_mutex, &cpuTracer, &scene, &cpu_num] () {
+	std::thread cpuThread([&] () {
 		while (1)
 		{
-			views_mutex.lock();
-			if (views.size() < 1)
+			size_t idx = views_idx.fetch_add(1, std::memory_order_relaxed);
+			if (idx >= views.size())
 				break;
-			ImageView currentView = views.front();
-			views.pop(); // remove the element we got
-			views_mutex.unlock();
-			
+				
+			ImageView &currentView = views[idx];
 			sampler::render(scene, currentView, cpuTracer);
 			
 			cpu_num++;
 		}
 	});
-	std::thread cudaThread([&views, &views_mutex, &cudaTracer, &cuda_num] () {
+	std::thread cudaThread([&] () {
 		while (1)
 		{
-			views_mutex.lock();
-			if (views.size() < 1)
+			size_t idx = views_idx.fetch_add(1, std::memory_order_relaxed);
+			if (idx >= views.size())
 				break;
-			ImageView currentView = views.front();
-			views.pop(); // remove the element we got
-			views_mutex.unlock();
-			
+				
+			ImageView &currentView = views[idx];
 			cudaTracer.render(currentView);
 			
 			cuda_num++;
@@ -115,7 +112,7 @@ static void traceScene(const PathScene &scene, Image &image, const PathTypes::ac
 	cudaThread.join();
 	
 	#ifdef DEBUG
-		std::cout << cpu_num << " parts process by CPU / " << cuda_num << " parts processed by GPU\n";
+		std::cout << cpu_num << " parts processed by CPU / " << cuda_num << " parts processed by GPU\n";
 	#endif
 #else
   ImageView img(image, 0, opts.resolution.h);
