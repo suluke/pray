@@ -12,6 +12,8 @@ struct KdTreeBuilder
 	kdtree_t &kdtree;
 	ThreadPool &thread_pool;
 
+	std::mutex kdtree_nodes_mutex;
+
 	struct TriangleData
 	{
 		AABox3 aabb;
@@ -21,6 +23,7 @@ struct KdTreeBuilder
 	};
 	std::vector<TriangleData> triangle_data; // each element corresponds to an element in scene.triangles
 
+	std::mutex out_triangles_mutex;
 	std::vector<TriangleIndex> out_triangles;
 
 	typedef std::list<TriangleIndex>::const_iterator TrianglesIt;
@@ -35,12 +38,11 @@ struct KdTreeBuilder
 		std::list<TriangleIndex> triangles;
 		size_t non_overlap_count;
 
+		BuildNodeArgs() = default;
 		BuildNodeArgs(KdTreeBuilder<kdtree_t> *builder, typename kdtree_t::Node *current_node, AABox3 initial_aabb, std::list<TriangleIndex> &triangles, size_t non_overlap_count) : builder(builder), current_node(current_node), initial_aabb(initial_aabb), triangles(std::move(triangles)), non_overlap_count(non_overlap_count) {}
 	};
 
-	using BuildWorder = ParallelRecursion<BuildNodeArgs>;
-
-	std::mutex mutex;
+	using BuildWorker = ParallelRecursion<BuildNodeArgs>;
 
 	void build()
 	{
@@ -58,11 +60,15 @@ struct KdTreeBuilder
 
 		kdtree.pod.nodes.reserve(2 * (scene.triangles.size() + scene.triangles.size() - 1)); //TODO: find a good number here, we MUST NOT reallocate in buildNode!!!
 
+		out_triangles.reserve(2 * scene.triangles.size()); // just so that we are not constantly reallocating in buildLeaf (wouldn't be a problem thought)
+
 		kdtree.pod.nodes.emplace_back();
 #ifdef DEBUG
 		kdtree.pod.nodes.back().parent = nullptr;
 #endif
-		buildNode(BuildNodeArgs(this, &kdtree.pod.nodes.back(), kdtree.pod.scene_aabb, triangles, triangles.size()));
+
+		BuildWorker worker(thread_pool);
+		worker.run(buildNode, BuildNodeArgs(this, &kdtree.pod.nodes.back(), kdtree.pod.scene_aabb, triangles, triangles.size()));
 
 		static_assert(std::is_trivial<Triangle>::value, "Triangle should be trivial");
 		std::vector<Triangle> reordered_triangles(out_triangles.size());
@@ -174,9 +180,20 @@ struct KdTreeBuilder
 
 	static void buildLeaf(KdTreeBuilder<kdtree_t> *builder, typename kdtree_t::pod_t::Node &current_node, const std::list<TriangleIndex> &triangles, const size_t non_overlap_count)
 	{
-		const auto children_index = builder->out_triangles.size();
 		const auto children_count = triangles.size();
-		for(auto t : triangles) builder->out_triangles.push_back(t);
+		size_t children_index;
+
+		{
+			std::lock_guard<std::mutex> lock(builder->out_triangles_mutex);
+
+			children_index = builder->out_triangles.size();
+			static_assert(std::is_trivial<TriangleIndex>::value, "TriangleIndex should be trivial, otherwise resize has linear complexity");
+			builder->out_triangles.resize(builder->out_triangles.size() + children_count);
+		}
+
+		auto it = triangles.begin();
+		for(auto i=0u; i<children_count; ++i, ++it) builder->out_triangles[children_index + i] = *it;
+
 		current_node.makeLeafNode(children_index, non_overlap_count, children_count);
 
 #ifdef DEBUG
@@ -185,7 +202,7 @@ struct KdTreeBuilder
 #endif
 	}
 
-	static void buildNode(const BuildNodeArgs &args)
+	static void buildNode(const BuildNodeArgs &args, BuildWorker &worker)
 	{
 		ASSERT(args.initial_aabb.isValid());
 
@@ -253,10 +270,15 @@ struct KdTreeBuilder
 				return;
 			}
 
-			const auto children_index = args.builder->kdtree.pod.nodes.size();
-			ASSERT(kdtree.pod.nodes.capacity() - args.builder->kdtree.pod.nodes.size() >= 2u); // we don't want relocation (breaks references)
-			static_assert(std::is_trivial<typename kdtree_t::Node>::value, "KdTree::Node should be trivial, otherwise the critical section is not as small as it could be");
-			args.builder->kdtree.pod.nodes.emplace_back(); args.builder->kdtree.pod.nodes.emplace_back();
+			size_t children_index;
+			{
+				std::lock_guard<std::mutex> lock(args.builder->kdtree_nodes_mutex);
+
+				children_index = args.builder->kdtree.pod.nodes.size();
+				ASSERT(kdtree.pod.nodes.capacity() - args.builder->kdtree.pod.nodes.size() >= 2u); // we don't want relocation (breaks references)
+				static_assert(std::is_trivial<typename kdtree_t::Node>::value, "KdTree::Node should be trivial, otherwise the critical section is not as small as it could be");
+				args.builder->kdtree.pod.nodes.emplace_back(); args.builder->kdtree.pod.nodes.emplace_back();
+			}
 
 			args.current_node->makeSplitNode(split_axis, children_index, split_plane);
 
@@ -275,8 +297,8 @@ struct KdTreeBuilder
 			child2_initial_aabb.min[split_axis] = split_plane;
 
 			// recursion
-			buildNode(BuildNodeArgs(args.builder, &child1, child1_initial_aabb, left, left_non_overlap_count));
-			buildNode(BuildNodeArgs(args.builder, &child2, child2_initial_aabb, right, right_non_overlap_count));
+			worker.recurse(buildNode, BuildNodeArgs(args.builder, &child1, child1_initial_aabb, left, left_non_overlap_count));
+			buildNode(BuildNodeArgs(args.builder, &child2, child2_initial_aabb, right, right_non_overlap_count), worker);
 		}
 	}
 };
