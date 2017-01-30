@@ -8,9 +8,11 @@
 #cmakedefine WITH_SSE_PT
 #define SAMPLER ${SAMPLER}_sampler
 #define ACCELERATOR ${ACCELERATOR}
+#cmakedefine WITH_BIH_PARALLEL_BUILD
 #cmakedefine WITH_TIMING
 #cmakedefine WITH_CONFDUMP
 #cmakedefine WITH_PROGRESS
+#cmakedefine DISABLE_RENDERING
 #cmakedefine DISABLE_OUTPUT
 
 #endif

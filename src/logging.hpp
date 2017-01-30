@@ -51,7 +51,9 @@ struct StageLogger {
 #endif
   }
   void startRendering() {
+#ifndef DISABLE_RENDERING
     std::cout << "Rendering..." << std::endl;
+#endif
 #ifdef WITH_PROGRESS
     progressPrinter = std::thread([](const StageLogger *logger) {
       while (!logger->renderFinished) {
@@ -95,6 +97,7 @@ struct StageLogger {
 #include <iomanip>
 #include <cstring>
 #define STR(x)   #x
+
 #define print_opt(x) do {                              \
     auto f(std::cout.flags());                         \
     std::cout << std::left << std::setw(16) << #x ": ";\
@@ -118,8 +121,10 @@ struct StageLogger {
     print_opt(WITH_SSE_PT);
     print_opt(ACCELERATOR);
     print_opt(SAMPLER);
+    print_opt(WITH_BIH_PARALLEL_BUILD);
     print_opt(WITH_TIMING);
     print_opt(WITH_CONFDUMP);
+    print_opt(DISABLE_RENDERING);
     print_opt(DISABLE_OUTPUT);
     std::cout << "##############################\n";
 #ifdef DEBUG

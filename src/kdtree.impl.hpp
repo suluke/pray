@@ -10,6 +10,9 @@ struct KdTreeBuilder
 
 	typename kdtree_t::scene_t &scene;
 	kdtree_t &kdtree;
+	ThreadPool &thread_pool;
+
+	std::mutex kdtree_nodes_mutex;
 
 	struct TriangleData
 	{
@@ -20,11 +23,26 @@ struct KdTreeBuilder
 	};
 	std::vector<TriangleData> triangle_data; // each element corresponds to an element in scene.triangles
 
+	std::mutex out_triangles_mutex;
 	std::vector<TriangleIndex> out_triangles;
 
 	typedef std::list<TriangleIndex>::const_iterator TrianglesIt;
 
-	KdTreeBuilder(typename kdtree_t::scene_t &scene, kdtree_t &kdtree) : scene(scene), kdtree(kdtree) {}
+	KdTreeBuilder(typename kdtree_t::scene_t &scene, kdtree_t &kdtree, ThreadPool &thread_pool) : scene(scene), kdtree(kdtree), thread_pool(thread_pool) {}
+
+	struct BuildNodeArgs
+	{
+		KdTreeBuilder<kdtree_t> *builder;
+		typename kdtree_t::Node *current_node;
+		AABox3 initial_aabb;
+		std::list<TriangleIndex> triangles;
+		size_t non_overlap_count;
+
+		BuildNodeArgs() = default;
+		BuildNodeArgs(KdTreeBuilder<kdtree_t> *builder, typename kdtree_t::Node *current_node, AABox3 initial_aabb, std::list<TriangleIndex> &triangles, size_t non_overlap_count) : builder(builder), current_node(current_node), initial_aabb(initial_aabb), triangles(std::move(triangles)), non_overlap_count(non_overlap_count) {}
+	};
+
+	using BuildWorker = ParallelRecursion<BuildNodeArgs>;
 
 	void build()
 	{
@@ -38,16 +56,19 @@ struct KdTreeBuilder
 		}
 
 		std::list<TriangleIndex> triangles;
-		//triangles.reserve(scene.triangles.size() * scene.triangles.size());
 		for(TriangleIndex i=0u; i<scene.triangles.size(); ++i) triangles.push_back(i);
 
 		kdtree.pod.nodes.reserve(2 * (scene.triangles.size() + scene.triangles.size() - 1)); //TODO: find a good number here, we MUST NOT reallocate in buildNode!!!
+
+		out_triangles.reserve(2 * scene.triangles.size()); // just so that we are not constantly reallocating in buildLeaf (wouldn't be a problem thought)
 
 		kdtree.pod.nodes.emplace_back();
 #ifdef DEBUG
 		kdtree.pod.nodes.back().parent = nullptr;
 #endif
-		buildNode(kdtree.pod.nodes.back(), kdtree.pod.scene_aabb, triangles.cbegin(), triangles.cend(), triangles.cend());
+
+		BuildWorker worker(thread_pool);
+		worker.run(buildNode, BuildNodeArgs(this, &kdtree.pod.nodes.back(), kdtree.pod.scene_aabb, triangles, triangles.size()));
 
 		static_assert(std::is_trivial<Triangle>::value, "Triangle should be trivial");
 		std::vector<Triangle> reordered_triangles(out_triangles.size());
@@ -55,12 +76,12 @@ struct KdTreeBuilder
 		scene.triangles = std::move(reordered_triangles);
 	}
 
-	float cost(const float p_l, const float p_r, const size_t n_l, const size_t n_r)
+	static float cost(const float p_l, const float p_r, const size_t n_l, const size_t n_r)
 	{
 		return (n_l == 0 || n_r == 0 ? .8f : 1.f) * (cost_traversal_step + cost_intersect_triangle * (p_l * n_l + p_r * n_r));
 	}
 
-	float SAH(const AABox3 &v, const std::tuple<float, unsigned> split, const size_t n_l, const size_t n_r, const size_t n_p)
+	static float SAH(const AABox3 &v, const std::tuple<float, unsigned> split, const size_t n_l, const size_t n_r, const size_t n_p)
 	{
 		auto v_l = v, v_r = v;
 		v_l.max[std::get<unsigned>(split)] = std::get<float>(split);
@@ -71,78 +92,12 @@ struct KdTreeBuilder
 		return std::min(cost(p_l, p_r, n_l + n_p, n_r), cost(p_l, p_r, n_l, n_r + n_p));
 	}
 
-#if 0
-
-	std::tuple<float, unsigned> getPerfectSplit(const TriangleIndex t, const AABox3 &aabb, const unsigned i)
-	{
-		const auto &data = triangle_data[t];
-
-		switch(i)
-		{
-			case 0u: return std::make_tuple(std::max(data.aabb.min[0u], aabb.min[0u]), 0u);
-			case 1u: return std::make_tuple(std::min(data.aabb.max[0u], aabb.max[0u]), 0u);
-			case 2u: return std::make_tuple(std::max(data.aabb.min[1u], aabb.min[1u]), 1u);
-			case 3u: return std::make_tuple(std::min(data.aabb.max[1u], aabb.max[1u]), 1u);
-			case 4u: return std::make_tuple(std::max(data.aabb.min[2u], aabb.min[2u]), 2u);
-			case 5u: return std::make_tuple(std::min(data.aabb.max[2u], aabb.max[2u]), 2u);
-			default: return std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
-		}
-	}
-
-	float findSplitPlane(unsigned *out_split_axis, float *out_cost, size_t *out_triangles_count, const AABox3 &aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
+	static float findSplitPlane(KdTreeBuilder<kdtree_t> *builder, unsigned *out_split_axis, float *out_cost, const AABox3 &aabb, const std::list<TriangleIndex> &triangles)
 	{
 		auto min_cost = std::numeric_limits<float>::max();
 		auto min_plane = std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
 
-		size_t count = 0u;
-
-		for(auto it = triangles_begin; it != triangles_end; ++it)
-		{
-			++count;
-
-			for(auto i = 0u; i < 6u; ++i)
-			{
-				const auto split = getPerfectSplit(*it, aabb, i);
-
-				size_t l = 0u, r = 0u, p = 0u;
-
-				for(auto it = triangles_begin; it != triangles_end; ++it)
-				{
-					const auto &data = triangle_data[*it];
-					const bool overlapping = (data.aabb.min[std::get<unsigned>(split)] < std::get<float>(split) && data.aabb.max[std::get<unsigned>(split)] > std::get<float>(split)) ||
-						(data.aabb.min[std::get<unsigned>(split)] == std::get<float>(split) && data.aabb.max[std::get<unsigned>(split)] == std::get<float>(split));
-					if(overlapping) ++p;
-					else
-					{
-						if(data.centroid[std::get<unsigned>(split)] < std::get<float>(split)) ++l;
-						else ++r;
-					}
-				}
-
-				const auto c = SAH(aabb, split, l, r, p);
-
-				if(c < min_cost)
-				{
-					min_cost = c;
-					min_plane = split;
-				}
-			}
-		}
-
-		*out_split_axis = std::get<unsigned>(min_plane);
-		*out_cost = min_cost;
-		*out_triangles_count = count; // just an optimization so that we don't have to iterate through the triangles list multiple times
-		return std::get<float>(min_plane);
-	}
-
-#else
-
-	float findSplitPlane(unsigned *out_split_axis, float *out_cost, size_t *out_triangles_count, const AABox3 &aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
-	{
-		auto min_cost = std::numeric_limits<float>::max();
-		auto min_plane = std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
-
-		const size_t triangles_count = std::distance(triangles_begin, triangles_end);
+		const auto triangles_count = triangles.size();
 
 		for(auto k = 0u; k < 3u; ++k)
 		{
@@ -170,9 +125,9 @@ struct KdTreeBuilder
 			std::vector<Event> events;
 			events.reserve(2 * triangles_count);
 
-			for(auto it = triangles_begin; it != triangles_end; ++it)
+			for(auto t : triangles)
 			{
-				const auto &data = triangle_data[*it];
+				const auto &data = builder->triangle_data[t];
 				if(data.aabb.min[k] == data.aabb.max[k])
 				{
 					//if(data.aabb.min[k] >= aabb.min[k] && data.aabb.max[k] <= aabb.max[k])
@@ -220,18 +175,25 @@ struct KdTreeBuilder
 
 		*out_split_axis = std::get<unsigned>(min_plane);
 		*out_cost = min_cost;
-		*out_triangles_count = triangles_count; // just an optimization so that we don't have to iterate through the triangles list multiple times
 		return std::get<float>(min_plane);
 	}
 
-#endif
-
-	void buildLeaf(typename kdtree_t::pod_t::Node &current_node, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const TrianglesIt triangles_overlap_end)
+	static void buildLeaf(KdTreeBuilder<kdtree_t> *builder, typename kdtree_t::pod_t::Node &current_node, const std::list<TriangleIndex> &triangles, const size_t non_overlap_count)
 	{
-		const auto children_index = out_triangles.size();
-		const auto non_overlap_count = std::distance(triangles_begin, triangles_end);
-		const auto children_count = non_overlap_count + std::distance(triangles_end, triangles_overlap_end);
-		for(auto it = triangles_begin; it != triangles_overlap_end; ++it) out_triangles.push_back(*it);
+		const auto children_count = triangles.size();
+		size_t children_index;
+
+		{
+			std::lock_guard<std::mutex> lock(builder->out_triangles_mutex);
+
+			children_index = builder->out_triangles.size();
+			static_assert(std::is_trivial<TriangleIndex>::value, "TriangleIndex should be trivial, otherwise resize has linear complexity");
+			builder->out_triangles.resize(builder->out_triangles.size() + children_count);
+		}
+
+		auto it = triangles.begin();
+		for(auto i=0u; i<children_count; ++i, ++it) builder->out_triangles[children_index + i] = *it;
+
 		current_node.makeLeafNode(children_index, non_overlap_count, children_count);
 
 #ifdef DEBUG
@@ -240,110 +202,111 @@ struct KdTreeBuilder
 #endif
 	}
 
-	void buildNode(typename kdtree_t::pod_t::Node &current_node, const AABox3 &initial_aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const TrianglesIt triangles_overlap_end)
+	static void buildNode(const BuildNodeArgs &args, BuildWorker &worker)
 	{
-		ASSERT(initial_aabb.isValid());
+		ASSERT(args.initial_aabb.isValid());
 
 #ifdef DEBUG
 		// for conditional breakpoints
-		const auto node_index = &current_node - &kdtree.pod.nodes[0];
+		const auto node_index = args.current_node - &kdtree.pod.nodes[0];
 #endif
-
-		size_t triangles_count;
 
 		unsigned split_axis;
 		float cost_split;
-		const auto split_plane = findSplitPlane(&split_axis, &cost_split, &triangles_count, initial_aabb, triangles_begin, triangles_overlap_end);
+		const auto split_plane = findSplitPlane(args.builder, &split_axis, &cost_split, args.initial_aabb, args.triangles);
 
-		const auto cost_leaf = cost_intersect_triangle * triangles_count;
+		const auto cost_leaf = cost_intersect_triangle * args.triangles.size();
 
 		if(cost_split > cost_leaf)
 		{
 			// build a leaf
 
-			buildLeaf(current_node, triangles_begin, triangles_end, triangles_overlap_end);
+			buildLeaf(args.builder, *args.current_node, args.triangles, args.non_overlap_count);
 		}
 		else
 		{
 			// build a node
 
-			//TODO: yeah, this is a copy...
-			std::list<TriangleIndex> node_triangles(triangles_begin, triangles_overlap_end);
+			std::list<TriangleIndex> left, right;
+			size_t left_non_overlap_count = 0u, right_non_overlap_count = 0u;
 
-			const auto o = std::partition(node_triangles.begin(), node_triangles.end(),
-			[&](TriangleIndex t)
+			for(auto t : args.triangles)
 			{
-				const bool overlapping = (triangle_data[t].aabb.min[split_axis] < split_plane && triangle_data[t].aabb.max[split_axis] > split_plane) ||
-					(triangle_data[t].aabb.min[split_axis] == split_plane && triangle_data[t].aabb.max[split_axis] == split_plane);
-				return !overlapping;
-			});
+				const auto &data = args.builder->triangle_data[t];
 
-			const auto overlapping_begin = o;
-			const auto overlapping_end = node_triangles.end();
+				const bool is_overlapping = (data.aabb.min[split_axis] < split_plane && data.aabb.max[split_axis] > split_plane) ||
+					(data.aabb.min[split_axis] == split_plane && data.aabb.max[split_axis] == split_plane);
 
-			const auto p = std::partition(node_triangles.begin(), overlapping_begin,
-			[&](TriangleIndex t)
-			{
-				return triangle_data[t].centroid[split_axis] < split_plane;
-			});
-
-			//TODO: sooo much efficiency...
-			const auto left_overlapping_begin = node_triangles.insert(p, overlapping_begin, overlapping_end);
-			const auto left_overlapping_end = p;
-
-			const auto left_begin = node_triangles.begin();
-			const auto left_end = left_overlapping_begin;
-			const auto right_begin = p;
-			const auto right_end = overlapping_begin;
-
-			const auto right_overlapping_begin = overlapping_begin;
-			const auto right_overlapping_end = overlapping_end;
-
-			(void)right_overlapping_begin;
-
-			if(left_begin == left_end)
-			{
-				buildLeaf(current_node, right_begin, right_end, right_overlapping_end);
-				return;
-			}
-			if(right_begin == right_end)
-			{
-				buildLeaf(current_node, left_begin, left_end, left_overlapping_end);
-				return;
+				if(is_overlapping)
+				{
+					left.push_back(t);
+					right.push_back(t);
+				}
+				else
+				{
+					//TODO: we don't need the centroid here, use any triangle vertex or aabb coordinate
+					const bool is_left = data.centroid[split_axis] < split_plane;
+					if(is_left)
+					{
+						left.push_front(t);
+						++left_non_overlap_count;
+					}
+					else
+					{
+						right.push_front(t);
+						++right_non_overlap_count;
+					}
+				}
 			}
 
-			const auto children_index = kdtree.pod.nodes.size();
-			ASSERT(kdtree.pod.nodes.capacity() - kdtree.pod.nodes.size() >= 2u); // we don't want relocation (breaks references)
-			static_assert(std::is_trivial<typename kdtree_t::Node>::value, "KdTree::Node should be trivial, otherwise the critical section is not as small as it could be");
-			kdtree.pod.nodes.emplace_back(); kdtree.pod.nodes.emplace_back();
+			if(left_non_overlap_count == 0u)
+			{
+				buildLeaf(args.builder, *args.current_node, right, right_non_overlap_count);
+				return;
+			}
+			if(right_non_overlap_count == 0u)
+			{
+				buildLeaf(args.builder, *args.current_node, left, left_non_overlap_count);
+				return;
+			}
 
-			current_node.makeSplitNode(split_axis, children_index, split_plane);
+			size_t children_index;
+			{
+				std::lock_guard<std::mutex> lock(args.builder->kdtree_nodes_mutex);
 
-			auto &child1 = kdtree.pod.nodes[children_index+0];
-			auto &child2 = kdtree.pod.nodes[children_index+1];
+				children_index = args.builder->kdtree.pod.nodes.size();
+				ASSERT(kdtree.pod.nodes.capacity() - args.builder->kdtree.pod.nodes.size() >= 2u); // we don't want relocation (breaks references)
+				static_assert(std::is_trivial<typename kdtree_t::Node>::value, "KdTree::Node should be trivial, otherwise the critical section is not as small as it could be");
+				args.builder->kdtree.pod.nodes.emplace_back(); args.builder->kdtree.pod.nodes.emplace_back();
+			}
+
+			args.current_node->makeSplitNode(split_axis, children_index, split_plane);
+
+			auto &child1 = args.builder->kdtree.pod.nodes[children_index+0];
+			auto &child2 = args.builder->kdtree.pod.nodes[children_index+1];
 
 #ifdef DEBUG
-			current_node.index = node_index;
-			current_node.child1 = &child1;
-			current_node.child2 = &child2;
+			args.current_node.index = node_index;
+			args.current_node.child1 = &child1;
+			args.current_node.child2 = &child2;
 			child1.parent = child2.parent = &current_node;
 #endif
 
-			AABox3 child1_initial_aabb = initial_aabb, child2_initial_aabb = initial_aabb;
+			AABox3 child1_initial_aabb = args.initial_aabb, child2_initial_aabb = args.initial_aabb;
 			child1_initial_aabb.max[split_axis] = split_plane;
 			child2_initial_aabb.min[split_axis] = split_plane;
 
 			// recursion
-			buildNode(child1, child1_initial_aabb, left_begin, left_end, left_overlapping_end);
-			buildNode(child2, child2_initial_aabb, right_begin, right_end, right_overlapping_end);
+			worker.recurse(buildNode, BuildNodeArgs(args.builder, &child1, child1_initial_aabb, left, left_non_overlap_count));
+			buildNode(BuildNodeArgs(args.builder, &child2, child2_initial_aabb, right, right_non_overlap_count), worker);
 		}
 	}
 };
 
 template<class ray_t, class scene_t>
-void KdTree<ray_t, scene_t>::build(scene_t &scene)
+void KdTree<ray_t, scene_t>::build(scene_t &scene, ThreadPool &thread_pool)
 {
-	KdTreeBuilder<KdTree<ray_t, scene_t>> builder(scene, *this);
+	KdTreeBuilder<KdTree<ray_t, scene_t>> builder(scene, *this, thread_pool);
 	builder.build();
 }
 

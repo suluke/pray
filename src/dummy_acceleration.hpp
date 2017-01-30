@@ -4,7 +4,7 @@
 template<class ray_t, class scene_t>
 struct DummyAcceleration
 {
-	void build(const scene_t &) {}
+	void build(const scene_t &, ThreadPool &) {}
 
 	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
 	{
