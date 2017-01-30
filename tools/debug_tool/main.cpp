@@ -46,6 +46,8 @@ static void bih_rebuild()
 	bih = Bih_t();
 	bih.build(scene);
 	bih_current_node = &bih.pod.nodes[current_node_index];
+
+	bih.printAnalysis();
 }
 
 static void kdtree_rebuild()
@@ -54,6 +56,8 @@ static void kdtree_rebuild()
 	kdtree = KdTree_t();
 	kdtree.build(scene);
 	kdtree_current_node = &kdtree.pod.nodes[current_node_index];
+
+	kdtree.printAnalysis();
 }
 
 static void init()

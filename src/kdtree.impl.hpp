@@ -6,7 +6,7 @@ template<class kdtree_t>
 struct KdTreeBuilder
 {
 	static constexpr float cost_intersect_triangle = 1.f;
-	static constexpr float cost_traversal_step = 1.f;
+	static constexpr float cost_traversal_step = 8.f;
 
 	typename kdtree_t::scene_t &scene;
 	kdtree_t &kdtree;
@@ -55,6 +55,24 @@ struct KdTreeBuilder
 		scene.triangles = std::move(reordered_triangles);
 	}
 
+	float cost(const float p_l, const float p_r, const size_t n_l, const size_t n_r)
+	{
+		return (n_l == 0 || n_r == 0 ? .8f : 1.f) * (cost_traversal_step + cost_intersect_triangle * (p_l * n_l + p_r * n_r));
+	}
+
+	float SAH(const AABox3 &v, const std::tuple<float, unsigned> split, const size_t n_l, const size_t n_r, const size_t n_p)
+	{
+		auto v_l = v, v_r = v;
+		v_l.max[std::get<unsigned>(split)] = std::get<float>(split);
+		v_r.min[std::get<unsigned>(split)] = std::get<float>(split);
+
+		const auto p_l = v_l.calculateSurfaceArea() / v.calculateSurfaceArea(), p_r = v_r.calculateSurfaceArea() / v.calculateSurfaceArea();
+
+		return std::min(cost(p_l, p_r, n_l + n_p, n_r), cost(p_l, p_r, n_l, n_r + n_p));
+	}
+
+#if 0
+
 	std::tuple<float, unsigned> getPerfectSplit(const TriangleIndex t, const AABox3 &aabb, const unsigned i)
 	{
 		const auto &data = triangle_data[t];
@@ -69,22 +87,6 @@ struct KdTreeBuilder
 			case 5u: return std::make_tuple(std::min(data.aabb.max[2u], aabb.max[2u]), 2u);
 			default: return std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
 		}
-	}
-
-	float cost(const float p_l, const float p_r, const size_t n_l, const size_t n_r)
-	{
-		return /*l(p) * */(cost_traversal_step + cost_intersect_triangle * (p_l * n_l + p_r * n_r));
-	}
-
-	float SAH(const AABox3 &v, const std::tuple<float, unsigned> split, const size_t n_l, const size_t n_r, const size_t n_p)
-	{
-		auto v_l = v, v_r = v;
-		v_l.max[std::get<unsigned>(split)] = std::get<float>(split);
-		v_r.min[std::get<unsigned>(split)] = std::get<float>(split);
-
-		const auto p_l = v_l.calculateSurfaceArea() / v.calculateSurfaceArea(), p_r = v_r.calculateSurfaceArea() / v.calculateSurfaceArea();
-
-		return std::min(cost(p_l, p_r, n_l + n_p, n_r), cost(p_l, p_r, n_l, n_r + n_p));
 	}
 
 	float findSplitPlane(unsigned *out_split_axis, float *out_cost, size_t *out_triangles_count, const AABox3 &aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
@@ -132,6 +134,97 @@ struct KdTreeBuilder
 		*out_triangles_count = count; // just an optimization so that we don't have to iterate through the triangles list multiple times
 		return std::get<float>(min_plane);
 	}
+
+#else
+
+	float findSplitPlane(unsigned *out_split_axis, float *out_cost, size_t *out_triangles_count, const AABox3 &aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
+	{
+		auto min_cost = std::numeric_limits<float>::max();
+		auto min_plane = std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
+
+		const size_t triangles_count = std::distance(triangles_begin, triangles_end);
+
+		for(auto k = 0u; k < 3u; ++k)
+		{
+			struct Event
+			{
+				// don't reoder enum values, their oder is important in operator<
+				enum Type
+				{
+					End,
+					Planar,
+					Start,
+				};
+
+				float plane;
+				Type type;
+
+				Event(float plane, Type type) : plane(plane), type(type) {}
+
+				bool operator<(const Event &o) const
+				{
+					return plane < o.plane || (plane == o.plane && type < o.type);
+				}
+			};
+
+			std::vector<Event> events;
+			events.reserve(2 * triangles_count);
+
+			for(auto it = triangles_begin; it != triangles_end; ++it)
+			{
+				const auto &data = triangle_data[*it];
+				if(data.aabb.min[k] == data.aabb.max[k])
+				{
+					//if(data.aabb.min[k] >= aabb.min[k] && data.aabb.max[k] <= aabb.max[k])
+					{
+						events.emplace_back(data.aabb.min[k], Event::Planar);
+					}
+				}
+				else
+				{
+					events.emplace_back(std::max(data.aabb.min[k], aabb.min[k]), Event::Start);
+					events.emplace_back(std::min(data.aabb.max[k], aabb.max[k]), Event::End);
+				}
+			}
+
+			std::sort(events.begin(), events.end());
+
+			size_t p_start = 0u, p_end = 0u;
+
+			for(auto it = events.begin(); it != events.end(); /*noop*/)
+			{
+				const auto plane = it->plane;
+				const auto split = std::make_tuple(plane, k);
+
+				size_t p_planar = 0u;
+
+				while(it != events.end() && it->plane == plane && it->type == Event::End)    { ++p_end;    ++it; }
+				while(it != events.end() && it->plane == plane && it->type == Event::Planar) { ++p_planar; ++it; }
+				while(it != events.end() && it->plane == plane && it->type == Event::Start)  { ++p_start;  ++it; }
+
+				const size_t n_p = p_start - p_end;
+				const size_t n_l = p_start - n_p;
+				const size_t n_r = triangles_count - n_l - n_p;
+
+				const auto c = SAH(aabb, split, n_l, n_r, n_p + p_planar);
+				if(c < min_cost)
+				{
+					min_cost = c;
+					min_plane = split;
+				}
+
+				p_start += p_planar;
+				p_end += p_planar;
+			}
+		}
+
+		*out_split_axis = std::get<unsigned>(min_plane);
+		*out_cost = min_cost;
+		*out_triangles_count = triangles_count; // just an optimization so that we don't have to iterate through the triangles list multiple times
+		return std::get<float>(min_plane);
+	}
+
+#endif
 
 	void buildLeaf(typename kdtree_t::pod_t::Node &current_node, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const TrianglesIt triangles_overlap_end)
 	{
@@ -449,27 +542,7 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 template<class ray_t, class scene_t>
 void KdTree<ray_t, scene_t>::printAnalysis() const
 {
-	/*
-	size_t inner_nodes_count = 0u, non_overlapping_inner_nodes_count = 0u, leaves_count = 0u, max_leaf_children_count = 0u;
-
-	for(auto &n : pod.nodes)
-	{
-		if(n.getType() == pod_t::Node::Leaf)
-		{
-			++leaves_count;
-			max_leaf_children_count = std::max<size_t>(max_leaf_children_count, n.getLeafData().children_count);
-		}
-		else
-		{
-			++inner_nodes_count;
-			if(n.getSplitData().left_plane < n.getSplitData().right_plane) ++non_overlapping_inner_nodes_count;
-		}
-	}
-
-	std::cout << "inner nodes: " << inner_nodes_count << " (non-overlapping: " << non_overlapping_inner_nodes_count << ")\n"
-		<< "leaves: " << leaves_count << " max children count: " << max_leaf_children_count << "\n"
-		<< "reserved storage: " << pod.nodes.capacity() << " actual storage: " << pod.nodes.size() << "\n";
-	*/
+	std::cout << "nodes: " << pod.nodes.size() << "\n";
 }
 
 #include <sstream>
