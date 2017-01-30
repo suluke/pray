@@ -32,11 +32,10 @@ struct KdTreeBuilder
 		KdTreeBuilder<kdtree_t> *builder;
 		typename kdtree_t::Node *current_node;
 		AABox3 initial_aabb;
-		TrianglesIt triangles_begin;
-		TrianglesIt triangles_end;
-		TrianglesIt triangles_overlap_end;
+		std::list<TriangleIndex> triangles;
+		size_t non_overlap_count;
 
-		BuildNodeArgs(KdTreeBuilder<kdtree_t> *builder, typename kdtree_t::Node *current_node, AABox3 initial_aabb, TrianglesIt triangles_begin, TrianglesIt triangles_end, TrianglesIt triangles_overlap_end) : builder(builder), current_node(current_node), initial_aabb(initial_aabb), triangles_begin(triangles_begin), triangles_end(triangles_end), triangles_overlap_end(triangles_overlap_end) {}
+		BuildNodeArgs(KdTreeBuilder<kdtree_t> *builder, typename kdtree_t::Node *current_node, AABox3 initial_aabb, std::list<TriangleIndex> &triangles, size_t non_overlap_count) : builder(builder), current_node(current_node), initial_aabb(initial_aabb), triangles(std::move(triangles)), non_overlap_count(non_overlap_count) {}
 	};
 
 	using BuildWorder = ParallelRecursion<BuildNodeArgs>;
@@ -63,7 +62,7 @@ struct KdTreeBuilder
 #ifdef DEBUG
 		kdtree.pod.nodes.back().parent = nullptr;
 #endif
-		buildNode(BuildNodeArgs(this, &kdtree.pod.nodes.back(), kdtree.pod.scene_aabb, triangles.cbegin(), triangles.cend(), triangles.cend()));
+		buildNode(BuildNodeArgs(this, &kdtree.pod.nodes.back(), kdtree.pod.scene_aabb, triangles, triangles.size()));
 
 		static_assert(std::is_trivial<Triangle>::value, "Triangle should be trivial");
 		std::vector<Triangle> reordered_triangles(out_triangles.size());
@@ -87,12 +86,12 @@ struct KdTreeBuilder
 		return std::min(cost(p_l, p_r, n_l + n_p, n_r), cost(p_l, p_r, n_l, n_r + n_p));
 	}
 
-	static float findSplitPlane(KdTreeBuilder<kdtree_t> *builder, unsigned *out_split_axis, float *out_cost, size_t *out_triangles_count, const AABox3 &aabb, const TrianglesIt triangles_begin, const TrianglesIt triangles_end)
+	static float findSplitPlane(KdTreeBuilder<kdtree_t> *builder, unsigned *out_split_axis, float *out_cost, const AABox3 &aabb, const std::list<TriangleIndex> &triangles)
 	{
 		auto min_cost = std::numeric_limits<float>::max();
 		auto min_plane = std::make_tuple(std::numeric_limits<float>::signaling_NaN(), -1u);
 
-		const size_t triangles_count = std::distance(triangles_begin, triangles_end);
+		const auto triangles_count = triangles.size();
 
 		for(auto k = 0u; k < 3u; ++k)
 		{
@@ -120,9 +119,9 @@ struct KdTreeBuilder
 			std::vector<Event> events;
 			events.reserve(2 * triangles_count);
 
-			for(auto it = triangles_begin; it != triangles_end; ++it)
+			for(auto t : triangles)
 			{
-				const auto &data = builder->triangle_data[*it];
+				const auto &data = builder->triangle_data[t];
 				if(data.aabb.min[k] == data.aabb.max[k])
 				{
 					//if(data.aabb.min[k] >= aabb.min[k] && data.aabb.max[k] <= aabb.max[k])
@@ -170,16 +169,14 @@ struct KdTreeBuilder
 
 		*out_split_axis = std::get<unsigned>(min_plane);
 		*out_cost = min_cost;
-		*out_triangles_count = triangles_count; // just an optimization so that we don't have to iterate through the triangles list multiple times
 		return std::get<float>(min_plane);
 	}
 
-	static void buildLeaf(KdTreeBuilder<kdtree_t> *builder, typename kdtree_t::pod_t::Node &current_node, const TrianglesIt triangles_begin, const TrianglesIt triangles_end, const TrianglesIt triangles_overlap_end)
+	static void buildLeaf(KdTreeBuilder<kdtree_t> *builder, typename kdtree_t::pod_t::Node &current_node, const std::list<TriangleIndex> &triangles, const size_t non_overlap_count)
 	{
 		const auto children_index = builder->out_triangles.size();
-		const auto non_overlap_count = std::distance(triangles_begin, triangles_end);
-		const auto children_count = non_overlap_count + std::distance(triangles_end, triangles_overlap_end);
-		for(auto it = triangles_begin; it != triangles_overlap_end; ++it) builder->out_triangles.push_back(*it);
+		const auto children_count = triangles.size();
+		for(auto t : triangles) builder->out_triangles.push_back(t);
 		current_node.makeLeafNode(children_index, non_overlap_count, children_count);
 
 #ifdef DEBUG
@@ -197,69 +194,62 @@ struct KdTreeBuilder
 		const auto node_index = args.current_node - &kdtree.pod.nodes[0];
 #endif
 
-		size_t triangles_count;
-
 		unsigned split_axis;
 		float cost_split;
-		const auto split_plane = findSplitPlane(args.builder, &split_axis, &cost_split, &triangles_count, args.initial_aabb, args.triangles_begin, args.triangles_overlap_end);
+		const auto split_plane = findSplitPlane(args.builder, &split_axis, &cost_split, args.initial_aabb, args.triangles);
 
-		const auto cost_leaf = cost_intersect_triangle * triangles_count;
+		const auto cost_leaf = cost_intersect_triangle * args.triangles.size();
 
 		if(cost_split > cost_leaf)
 		{
 			// build a leaf
 
-			buildLeaf(args.builder, *args.current_node, args.triangles_begin, args.triangles_end, args.triangles_overlap_end);
+			buildLeaf(args.builder, *args.current_node, args.triangles, args.non_overlap_count);
 		}
 		else
 		{
 			// build a node
 
-			//TODO: yeah, this is a copy...
-			std::list<TriangleIndex> node_triangles(args.triangles_begin, args.triangles_overlap_end);
+			std::list<TriangleIndex> left, right;
+			size_t left_non_overlap_count = 0u, right_non_overlap_count = 0u;
 
-			const auto o = std::partition(node_triangles.begin(), node_triangles.end(),
-			[&](TriangleIndex t)
+			for(auto t : args.triangles)
 			{
 				const auto &data = args.builder->triangle_data[t];
-				const bool overlapping = (data.aabb.min[split_axis] < split_plane && data.aabb.max[split_axis] > split_plane) ||
+
+				const bool is_overlapping = (data.aabb.min[split_axis] < split_plane && data.aabb.max[split_axis] > split_plane) ||
 					(data.aabb.min[split_axis] == split_plane && data.aabb.max[split_axis] == split_plane);
-				return !overlapping;
-			});
 
-			const auto overlapping_begin = o;
-			const auto overlapping_end = node_triangles.end();
+				if(is_overlapping)
+				{
+					left.push_back(t);
+					right.push_back(t);
+				}
+				else
+				{
+					//TODO: we don't need the centroid here, use any triangle vertex or aabb coordinate
+					const bool is_left = data.centroid[split_axis] < split_plane;
+					if(is_left)
+					{
+						left.push_front(t);
+						++left_non_overlap_count;
+					}
+					else
+					{
+						right.push_front(t);
+						++right_non_overlap_count;
+					}
+				}
+			}
 
-			const auto p = std::partition(node_triangles.begin(), overlapping_begin,
-			[&](TriangleIndex t)
+			if(left_non_overlap_count == 0u)
 			{
-				const auto &data = args.builder->triangle_data[t];
-				//TODO: we don't need the centroid here, use any triangle vertex or aabb coordinate
-				return data.centroid[split_axis] < split_plane;
-			});
-
-			//TODO: sooo much efficiency...
-			const auto left_overlapping_begin = node_triangles.insert(p, overlapping_begin, overlapping_end);
-			const auto left_overlapping_end = p;
-
-			const auto left_begin = node_triangles.begin();
-			const auto left_end = left_overlapping_begin;
-			const auto right_begin = p;
-			const auto right_end = overlapping_begin;
-
-			const auto right_overlapping_begin = overlapping_begin;
-			const auto right_overlapping_end = overlapping_end;
-
-			(void)right_overlapping_begin;
-
-			if(left_begin == left_end)
-			{
-				buildLeaf(args.builder, *args.current_node, right_begin, right_end, right_overlapping_end);
+				buildLeaf(args.builder, *args.current_node, right, right_non_overlap_count);
 				return;
 			}
-			if(right_begin == right_end)
+			if(right_non_overlap_count == 0u)
 			{
-				buildLeaf(args.builder, *args.current_node, left_begin, left_end, left_overlapping_end);
+				buildLeaf(args.builder, *args.current_node, left, left_non_overlap_count);
 				return;
 			}
 
@@ -285,8 +275,8 @@ struct KdTreeBuilder
 			child2_initial_aabb.min[split_axis] = split_plane;
 
 			// recursion
-			buildNode(BuildNodeArgs(args.builder, &child1, child1_initial_aabb, left_begin, left_end, left_overlapping_end));
-			buildNode(BuildNodeArgs(args.builder, &child2, child2_initial_aabb, right_begin, right_end, right_overlapping_end));
+			buildNode(BuildNodeArgs(args.builder, &child1, child1_initial_aabb, left, left_non_overlap_count));
+			buildNode(BuildNodeArgs(args.builder, &child2, child2_initial_aabb, right, right_non_overlap_count));
 		}
 	}
 };
