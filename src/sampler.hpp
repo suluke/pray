@@ -126,7 +126,7 @@ namespace sampler {
   static inline std::enable_if_t<ray_t::dim::w != 1 || ray_t::dim::h != 1, bool>
   error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t end_x, const typename ray_t::dim_t end_y, ImageView &image) {
 	  //TODO this uses that rays are cast in a checkered pattern and x is always even
-	  const float threshold = 0.1f;
+	  const float threshold = 0.8f;
 	  Color color{};
 	  for (long j=y;j<end_y;j+=1) {
 		  for (long i=x;i<end_x;i+=1) {
@@ -150,7 +150,7 @@ namespace sampler {
   static inline std::enable_if_t<ray_t::dim::w == 1 || ray_t::dim::h == 1, bool>
   error(const typename ray_t::dim_t x, const typename ray_t::dim_t y, const typename ray_t::dim_t end_x, const typename ray_t::dim_t end_y, ImageView &image) {
 	  //TODO this uses that rays are cast in a checkered pattern and x is always even
-	  const float threshold = 0.1f;
+	  const float threshold = 0.8f;
 	  Color color{};
 	  for (long j=y;j<end_y;j+=1) {
 		  for (long i=x;i<end_x;i+=1) {
@@ -293,7 +293,7 @@ struct adaptive_sampler {
     using sparse = sampler::sparse_dim<typename ray_t::dim>;
 
 #ifdef WITH_OMP
-	#pragma omp parallel for schedule(dynamic, 150) collapse(2)
+	#pragma omp parallel for schedule(dynamic, 30) collapse(2)
 #endif
     for (long local_y = 0; local_y < h; local_y += sparse::h) {
       for (long x = 0; x < w; x += sparse::w) {
@@ -304,7 +304,7 @@ struct adaptive_sampler {
       }
     }
 #ifdef WITH_OMP
-	#pragma omp parallel for schedule(dynamic, 150) collapse(2)
+	#pragma omp parallel for schedule(dynamic, 30) collapse(2)
 #endif
 	for(long local_y = 0; local_y < h; local_y += sparse::h) {
 	  for(long x = 0; x < w; x += sparse::w) {
