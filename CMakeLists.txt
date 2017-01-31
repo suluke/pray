@@ -93,7 +93,6 @@ endif()
 
 set(CUDA_NVCC_FLAGS
   ${CUDA_NVCC_FLAGS}
-  ${CUDA_NVCC_CCBIN}
   -std=c++11
   --expt-relaxed-constexpr
   -libcudart
@@ -105,6 +104,9 @@ set(CUDA_NVCC_FLAGS
   -D_MWAITXINTRIN_H_INCLUDED
   -D_FORCE_INLINES
   )
+if(NOT CUDA_NVCC_CCBIN STREQUAL "")
+  set(CUDA_NVCC_FLAGS -ccbin ${CUDA_NVCC_CCBIN} ${CUDA_NVCC_FLAGS})
+endif()
 set(CUDA_PROPAGATE_HOST_FLAGS off)
 
 add_subdirectory(src)
