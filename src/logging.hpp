@@ -55,18 +55,24 @@ struct StageLogger {
     std::cout << "Rendering..." << std::endl;
 #endif
 #ifdef WITH_PROGRESS
-    progressPrinter = std::thread([](const StageLogger *logger) {
-      while (!logger->renderFinished) {
-        std::this_thread::sleep_for(StageLogger::progressRefreshTime);
-        auto percent = logger->image->writtenPixels * 100 / (logger->opts.resolution.w * logger->opts.resolution.h);
-        if (percent == 100) break;
-        auto f(std::cout.flags());
-        std::cout << std::string(StageLogger::progressWidth, '\b');
-        std::cout << std::right << std::setw(StageLogger::progressWidth - 1); // -1 because of %
-        std::cout << percent << "%" << std::flush;
-        std::cout.flags(f);
-      }
-    }, this);
+		progressPrinter = std::thread([](const StageLogger *logger) {
+			while (!logger->renderFinished) {
+				std::this_thread::sleep_for(StageLogger::progressRefreshTime);
+				
+				unsigned int writtenPixelsSum = logger->image->writtenPixels;
+#ifdef WITH_CUDA
+				writtenPixelsSum += cudaWrittenPixels;
+#endif
+
+				auto percent = writtenPixelsSum * 100 / (logger->opts.resolution.w * logger->opts.resolution.h);
+				if (percent == 100) break;
+				auto f(std::cout.flags());
+				std::cout << std::string(StageLogger::progressWidth, '\b');
+				std::cout << std::right << std::setw(StageLogger::progressWidth - 1); // -1 because of %
+				std::cout << percent << "%" << std::flush;
+				std::cout.flags(f);
+			}
+		}, this);
 #endif // WITH_PROGRESS
 #ifdef WITH_TIMING
     render_begin = std::chrono::high_resolution_clock::now();

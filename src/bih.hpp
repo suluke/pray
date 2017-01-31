@@ -2,6 +2,7 @@
 #define PRAY_BIH_H
 
 #include "scene.hpp"
+#include "cuda.hpp"
 
 // http://ainc.de/Research/BIH.pdf
 
@@ -44,23 +45,23 @@ struct BihPOD
 			data.leaf.children_count = children_count;
 		}
 
-		Type getType() const
+		__cuda__ Type getType() const
 		{
 			return static_cast<Type>(type_and_children_index >> 30);
 		}
 
-		uint32_t getChildrenIndex() const
+		__cuda__ uint32_t getChildrenIndex() const
 		{
 			return type_and_children_index & ~(3 << 30);
 		}
 
-		const SplitData &getSplitData() const
+		__cuda__ const SplitData &getSplitData() const
 		{
 			ASSERT(getType() != Leaf);
 			return data.split;
 		}
 
-		const LeafData &getLeafData() const
+		__cuda__ const LeafData &getLeafData() const
 		{
 			ASSERT(getType() == Leaf);
 			return data.leaf;

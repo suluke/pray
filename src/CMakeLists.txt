@@ -1,4 +1,5 @@
 set(PRAY_SOURCES
+	cuda.hpp
   debug.hpp
   ext.cpp
   ext.hpp
@@ -25,9 +26,15 @@ set(PRAY_SOURCES
 
 if (WITH_CUDA)
   cuda_compile(cuda_files
+		cuda_lib.hpp
+    cuda_ray.hpp
+    cuda_scene.hpp
+    cuda_image.hpp
+    cuda_bih.hpp
+		cuda_dummy_acceleration.hpp
+		cuda_renderer.hpp
     cuda_pathtracer.hpp
-    cuda_pathtracer.impl.hpp
-    cuda_pathtracer.cu)
+    cuda.cu)
   list(APPEND PRAY_SOURCES ${cuda_files})
 endif()
 

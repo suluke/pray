@@ -7,11 +7,21 @@
 #include "kdtree.hpp"
 #include "cpu_tracer.hpp"
 #include "cpu_pathtracer.hpp"
-#include "cuda_pathtracer.hpp"
 #include "ray.hpp"
 #include "sse_ray.hpp"
 #include "sampler.hpp"
+
+#ifdef WITH_CUDA
+	#include "cuda_pathtracer.hpp"
+	#include "cuda_bih.hpp"
+	#include "cuda_dummy_acceleration.hpp"
+#endif
+
 #include "logging.hpp" // This should always be last
+
+#include <thread>
+#include <vector>
+#include <atomic>
 
 template<class scene_t>
 struct PrayTypes {
@@ -21,6 +31,9 @@ struct PrayTypes {
 	using ray_t = Ray<scene_t>;
 #endif
 	using accel_t = ACCELERATOR<ray_t, scene_t>;
+#ifdef WITH_CUDA
+	using accel_cuda_t = ACCELERATOR_CUDA;
+#endif
 	template <class tracer_t>
 	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };
@@ -30,6 +43,9 @@ struct PrayTypes<PathScene> {
 	using scene_t = PathScene;
 	using ray_t = Ray<scene_t>;
 	using accel_t = ACCELERATOR<ray_t, scene_t>;
+#ifdef WITH_CUDA
+	using accel_cuda_t = ACCELERATOR_CUDA;
+#endif
 	template <class tracer_t>
 	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };
@@ -38,25 +54,74 @@ struct PrayTypes<PathScene> {
 using WhittedTypes = PrayTypes<WhittedScene>;
 using PathTypes = PrayTypes<PathScene>;
 
-static void traceScene(const WhittedScene &scene, ImageView &img, const WhittedTypes::accel_t &accel, const RenderOptions &opts) {
+static void traceScene(const WhittedScene &scene, Image &image, const WhittedTypes::accel_t &accel, const RenderOptions &opts) {
+  ImageView img(image, 0, opts.resolution.h);
+  
 	auto tracer = CpuTracer<WhittedTypes::ray_t, WhittedTypes::accel_t>(scene, accel);
 	using sampler = WhittedTypes::sampler_t<decltype(tracer)>;
 	sampler::render(scene, img, tracer);
 }
 
-static void traceScene(const PathScene &scene, ImageView &img, const PathTypes::accel_t &accel, const RenderOptions &opts) {
+static void traceScene(const PathScene &scene, Image &image, const PathTypes::accel_t &accel, const RenderOptions &opts) {
 #ifdef WITH_CUDA
+	static const unsigned int view_height = 8 * 8;
 
-  #ifndef WITH_BIH
-    #error "WITH_CUDA requires also WITH_BIH"
-  #endif
-  
-	auto cudaTracer  = CudaPathTracer(scene, opts.path_opts, accel.pod);
-  (void) cudaTracer;
-#endif
+	std::vector<ImageView> views;
+	std::atomic<size_t> views_idx{0};
+	
+	for (unsigned int i = 0; i < opts.resolution.h; i += view_height)
+	{
+		ImageView img(image, i, std::min(i + view_height, opts.resolution.h));
+		views.push_back(img);
+	}
+	
+	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
+	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
+	auto cudaTracer  = CudaPathTracer< PathTypes::accel_cuda_t>(scene, opts.path_opts, accel.pod);
+	
+	int cuda_num = 0;
+	int cpu_num = 0;
+	
+	std::thread cpuThread([&] () {
+		while (1)
+		{
+			size_t idx = views_idx.fetch_add(1, std::memory_order_relaxed);
+			if (idx >= views.size())
+				break;
+				
+			ImageView &currentView = views[idx];
+			sampler::render(scene, currentView, cpuTracer);
+			
+			cpu_num++;
+		}
+	});
+	std::thread cudaThread([&] () {
+		while (1)
+		{
+			size_t idx = views_idx.fetch_add(1, std::memory_order_relaxed);
+			if (idx >= views.size())
+				break;
+				
+			ImageView &currentView = views[idx];
+			cudaTracer.render(currentView);
+			
+			cuda_num++;
+		}
+	});
+	
+	cpuThread.join();
+	cudaThread.join();
+	
+	#ifdef DEBUG
+		std::cout << cpu_num << " parts processed by CPU / " << cuda_num << " parts processed by GPU\n";
+	#endif
+#else
+  ImageView img(image, 0, opts.resolution.h);
+	
 	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
 	sampler::render(scene, img, cpuTracer);
+#endif
 }
 
 template<class scene_t>
@@ -65,8 +130,6 @@ static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) 
 #ifdef WITH_PROGRESS
 	logger.image = &image;
 #endif
-	ImageView img(image, 0, opts.resolution.h);
-
 	scene_t scene;
 	if (!LoadScene(opts, &scene)) return 1;
 	if (scene.triangles.empty()) {
@@ -85,7 +148,7 @@ static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) 
 
 	logger.startRendering();
 #ifndef DISABLE_RENDERING
-	traceScene(scene, img, accel, opts);
+	traceScene(scene, image, accel, opts);
 #else
 	// fix "unused function traceScene"
 	// because traceScene is overloaded, the static_cast is needed to specify which overload we want to (void)traceScene
