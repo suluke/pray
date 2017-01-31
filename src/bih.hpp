@@ -3,6 +3,7 @@
 
 #include "scene.hpp"
 #include "cuda.hpp"
+#include "parallel_worker.hpp"
 
 // http://ainc.de/Research/BIH.pdf
 
