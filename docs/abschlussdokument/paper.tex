@@ -1,0 +1,105 @@
+\documentclass[11pt,a4paper,titlepage,oneside]{scrartcl}
+
+%Packages to use
+\usepackage[T1]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[english]{babel}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{subfigure}
+%\usepackage{mathptmx}% Times Roman
+\usepackage[scaled=0.92]{helvet} % Helvetica
+\usepackage{courier}
+\usepackage[toc,page]{appendix}
+
+\usepackage[square]{natbib} %For square add [square]
+\setlength{\parindent}{2em}
+\setlength{\parskip}{0.5em}
+\setlength{\footnotesep}{1.1\baselineskip}
+%\renewcommand{\baselinestretch}{2.0}
+%\usepackage{indentfirst}
+
+\usepackage[sf]{titlesec}
+\titleformat{\section}
+  {\normalfont\sffamily\Large\bfseries}
+  {\thesection}{1em}{}
+
+
+\usepackage{microtype}
+\usepackage[raiselinks=true,
+bookmarks=true,
+bookmarksopenlevel=1,
+bookmarksopen=true,
+bookmarksnumbered=true,
+hyperindex=true,
+plainpages=false,
+pdfpagelabels=true,
+pdfborder={0 0 0.5},
+colorlinks=false,
+pagebackref=true,
+linkbordercolor={0 0.61 0.50},
+urlbordercolor={0 0.61 0.50},		% for same urlcolor
+citebordercolor={0 0.61 0.50},]{hyperref}  %{0.57 0.74 0.57}
+\usepackage[nameinlink,noabbrev]{cleveref}
+
+%\newcommand{name}[num]{definition}
+%\newcommand{name}[num]{definition}
+
+\newcommand{\university}{Karlsruhe Institute of Technology}
+\newcommand{\professor}{Prof. Walter F. Tichy}
+\newcommand{\course}{Praxis der Multikernprogrammierung}
+
+
+
+\begin{document} %TODO maybe make section titles bold
+
+%General Information
+\title{Gruppe lboehm}
+\subtitle{Tracing}
+\author{Lukas, Lukas, Marcel, Nicholas}
+\date{\today}
+
+\graphicspath{{./images/}}
+
+\pagenumbering{alph}
+%\maketitle
+\makeatletter
+\begin{titlepage}
+	\centering
+	{\LARGE \university \par}
+	\vspace{5cm}
+	{\LARGE \@title\par}
+	\vspace{0.1cm}
+	{\normalfont \@subtitle\par}
+	\vspace{3cm}
+	{\LARGE \@author\par}
+	\vfill
+	{\LARGE \@date\par}
+\end{titlepage}
+\makeatother
+\pagenumbering{Roman}
+%\tableofcontents
+\sffamily\tableofcontents
+\clearpage
+\pagenumbering{arabic}
+
+\part{Introduction}
+
+%Citation Page
+\clearpage %Starts a new page to start new double page \cleardoublepage
+%\bibliographystyle{apa}
+\bibliographystyle{abbrvnat}
+
+\bibliography{paper}
+\clearpage
+%Appendix
+\begin{appendices}
+\section{Some Appendix} %TODO write your appendix sections here
+The contents...
+\end{appendices}
+
+
+
+
+
+\end{document}
