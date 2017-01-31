@@ -20,7 +20,7 @@ struct ThreadPool
 	{
 		ASSERT(num_threads >= 1u);
 
-		for(auto i=0; i<num_threads; ++i)
+		for(auto i=0u; i<num_threads; ++i)
 		{
 			threads[i].thread = std::thread([=]{ worker_func(i); });
 
@@ -201,17 +201,17 @@ struct ParallelRecursion
 	ParallelRecursion(ThreadPool &thread_pool) : thread_pool(thread_pool), argument_storage(thread_pool.size()) {}
 	~ParallelRecursion() {}
 
+	using function_t = std::function<void(const Args&, ParallelRecursion<Args>&)>;
+
 	// call this function first, blocks until all work is done
-	template<class T>
-	void run(const T &function, const Args &args)
+	void run(const function_t &function, const Args &args)
 	{
 		recurse(function, args);
 		thread_pool.wait_for_all_idle();
 	}
 
 	// call this function from the worker threads
-	template<class T>
-	void recurse(const T &function, const Args &args, bool predicate = true)
+	void recurse(const function_t &function, const Args &args, bool predicate = true)
 	{
 		ThreadPool::thread_index thread;
 		if(predicate && thread_pool.reserve_idle(&thread))
