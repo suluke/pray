@@ -93,6 +93,7 @@ endif()
 
 set(CUDA_NVCC_FLAGS
   ${CUDA_NVCC_FLAGS}
+  ${CUDA_NVCC_CCBIN}
   -std=c++11
   --expt-relaxed-constexpr
   -libcudart
