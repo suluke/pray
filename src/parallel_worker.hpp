@@ -132,14 +132,14 @@ struct ThreadPool
 
 			if(interrupt) break;
 
-#if DEBUG
-			ASSERT(worker_thread.work_function);
+#ifdef DEBUG
+			ASSERT(worker_thread.work_item.function);
 #endif
 
 			worker_thread.work_item.function(worker_thread.work_item.argument);
 
-#if DEBUG
-			worker_thread.work_function = std::function<void(void*)>();
+#ifdef DEBUG
+			worker_thread.work_item.function = std::function<void(void*)>();
 #endif
 
 			// This is only correct as long as the thread is only waked when it was in the idle list (i.e. after idle_get).
