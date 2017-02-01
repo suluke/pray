@@ -209,10 +209,10 @@ template<class scene_t, class tracer_t, class ray_t>
 struct standard_sampler {
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
     Vector3 left, right, bottom, top;
-    const float aspect = (float) image.resolution.h / image.resolution.w;
+    const float aspect = (float) image.img.resolution.h / image.img.resolution.w;
     scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
-    float max_x = (float) image.resolution.w;
+    float max_x = (float) image.img.resolution.w;
     float max_y = (float) image.img.resolution.h;
 
 #ifdef WITH_OMP
@@ -234,8 +234,8 @@ template<class scene_t, class tracer_t, class ray_t>
 struct interpolating_sampler {
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
 	Vector3 left, right, bottom, top;
-	const float aspect = (float) image.resolution.h / image.resolution.w;
-	auto w = image.resolution.w, h = image.resolution.h;
+	const float aspect = (float) image.img.resolution.h / image.img.resolution.w;
+	auto w = image.img.resolution.w, h = image.img.resolution.h;
 	scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 	float max_x = (float) w;
 	float max_y = (float) h;
@@ -283,8 +283,8 @@ struct adaptive_sampler {
 
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
     Vector3 left, right, bottom, top;
-    const float aspect = (float) image.resolution.h / image.resolution.w;
-    auto w = image.resolution.w, h = image.resolution.h;
+    const float aspect = (float) image.img.resolution.h / image.img.resolution.w;
+    auto w = image.img.resolution.w, h = image.img.resolution.h;
     scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
     float max_x = (float) w;

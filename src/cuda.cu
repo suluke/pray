@@ -30,14 +30,11 @@ template<class accel_t, class accel_cuda_t>
 __device__ void CudaRenderer<accel_t, accel_cuda_t>::render(CudaImage* image)
 {
 	Vector3 left, right, bottom, top;
-	const float aspect = (float) image->viewResolution.h / image->viewResolution.w;
+	const float aspect = (float) image->resolution.h / image->resolution.w;
 	scene.camera->calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
-	float max_x = (float) image->viewResolution.w;
+	float max_x = (float) image->resolution.w;
 	float max_y = (float) image->resolution.h;
-	
-	//long local_y = ray_t::dim::h * blockIdx.y;
-	//long x = ray_t::dim::w * blockIdx.x;
 	
 	long local_y = blockIdx.y * blockDim.y + threadIdx.y;
 	long x = blockIdx.x * blockDim.x + threadIdx.x;
