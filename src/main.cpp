@@ -112,9 +112,7 @@ static void traceScene(const PathScene &scene, Image &image, const PathTypes::ac
 	cpuThread.join();
 	cudaThread.join();
 	
-	#ifdef DEBUG
-		std::cout << cpu_num << " parts processed by CPU / " << cuda_num << " parts processed by GPU\n";
-	#endif
+	std::cout << cpu_num << " parts processed by CPU / " << cuda_num << " parts processed by GPU\n";
 #else
   ImageView img(image, 0, opts.resolution.h);
 	

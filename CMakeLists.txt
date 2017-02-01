@@ -20,7 +20,7 @@ find_package(SIMD)
 if (NOT SIMD_FOUND)
   set(WITH_SSE OFF CACHE BOOL "Build with SIMD (SSE) support" FORCE)
 endif()
-option(WITH_SSE_PT "Use SSE Rays in path tracing mode" OFF)
+option(WITH_SSE_PT "Use SSE Rays in path tracing mode" ON)
 
 set(SAMPLER "standard" CACHE STRING "The sampler to be used")
 set(SAMPLER_NAMES "standard" "interpolating" "adaptive")
@@ -39,8 +39,8 @@ if(${ACCELERATOR_INDEX} EQUAL -1)
 endif()
 
 option(WITH_BIH_PARALLEL_BUILD "Build with BIH parallelized build" OFF)
-option(WITH_TIMING "Build with logging of processing time enabled" OFF)
-option(WITH_CONFDUMP "Build with logging all activated features on startup" OFF)
+option(WITH_TIMING "Build with logging of processing time enabled" ON)
+option(WITH_CONFDUMP "Build with logging all activated features on startup" ON)
 option(WITH_PROGRESS "Build with periodically printing of progress information" OFF)
 option(DISABLE_RENDERING "Disable rendering. Useful for profiling preprocessing" OFF)
 option(DISABLE_OUTPUT "Disable writing out the image. Useful for profiling" OFF)
@@ -86,8 +86,8 @@ if(MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /D_CRT_SECURE_NO_WARNINGS /arch:SSE2 /D__SSE2__")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Ox /fp:fast")
 else()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wall -Werror -march=native -Og")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -march=native -Og")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -Wall -Werror")
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Ofast")
 endif()
 
@@ -97,7 +97,7 @@ set(CUDA_NVCC_FLAGS
   --expt-relaxed-constexpr
   -libcudart
   -gencode arch=compute_35,code=compute_35 # for pc189
-  # -gencode arch=compute_20,code=sm_20 # for Marcels device
+  -gencode arch=compute_20,code=sm_20 # for pc205
   
   # to avoid error "identifier __builtin_ia32_mwaitx is undefined
   # https://github.com/tensorflow/tensorflow/issues/1066
