@@ -20,7 +20,6 @@
 #include "logging.hpp" // This should always be last
 
 #include <thread>
-#include <vector>
 #include <atomic>
 
 template<class scene_t>
@@ -64,16 +63,10 @@ static void traceScene(const WhittedScene &scene, Image &image, const WhittedTyp
 
 static void traceScene(const PathScene &scene, Image &image, const PathTypes::accel_t &accel, const RenderOptions &opts) {
 #ifdef WITH_CUDA
-	static const unsigned int view_height = 8 * 8;
-
-	std::vector<ImageView> views;
-	std::atomic<size_t> views_idx{0};
+	static const unsigned int cpu_block_size = 8 * 8;
+	static const unsigned int cuda_block_size = 8 * 16;
 	
-	for (unsigned int i = 0; i < opts.resolution.h; i += view_height)
-	{
-		ImageView img(image, i, std::min(i + view_height, opts.resolution.h));
-		views.push_back(img);
-	}
+	std::atomic<Image::dim_t> current_y{0};
 	
 	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
@@ -85,11 +78,11 @@ static void traceScene(const PathScene &scene, Image &image, const PathTypes::ac
 	std::thread cpuThread([&] () {
 		while (1)
 		{
-			size_t idx = views_idx.fetch_add(1, std::memory_order_relaxed);
-			if (idx >= views.size())
+			Image::dim_t y = current_y.fetch_add(cpu_block_size, std::memory_order_relaxed);
+			if (y >= image.resolution.h)
 				break;
 				
-			ImageView &currentView = views[idx];
+			ImageView currentView = ImageView(image, y, std::min(y + cpu_block_size, image.resolution.h));
 			sampler::render(scene, currentView, cpuTracer);
 			
 			cpu_num++;
@@ -98,11 +91,11 @@ static void traceScene(const PathScene &scene, Image &image, const PathTypes::ac
 	std::thread cudaThread([&] () {
 		while (1)
 		{
-			size_t idx = views_idx.fetch_add(1, std::memory_order_relaxed);
-			if (idx >= views.size())
+			Image::dim_t y = current_y.fetch_add(cuda_block_size, std::memory_order_relaxed);
+			if (y >= image.resolution.h)
 				break;
 				
-			ImageView &currentView = views[idx];
+			ImageView currentView = ImageView(image, y, std::min(y + cuda_block_size, image.resolution.h));
 			cudaTracer.render(currentView);
 			
 			cuda_num++;
