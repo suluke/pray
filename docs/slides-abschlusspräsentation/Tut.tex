@@ -2,7 +2,7 @@
 \setbeamertemplate{caption}{\raggedright\insertcaption\par}
 
 
-\title[LLNM]{LLNM - Zwischenpräsentation}
+\title[LLNM]{LLNM - Abschlusspräsentation}
 \subtitle{}
 \date{\today}
 \begin{document}
@@ -10,7 +10,7 @@
 	\begin{frame}
 		\titlepage
 	\end{frame}
-	\begin{frame}{Benchmarking: Cube.json}
+	\begin{frame}{Ergebnisse}
 		\begin{tabular}{l*{4}{r}}
 		Methode           & Preprocessing & Rendering & Render Speedup \\%& Total  \\
 		\hline
@@ -23,7 +23,7 @@
 		OpenMP + SSE      & /      &  901ms & 6.48   \\%& 2724ms \\
 		\end{tabular}
 	\end{frame}
-	\begin{frame}{Benchmarking: Sponza.json}
+	\begin{frame}{Cuda}
 		\begin{tabular}{l*{4}{r}}
 		Methode           & Preprocessing & Rendering & Render Speedup \\%& Total  \\
 		\hline
@@ -33,27 +33,23 @@
 		OpenMP + SSE      & /      & 150s     & $>$ 4    \\
 		\end{tabular}
 	\end{frame}
-	\begin{frame}{BIH Datenstruktur}
+	\begin{frame}{Datenstrukturen}
 		\begin{figure}[ht]
 		\includegraphics[height=0.8\textheight]{images/bih2.png}
 		\end{figure}
 	\end{frame}
 
-	\begin{frame}{Abweichung vom Beispielbild}
+	\begin{frame}{SSE Verbesserungen}
 		\center
 		\includegraphics[height=0.8\textheight]{images/cropped_diff_ref.png}
 	\end{frame}
-	\begin{frame}{Abweichung mit schnellerem Runden}
+	\begin{frame}{Sampler}
 		\center
 		\includegraphics[height=0.8\textheight]{images/cropped_diff_round.png}
 	\end{frame}
-	\begin{frame}{Abweichung mit -Ofast}
+	\begin{frame}{Heuristik}
 		\center
 		\includegraphics[height=0.8\textheight]{images/cropped_diff_fast.png}
-	\end{frame}
-	\begin{frame}{Abweichung mit Subsampling}
-		\center
-		\includegraphics[height=0.8\textheight]{images/cropped_diff_ss.png}
 	\end{frame}
 
 	\begin{frame}{Hot Code Paths}
