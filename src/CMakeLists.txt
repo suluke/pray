@@ -22,6 +22,7 @@ set(PRAY_SOURCES
   bih.impl.hpp
   kdtree.hpp
   kdtree.impl.hpp
+  types.hpp
   )
 
 if (WITH_CUDA)
