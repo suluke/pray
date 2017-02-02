@@ -57,11 +57,10 @@ struct CudaImage
     cuda::checkForError(__FILE__, __func__, __LINE__);
 		
 		#ifdef WITH_PROGRESS
-			writtenPixels += viewResolution.w * viewResolution.h;
+			image.img.writtenPixels += viewResolution.w * viewResolution.h;
 		#endif
 	}
 	
-	#ifdef __CUDACC__
 	__device__ void setPixel(dim_t x, dim_t y, const Color &c)
 	{
 		pixels[3 * (y * viewResolution.w + x) + 0] = lroundf(min(1.f, c.r) * 255.f);
@@ -72,7 +71,6 @@ struct CudaImage
 	__device__ dim_t getGlobalY(dim_t y) {
 		return y + min_y;
 	}
-	#endif
 };
 
 #endif

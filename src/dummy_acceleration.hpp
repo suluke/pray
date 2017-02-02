@@ -1,10 +1,6 @@
 #ifndef PRAY_DUMMY_ACCELERATION_H
 #define PRAY_DUMMY_ACCELERATION_H
 
-#ifdef WITH_CUDA
-	struct CudaDummyAcceleration;
-#endif
-
 template<class scene_t>
 struct DummyAccelerationPOD
 {};
@@ -33,10 +29,6 @@ struct DummyAcceleration
 		*out_distance = minimum_distance;
 		return intersected_triangle;
 	}
-	
-	#ifdef WITH_CUDA
-		using accel_cuda_t = CudaDummyAcceleration;
-	#endif
 	
 	using pod_t = DummyAccelerationPOD<scene_t>;
 	pod_t pod; // hack because DummyAcceleration has no POD class

@@ -4,10 +4,6 @@
 #include "scene.hpp"
 #include "cuda.hpp"
 
-#ifdef WITH_CUDA
-	struct CudaKdTree;
-#endif
-
 // http://dcgi.fel.cvut.cz/home/havran/ARTICLES/ingo06rtKdtree.pdf
 
 template<class SCENE_T>
@@ -106,10 +102,6 @@ struct KdTree
 	using scene_t = SCENE_T;
 	using pod_t = KdTreePOD<scene_t>;
 	using Node = typename pod_t::Node;
-	
-	#ifdef WITH_CUDA
-		using accel_cuda_t = CudaKdTree;
-	#endif
 
 	pod_t pod; // created by auto default constructor
 

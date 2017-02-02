@@ -24,8 +24,9 @@ struct CudaRenderer {
 	const scene_cuda_t scene;
 	const accel_cuda_t accel;
 	RenderOptions::Path opts;
-	
-	CudaRenderer(const scene_t &scene, const accel_t &accel, const RenderOptions::Path &opts) : scene(scene_cuda_t(scene)), accel(accel_cuda_t(accel)), opts(opts) {}
+
+	template<class accel_pod_t>
+	CudaRenderer(const scene_t &scene, const accel_pod_t &accel, const RenderOptions::Path &opts) : scene(scene_cuda_t(scene)), accel(accel), opts(opts) {}
 	
 	__device__ void render(CudaImage* image);
 	__device__ Color trace(CudaRay ray, unsigned int depth = 0, curandState_t* randomState = nullptr);

@@ -2,6 +2,7 @@
 #define PRAY_IMAGE_H
 #pragma once
 
+#include "pray/Config.h"
 #include <vector>
 #include "math.hpp"
 #ifdef WITH_PROGRESS

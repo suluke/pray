@@ -60,9 +60,6 @@ struct StageLogger {
 				std::this_thread::sleep_for(StageLogger::progressRefreshTime);
 				
 				unsigned int writtenPixelsSum = logger->image->writtenPixels;
-#ifdef WITH_CUDA
-				writtenPixelsSum += cudaWrittenPixels;
-#endif
 
 				auto percent = writtenPixelsSum * 100 / (logger->opts.resolution.w * logger->opts.resolution.h);
 				if (percent == 100) break;

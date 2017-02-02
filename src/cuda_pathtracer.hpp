@@ -3,24 +3,21 @@
 #pragma once
 
 #include "scene.hpp"
-#include "ray.hpp"
-#include "bih.hpp"
-#include "dummy_acceleration.hpp"
 
-#include "cuda_renderer.hpp"
+template<class scene_t>
+class DummyAccelerationPOD;
+template<class scene_t>
+class BihPOD;
+template<class scene_t>
+class KdTreePOD;
 
-template<class accel_t, class accel_cuda_t>
 struct CudaPathTracer {
-	using scene_t = PathScene;
-	using material_t = EmissionMaterial;
+	virtual ~CudaPathTracer() = default;
 	
-	const CudaRenderer<accel_t, accel_cuda_t> renderer;    // struct with device pointers
-	CudaRenderer<accel_t, accel_cuda_t>* d_renderer; // device pointer to struct
-	
-  CudaPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &accel);
-	~CudaPathTracer();
-	
-	void render(ImageView &image);
+	virtual void render(ImageView &image) = 0;
+	static std::unique_ptr<CudaPathTracer> Create(const PathScene &, const RenderOptions::Path &, const DummyAccelerationPOD<PathScene> &);
+	static std::unique_ptr<CudaPathTracer> Create(const PathScene &, const RenderOptions::Path &, const BihPOD<PathScene> &);
+	static std::unique_ptr<CudaPathTracer> Create(const PathScene &, const RenderOptions::Path &, const KdTreePOD<PathScene> &);
 };
 
 
