@@ -6,6 +6,7 @@
 #include "cuda_image.hpp"
 #include "cuda_bih.hpp"
 #include "cuda_dummy_acceleration.hpp"
+#include "cuda_kdtree.hpp"
 
 #include <cuda_runtime_api.h>
 #include <curand_kernel.h>
@@ -262,6 +263,134 @@ __device__ typename CudaDummyAcceleration::ray_t::intersect_t CudaDummyAccelerat
 }
 
 
+__device__ typename CudaKdTree::ray_t::intersect_t CudaKdTree::intersect(const typename CudaKdTree::scene_t &scene, const typename CudaKdTree::ray_t &ray, typename CudaKdTree::ray_t::distance_t *out_distance) const
+{
+	auto active_mask = ray.intersectAABB(*scene_aabb);
+	if(!active_mask) return ray_t::getNoIntersection();
+
+	const Vector3 direction_sign = ray.getSubrayDirection(ray_t::subrays_count / 2).sign();
+	
+	bool direction_sign_equal[3];
+	ray.isDirectionSignEqualForAllSubrays(direction_sign, &direction_sign_equal[0]);
+
+	// move to global namespace and use this intead of float *out_distance?
+	struct IntersectionResult
+	{
+		typename ray_t::intersect_t triangle = ray_t::getNoIntersection();
+		typename ray_t::distance_t distance = ray_t::max_distance();
+	};
+
+	IntersectionResult intersection_result;
+
+	// keep this a VALUE (as opposed to reference)!!!
+	const auto triangles_data = scene.triangles.data();
+	Stack node_stack;
+	Current current(nodes[0u], *scene_aabb);
+
+	for(;;)
+	{
+		if(current.node->getType() == KdTree<ray_t, scene_t>::pod_t::Node::Leaf)
+		{
+			const auto old_active_mask = active_mask;
+
+			for(unsigned i = 0u; i < current.node->getLeafData().children_count; ++i)
+			{
+				const TriangleIndex triangle_index = current.node->getChildrenIndex() + i;
+				const Triangle &triangle = triangles_data[triangle_index];
+
+				typename ray_t::distance_t distance = ray_t::max_distance();
+				const auto intersected = ray.intersectTriangle(triangle, &distance) && old_active_mask;
+
+				if(intersected)
+				{
+					// no need to pass old_active_mask here, updateIntersection handles this correctly
+					// however, should ray_t ever get wider than one register, adding the mask might improve the performance if used correctly
+					ray_t::updateIntersections(&intersection_result.triangle, triangle_index, &intersection_result.distance, distance);
+
+					//TODO: what to do about that?
+					if(direction_sign_equal[0] && direction_sign_equal[1] && direction_sign_equal[2] && i < current.node->getLeafData().non_overlap_count)
+					{
+						active_mask = active_mask && !intersected;
+					}
+				}
+			}
+		}
+		else
+		{
+			const auto split_axis = current.node->getType();
+
+			const auto &left_child = nodes[current.node->getChildrenIndex()+0];
+			const auto &right_child = nodes[current.node->getChildrenIndex()+1];
+
+			const auto split_plane = current.node->getSplitData().plane;
+
+			auto left_aabb = current.aabb;
+			left_aabb.max[split_axis] = split_plane;
+			auto right_aabb = current.aabb;
+			right_aabb.min[split_axis] = split_plane;
+
+			// Ignore direction_sign_equal[split_axis] here since the code would be the same. This is handeled on pop below.
+			// The code in both cases is duplicated but with swapped left/right parameters. This gave a speedup of ~800ms on my machine with the sponza scene, no sse (lukasf)!
+			if(direction_sign[split_axis] >= 0.f)
+			{
+				node_stack.push(StackElement(split_plane, split_axis, right_child, right_aabb));
+
+				const auto intersect_left = ray.intersectAABB(left_aabb) && active_mask;
+				if(intersect_left)
+				{
+					current = Current(left_child, left_aabb);
+					continue;
+				}
+				else
+				{
+					//TODO: handle right_child here, don't push it on the stack and pop it directly afterwards down below
+				}
+			}
+			else
+			{
+				node_stack.push(StackElement(split_plane, split_axis, left_child, left_aabb));
+
+				const auto intersect_right = ray.intersectAABB(right_aabb) && active_mask;
+				if(intersect_right)
+				{
+					current = Current(right_child, right_aabb);
+					continue;
+				}
+				else
+				{
+					//TODO: handle left_child here, don't push it on the stack and pop it directly afterwards down below
+				}
+			}
+		}
+
+		for(;;)
+		{
+			if(node_stack.empty()) goto finish; // this goto is totally valid, I need to jump out of two loops!
+
+			const auto &top = node_stack.pop(); // the reference is valid as long as nothing is pushed on the stack
+
+			const auto smart_test_result = !direction_sign_equal[top.split_axis] || // always handle nodes for which !direction_sign_equal[split_axis]
+				active_mask;
+
+			if(smart_test_result)
+			{
+				const auto intersect_node = ray.intersectAABB(top.aabb) && active_mask;
+				if(intersect_node)
+				{
+					current = Current(*top.node, top.aabb);
+					break;
+				}
+			}
+		}
+	}
+
+	finish:
+
+	*out_distance = intersection_result.distance;
+	return intersection_result.triangle;
+}
+
+
 /* host functions */
 
 template<class accel_cuda_t>
@@ -362,3 +491,5 @@ template class CudaRenderer<CudaBih>;
 template class CudaPathTracer<CudaBih>;
 template class CudaRenderer<CudaDummyAcceleration>;
 template class CudaPathTracer<CudaDummyAcceleration>;
+template class CudaRenderer<CudaKdTree>;
+template class CudaPathTracer<CudaKdTree>;

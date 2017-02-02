@@ -15,6 +15,7 @@
 	#include "cuda_pathtracer.hpp"
 	#include "cuda_bih.hpp"
 	#include "cuda_dummy_acceleration.hpp"
+	#include "cuda_kdtree.hpp"
 #endif
 
 #include "logging.hpp" // This should always be last
