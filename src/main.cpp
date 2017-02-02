@@ -22,6 +22,13 @@
 #include <thread>
 #include <atomic>
 
+#ifdef WITH_CUDA
+	template<class accel_t, class ray_t, class scene_t> struct CudaAcceleration {};
+	template<class ray_t, class scene_t> struct CudaAcceleration<DummyAcceleration<ray_t, scene_t>, ray_t, scene_t> { using t = CudaDummyAcceleration; };
+	template<class ray_t, class scene_t> struct CudaAcceleration<Bih<ray_t, scene_t>, ray_t, scene_t> { using t = CudaBih; };
+	template<class ray_t, class scene_t> struct CudaAcceleration<KdTree<ray_t, scene_t>, ray_t, scene_t> { using t = CudaKdTree; };
+#endif
+
 template<class scene_t>
 struct PrayTypes {
 #ifdef WITH_SSE
@@ -31,9 +38,6 @@ struct PrayTypes {
 #endif
 	using accel_t = ACCELERATOR<ray_t, scene_t>;
 	using dummy_accel_t = DummyAcceleration<ray_t, scene_t>;
-#ifdef WITH_CUDA
-	using accel_cuda_t = ACCELERATOR_CUDA;
-#endif
 	template <class tracer_t>
 	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };
@@ -44,9 +48,6 @@ struct PrayTypes<PathScene> {
 	using ray_t = Ray<scene_t>;
 	using accel_t = ACCELERATOR<ray_t, scene_t>;
 	using dummy_accel_t = DummyAcceleration<ray_t, scene_t>;
-#ifdef WITH_CUDA
-	using accel_cuda_t = ACCELERATOR_CUDA;
-#endif
 	template <class tracer_t>
 	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
 };
@@ -74,7 +75,7 @@ static void traceScene(const PathScene &scene, Image &image, const accel_t &acce
 	
 	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
-	auto cudaTracer  = CudaPathTracer< PathTypes::accel_cuda_t>(scene, opts.path_opts, accel.pod);
+	auto cudaTracer  = CudaPathTracer< CudaAcceleration<accel_t, PathTypes::ray_t, PathScene>::t >(scene, opts.path_opts, accel.pod);
 	
 	int cuda_num = 0;
 	int cpu_num = 0;
