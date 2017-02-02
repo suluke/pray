@@ -11,79 +11,23 @@
 		\titlepage
 	\end{frame}
 	\begin{frame}{Ergebnisse}
-		\begin{tabular}{l*{4}{r}}
-		Methode           & Preprocessing & Rendering & Render Speedup \\%& Total  \\
-		\hline
-		rein sequentiell  & /      & 5837ms & /      \\%& 6847ms \\
-		OpenMP            & /      & 3023ms & 1.93   \\%& 5022ms \\
-		BiH               & 0.3ms  & 1452ms & 4.02   \\%& 2592ms \\
-		SSE               & /      & 2079ms & 2.81   \\%& 3537ms \\
-		Subsampling       & /      & 3374ms & 1.73   \\%& 4711ms \\
-		OpenMP + BiH      & 0.3ms  &  904ms & 6.45   \\%& 2354ms \\
-		OpenMP + SSE      & /      &  901ms & 6.48   \\%& 2724ms \\
-		\end{tabular}
 	\end{frame}
 	\begin{frame}{Cuda}
-		\begin{tabular}{l*{4}{r}}
-		Methode           & Preprocessing & Rendering & Render Speedup \\%& Total  \\
-		\hline
-		rein sequentiell  & /      & $>$10min & /        \\
-		OpenMP + BiH      & 39ms   & 41.3s    & $>$ 14.5 \\
-		OpenMP + BiH + Sub  & 39ms   & 21.0s    & $>$ 29 \\
-		OpenMP + SSE      & /      & 150s     & $>$ 4    \\
-		\end{tabular}
 	\end{frame}
-	\begin{frame}{Datenstrukturen}
-		\begin{figure}[ht]
-		\includegraphics[height=0.8\textheight]{images/bih2.png}
-		\end{figure}
+	\begin{frame}{Verbesserung Datenstrukturen}
 	\end{frame}
 
 	\begin{frame}{SSE Verbesserungen}
-		\center
-		\includegraphics[height=0.8\textheight]{images/cropped_diff_ref.png}
 	\end{frame}
 	\begin{frame}{Sampler}
-		\center
-		\includegraphics[height=0.8\textheight]{images/cropped_diff_round.png}
 	\end{frame}
 	\begin{frame}{Heuristik}
-		\center
-		\includegraphics[height=0.8\textheight]{images/cropped_diff_fast.png}
 	\end{frame}
 
 	\begin{frame}{Hot Code Paths}
-		\begin{figure}[ht]
-			\begin{columns}
-				\begin{column}{.48\textwidth}
-					\center
-					\includegraphics[height=.7\textheight]{images/callgrind_bih.png}
-					\caption{KCachegrind-Graph für pray mit BIH}
-				\end{column}
-				\begin{column}{.48\textwidth}
-					\includegraphics[width=\textwidth]{images/callgrind_sse.png}
-					\caption{KCachegrind-Graph für pray mit SSE}
-				\end{column}
-			\end{columns}
-	\end{figure}
 	\end{frame}
 
-	\begin{frame}{Ausblick}
-		\begin{figure}[ht]
-		\vspace{1cm}
-		\begin{minipage}{0.45\linewidth}
-			\begin{itemize}
-				\item Cuda
-				\item SSE + BIH verheiraten
-				\item Andere Beschleunigungsstrukturen
-			\end{itemize}
-			\vspace{4.5cm}
-		\end{minipage}
-		\begin{minipage}[b]{0.45\linewidth}
-			\centering
-			\includegraphics[width=\textwidth]{images/sponza.png}
-		\end{minipage}
-	\end{figure}
+	\begin{frame}{Zusammenfassung/Ausblick}
 		
 	\end{frame}
 \end{document}
