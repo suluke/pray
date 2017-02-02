@@ -138,13 +138,10 @@ static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) 
 	accel.build(scene, thread_pool);
 
 	logger.startRendering();
-#ifndef DISABLE_RENDERING
-	traceScene(scene, image, accel, opts);
-#else
-	// fix "unused function traceScene"
-	// because traceScene is overloaded, the static_cast is needed to specify which overload we want to (void)traceScene
-	(void)static_cast<void(*)(const scene_t&, ImageView&, const typename PrayTypes<scene_t>::accel_t&, const RenderOptions&)>(traceScene);
+#ifdef DISABLE_RENDERING
+	if (false) // avoids "unused function traceScene"
 #endif
+	traceScene(scene, image, accel, opts);
 
 	logger.startOutput();
 #ifndef DISABLE_OUTPUT
