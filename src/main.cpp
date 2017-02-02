@@ -132,7 +132,7 @@ static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) 
 
 	if (scene.triangles.size() <= 256u) {
 		typename PrayTypes<scene_t>::dummy_accel_t accel;
-
+		logger.startPreprocessing();
 		logger.startRendering();
 #ifdef DISABLE_RENDERING
 		if (false) // avoids "unused function traceScene"

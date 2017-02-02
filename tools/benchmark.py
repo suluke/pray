@@ -26,10 +26,13 @@ class Pray(object):
         info = yield
         while True:
           if not re.match(r'^#+$', info):
-            matches = re.search(r'([A-Z_]+):\s+(ON|OFF)', info)
+            matches = re.search(r'([A-Z_]+):\s+(.*)$', info)
             option = matches.group(1)
             state = matches.group(2)
-            self.infos.config[option] = (state == 'ON')
+            try:
+              self.infos.config[option] = {'ON': True, 'OFF': False}[state]
+            except KeyError:
+              self.infos.config[option] = state
             info = yield
           else:
             break
