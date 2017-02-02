@@ -30,6 +30,7 @@ struct PrayTypes {
 	using ray_t = Ray<scene_t>;
 #endif
 	using accel_t = ACCELERATOR<ray_t, scene_t>;
+	using dummy_accel_t = DummyAcceleration<ray_t, scene_t>;
 #ifdef WITH_CUDA
 	using accel_cuda_t = ACCELERATOR_CUDA;
 #endif
@@ -42,6 +43,7 @@ struct PrayTypes<PathScene> {
 	using scene_t = PathScene;
 	using ray_t = Ray<scene_t>;
 	using accel_t = ACCELERATOR<ray_t, scene_t>;
+	using dummy_accel_t = DummyAcceleration<ray_t, scene_t>;
 #ifdef WITH_CUDA
 	using accel_cuda_t = ACCELERATOR_CUDA;
 #endif
@@ -53,22 +55,24 @@ struct PrayTypes<PathScene> {
 using WhittedTypes = PrayTypes<WhittedScene>;
 using PathTypes = PrayTypes<PathScene>;
 
-static void traceScene(const WhittedScene &scene, Image &image, const WhittedTypes::accel_t &accel, const RenderOptions &opts) {
+template<class accel_t>
+static void traceScene(const WhittedScene &scene, Image &image, const accel_t &accel, const RenderOptions &opts) {
   ImageView img(image, 0, opts.resolution.h);
   
-	auto tracer = CpuTracer<WhittedTypes::ray_t, WhittedTypes::accel_t>(scene, accel);
+	auto tracer = CpuTracer<WhittedTypes::ray_t, accel_t>(scene, accel);
 	using sampler = WhittedTypes::sampler_t<decltype(tracer)>;
 	sampler::render(scene, img, tracer);
 }
 
-static void traceScene(const PathScene &scene, Image &image, const PathTypes::accel_t &accel, const RenderOptions &opts) {
+template<class accel_t>
+static void traceScene(const PathScene &scene, Image &image, const accel_t &accel, const RenderOptions &opts) {
 #ifdef WITH_CUDA
 	static const unsigned int cpu_block_size = 8 * 8;
 	static const unsigned int cuda_block_size = 8 * 16;
 	
 	std::atomic<Image::dim_t> current_y{0};
 	
-	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
+	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
 	auto cudaTracer  = CudaPathTracer< PathTypes::accel_cuda_t>(scene, opts.path_opts, accel.pod);
 	
@@ -107,9 +111,9 @@ static void traceScene(const PathScene &scene, Image &image, const PathTypes::ac
 	
 	std::cout << cpu_num << " parts processed by CPU / " << cuda_num << " parts processed by GPU\n";
 #else
-  ImageView img(image, 0, opts.resolution.h);
+	ImageView img(image, 0, opts.resolution.h);
 	
-	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, PathTypes::accel_t >(scene, opts.path_opts, accel);
+	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
 	sampler::render(scene, img, cpuTracer);
 #endif
@@ -129,19 +133,31 @@ static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) 
 		return 0;
 	}
 
-	const auto thread_pool_size = std::max(std::thread::hardware_concurrency(), 1u);
-	std::cout << "creating thread pool with " << thread_pool_size << " threads.\n";
-	ThreadPool thread_pool(thread_pool_size);
+	std::cout << scene.triangles.size() << "\n";
 
-	logger.startPreprocessing();
-	typename PrayTypes<scene_t>::accel_t accel;
-	accel.build(scene, thread_pool);
+	if (scene.triangles.size() <= 256u) {
+		typename PrayTypes<scene_t>::dummy_accel_t accel;
 
-	logger.startRendering();
+		logger.startRendering();
 #ifdef DISABLE_RENDERING
-	if (false) // avoids "unused function traceScene"
+		if (false) // avoids "unused function traceScene"
 #endif
-	traceScene(scene, image, accel, opts);
+		traceScene(scene, image, accel, opts);
+	} else {
+		const auto thread_pool_size = std::max(std::thread::hardware_concurrency(), 1u);
+		std::cout << "creating thread pool with " << thread_pool_size << " threads.\n";
+		ThreadPool thread_pool(thread_pool_size);
+
+		logger.startPreprocessing();
+		typename PrayTypes<scene_t>::accel_t accel;
+		accel.build(scene, thread_pool);
+
+		logger.startRendering();
+#ifdef DISABLE_RENDERING
+		if (false) // avoids "unused function traceScene"
+#endif
+		traceScene(scene, image, accel, opts);
+	}
 
 	logger.startOutput();
 #ifndef DISABLE_OUTPUT
