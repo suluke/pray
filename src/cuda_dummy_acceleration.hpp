@@ -6,10 +6,13 @@
 #include "cuda_scene.hpp"
 #include "cuda_ray.hpp"
 #include "scene.hpp"
+#include "dummy_acceleration.hpp"
 
-template<class accel_t>
+#include <cuda_runtime_api.h>
+
 struct CudaDummyAcceleration
 {
+	using accel_t = DummyAccelerationPOD<PathScene>;
 	using scene_t = CudaScene;
 	using ray_t = CudaRay;
 	

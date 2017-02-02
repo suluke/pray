@@ -197,8 +197,8 @@ struct KdTreeBuilder
 		current_node.makeLeafNode(children_index, non_overlap_count, children_count);
 
 #ifdef DEBUG
-		current_node.index = &current_node - &kdtree.pod.nodes[0];
-		current_node.child1 = current_node.child2 = nullptr;
+		//current_node.index = &current_node - &kdtree.pod.nodes[0];
+		//current_node.child1 = current_node.child2 = nullptr;
 #endif
 	}
 
@@ -208,7 +208,7 @@ struct KdTreeBuilder
 
 #ifdef DEBUG
 		// for conditional breakpoints
-		const auto node_index = args.current_node - &kdtree.pod.nodes[0];
+		//const auto node_index = args.current_node - &kdtree.pod.nodes[0];
 #endif
 
 		unsigned split_axis;
@@ -275,7 +275,7 @@ struct KdTreeBuilder
 				std::lock_guard<std::mutex> lock(args.builder->kdtree_nodes_mutex);
 
 				children_index = args.builder->kdtree.pod.nodes.size();
-				ASSERT(kdtree.pod.nodes.capacity() - args.builder->kdtree.pod.nodes.size() >= 2u); // we don't want relocation (breaks references)
+				//ASSERT(kdtree.pod.nodes.capacity() - args.builder->kdtree.pod.nodes.size() >= 2u); // we don't want relocation (breaks references)
 				static_assert(std::is_trivial<typename kdtree_t::Node>::value, "KdTree::Node should be trivial, otherwise the critical section is not as small as it could be");
 				args.builder->kdtree.pod.nodes.emplace_back(); args.builder->kdtree.pod.nodes.emplace_back();
 			}
@@ -286,10 +286,10 @@ struct KdTreeBuilder
 			auto &child2 = args.builder->kdtree.pod.nodes[children_index+1];
 
 #ifdef DEBUG
-			args.current_node.index = node_index;
-			args.current_node.child1 = &child1;
-			args.current_node.child2 = &child2;
-			child1.parent = child2.parent = &current_node;
+			//args.current_node.index = node_index;
+			//args.current_node.child1 = &child1;
+			//args.current_node.child2 = &child2;
+			//child1.parent = child2.parent = &current_node;
 #endif
 
 			AABox3 child1_initial_aabb = args.initial_aabb, child2_initial_aabb = args.initial_aabb;

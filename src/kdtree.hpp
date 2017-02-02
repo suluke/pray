@@ -3,6 +3,10 @@
 
 #include "scene.hpp"
 
+#ifdef WITH_CUDA
+	struct CudaKdTree;
+#endif
+
 // http://dcgi.fel.cvut.cz/home/havran/ARTICLES/ingo06rtKdtree.pdf
 
 template<class SCENE_T>

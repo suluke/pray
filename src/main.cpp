@@ -22,13 +22,6 @@
 #include <thread>
 #include <atomic>
 
-#ifdef WITH_CUDA
-	template<class accel_t, class ray_t, class scene_t> struct CudaAcceleration {};
-	template<class ray_t, class scene_t> struct CudaAcceleration<DummyAcceleration<ray_t, scene_t>, ray_t, scene_t> { using t = CudaDummyAcceleration; };
-	template<class ray_t, class scene_t> struct CudaAcceleration<Bih<ray_t, scene_t>, ray_t, scene_t> { using t = CudaBih; };
-	template<class ray_t, class scene_t> struct CudaAcceleration<KdTree<ray_t, scene_t>, ray_t, scene_t> { using t = CudaKdTree; };
-#endif
-
 template<class scene_t>
 struct PrayTypes {
 #ifdef WITH_SSE
@@ -75,7 +68,7 @@ static void traceScene(const PathScene &scene, Image &image, const accel_t &acce
 	
 	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
-	auto cudaTracer  = CudaPathTracer< CudaAcceleration<accel_t, PathTypes::ray_t, PathScene>::t >(scene, opts.path_opts, accel.pod);
+	auto cudaTracer  = CudaPathTracer< typename accel_t::accel_cuda_t>(scene, opts.path_opts, accel.pod);
 	
 	int cuda_num = 0;
 	int cpu_num = 0;
