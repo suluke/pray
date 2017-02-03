@@ -87,8 +87,15 @@ static int trace(const char *outpath, const RenderOptions &opts, StageLogger &lo
 	scene_t scene;
 	if (!LoadScene(opts, &scene)) return 1;
 	if (scene.triangles.empty()) {
+		std::cout << "scene is empty\n";
 		image.fill(scene.background_color);
+		
+		logger.startOutput();
+#ifndef DISABLE_OUTPUT
 		image.save(outpath);
+#endif
+		logger.finish();
+		logger.log();
 		return 0;
 	}
 
@@ -150,6 +157,7 @@ int main(int argc, char *argv[])
 			return trace<PathScene>(argv[2], opts, logger);
 		}
 		default:
+			cerr << "render option not supported\n";
 			return 1;
 	}
 	return 0;
