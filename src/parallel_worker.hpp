@@ -179,9 +179,9 @@ struct ThreadPool
 		while(!idle_head.compare_exchange_weak(threads[index].idle_next, index));
 
 		const auto new_idle_count = ++idle_count;
+		// no race condition here, only one can be the last one
 		if(new_idle_count == threads.size())
 		{
-			// only one can be the last one...
 			idle_wait_all_cv.notify_all();
 		}
 	}
