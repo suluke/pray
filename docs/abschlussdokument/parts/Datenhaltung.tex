@@ -1,0 +1,26 @@
+\section{Datenhaltung und Modellierung}
+
+Wir haben von Anfang an beim Design sämtlicher Datenstrukturen (nicht nur Beschleunigungsstrukturen), die der Renderer für den tatsächlichen Tracing-Schritt benötigt, darauf geachtet, dass die Daten mit möglichst wenig Aufwand auf Rechenbeschleuniger (z.B. CUDA-Grafikkarten) übertragen werden können. Dazu sind folgende, wenige Regeln zu beachten:
+
+\begin{enumerate}
+\item Die Daten, die direkt per Speicher-Kopie übertragen werden, müssen POD-Objekte sein.
+\item Alle Mengen oder Listen von Daten werden in einem \code{std::vector} gespeichert.
+\item Verweise zwischen Daten dürfen nicht über Pointer oder Referenzen ausgedrückt werden. Stattdessen werden Indices angegeben. Die Zuordnung von Indices zur korrekten Liste wird direkt im Code durchgeführt.
+\end{enumerate}
+
+Dadurch können die Daten direkt mithilfe mehrerer Speicherkopieroperationen auf den Rechenbeschleuniger übertragen werden und es ist keine zusätzliche Konvertierung notwendig, solange die Repräsentation der Datentypen auf beiden Rechnerarchitekturen gleich ist (was bei CUDA und x86 der Fall ist).
+
+Ein weiterer Vorteil der Referenzierung über Indices ist der geringere Speicheraufwand. So genügen bei unseren Problemgrößen beispielsweise 30-Bit Indices um Dreiecke zu referenzieren (siehe \ref{ssec:bih} und \ref{ssec:kdtree}). Dies halbiert den Speicheraufwand im Vergleich zu Pointern oder Referenzen, die 64-Bit groß gewesen wären.
+
+\subsection{Szene}
+
+Die Szene beschreibt die Dreiecke und deren Materialien, Lichter, die Kamera und die Hintergrundfarbe.
+
+Dreiecke und Materialien sind in getrennten Listen gespeichert. Dreiecken wird ein Material über den \code{MaterialIndex} zugewiesen. Die Trennung von Dreiecken und deren Material sollte uns vor einem starken Anstieg des Speicherverbrauchs schützen, falls in der damals unbekannten 2. Projektphase komplexere Materialen eingeführt würden. Da 3D-Szenen grundsätzlich die Eigenschaft haben, dass sich viele Dreiecke einige wenige Materialen teilen, wäre so der Speicherverbrauch für Materialen nicht mit $O(\text{Anzahl der Dreiecke})$ gestiegen.
+
+Tatsächlich ist das Rendering (auf CPU) mit getrennten Dreiecken und Materials schneller als wenn Materials in Dreiecken gespeichert würden. Das \code{pt\_cornell} Beispiel wurde dadurch um den Faktor TODO ??? schneller berechnet. Dies ist auf die größere Cache-Effizienz zurückzuführen, da zuerst der Schnitttest für alle Dreiecke durchgeführt wird (es wird linear über alle Dreiecke iteriert, das Material nicht ausgelesen) und anschließend das Material nur für das nächste Dreieck gebraucht wird.
+
+Die Idee, einen neuen Szenen Typ für das Path-Tracing zu erstellen (über das \code{material\_t} Template), fußt mehr auf der idellen Überlegung, dass wir in der Implementierung von Phase 1 keinen zusätzlichen Speicher verschwenden wollten, hätte aber wahrscheinlich keine großen Auswirkungen gehabt. :)
+
+% ist das interessant?  Beim Laden der Szene werden die einzelnen OBJ-Shapes "`entpackt"', d.h. die Zuordnung von Dreiecken zu einem Shape wird entfernt und es wird eine flache Liste von Dreiecken erstellt.
+

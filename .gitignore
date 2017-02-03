@@ -29,6 +29,7 @@ tests/reference
 *.toc
 *.bbl
 *.blg
+*.brf
 
 # Benchmark tool
 pray_benchmark-*.json

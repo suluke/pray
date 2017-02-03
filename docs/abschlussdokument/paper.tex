@@ -86,21 +86,18 @@ citebordercolor={0 0.61 0.50},]{hyperref}  %{0.57 0.74 0.57}
 \clearpage
 \pagenumbering{arabic}
 
-\section{Introduction}
-\section{Solution Approach}
-\section{Program Layout}
-\section{Datastructures}
-	\subsection{BiH}
-	\subsection{KD-Tree}
-\section{CUDA}
-\section{SSE}
-\section{OpenMP}
-\section{Sampler}
-\section{Heuristics}
-\section{Conclusion and Outlook}
-
 \include{parts/Einleitung}
-\include{parts/Implementierung}
+%~ \section{Solution Approach}
+%~ \section{Program Layout}
+\include{parts/Datenhaltung}
+\section{Beschleunigungstechniken}
+\include{parts/Multithreading}
+\include{parts/SIMD}
+\include{parts/GPGPU}
+\include{parts/Beschleunigungsstrukturen}
+\include{parts/Optimierungen}
+\include{parts/Evaluation}
+\include{parts/Fazit}
 
 %Citation Page
 \clearpage %Starts a new page to start new double page \cleardoublepage
