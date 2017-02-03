@@ -3,10 +3,11 @@
 %Packages to use
 \usepackage[T1]{fontenc}
 \usepackage[utf8x]{inputenc}
-\usepackage[english]{babel}
+\usepackage[ngerman]{babel}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage{subfigure}
+\usepackage{amsmath}
 %\usepackage{mathptmx}% Times Roman
 \usepackage[scaled=0.92]{helvet} % Helvetica
 \usepackage{courier}
@@ -49,6 +50,8 @@ citebordercolor={0 0.61 0.50},]{hyperref}  %{0.57 0.74 0.57}
 \newcommand{\professor}{Prof. Walter F. Tichy}
 \newcommand{\course}{Praxis der Multikernprogrammierung}
 
+\newcommand{\code}{\texttt}
+
 
 
 \begin{document} %TODO maybe make section titles bold
@@ -82,6 +85,7 @@ citebordercolor={0 0.61 0.50},]{hyperref}  %{0.57 0.74 0.57}
 \sffamily\tableofcontents
 \clearpage
 \pagenumbering{arabic}
+
 \section{Introduction}
 \section{Solution Approach}
 \section{Program Layout}
@@ -94,6 +98,9 @@ citebordercolor={0 0.61 0.50},]{hyperref}  %{0.57 0.74 0.57}
 \section{Sampler}
 \section{Heuristics}
 \section{Conclusion and Outlook}
+
+\include{parts/Einleitung}
+\include{parts/Implementierung}
 
 %Citation Page
 \clearpage %Starts a new page to start new double page \cleardoublepage
