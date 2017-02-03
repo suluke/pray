@@ -17,7 +17,6 @@ struct StageLogger {
   StageLogger(const RenderOptions &opts) : opts(opts) {}
 #ifdef WITH_PROGRESS
   static constexpr unsigned progressWidth = 3;
-  static constexpr std::chrono::milliseconds progressRefreshTime{200};
   const Image *image;
   std::atomic<bool> renderFinished{false};
   std::thread progressPrinter;
@@ -57,7 +56,7 @@ struct StageLogger {
 #ifdef WITH_PROGRESS
 		progressPrinter = std::thread([](const StageLogger *logger) {
 			while (!logger->renderFinished) {
-				std::this_thread::sleep_for(StageLogger::progressRefreshTime);
+				std::this_thread::sleep_for(std::chrono::milliseconds{200});
 				
 				unsigned int writtenPixelsSum = logger->image->writtenPixels;
 

@@ -78,7 +78,7 @@ namespace simd {
 
 #elif defined(__SSE2__)
 
-#include <emmintrin.h>
+#include <pmmintrin.h>
 
 namespace simd {
   static constexpr auto REGISTER_SIZE_BYTES = 16u;

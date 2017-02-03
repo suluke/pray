@@ -9,21 +9,41 @@
 #define CONCAT4(s1, s2, s3, s4) _CONCAT4(s1, s2, s3, s4)
 
 #if defined(__AVX__)
-#include <immintrin.h>
+  #include <immintrin.h>
+  
+  #define MACRO_REGISTER_SIZE_BYTES 32u
+  #define MACRO_REGISTER_SIZE_BITS 256
+  #define MACRO_INTRIN_PREFIX _mm256_
+#elif defined(__SSE2__)
+  #include <pmmintrin.h>
 
-#define MACRO_REGISTER_SIZE_BYTES 32u
-#define MACRO_REGISTER_SIZE_BITS 256
-#define MACRO_INTRIN_PREFIX _mm256_
+  #define MACRO_REGISTER_SIZE_BYTES 16u
+  #define MACRO_REGISTER_SIZE_BITS 128
+  #define MACRO_INTRIN_PREFIX _mm_
+#else
+  #error instruction set not supported
+#endif
 
 namespace simd {
+  static constexpr auto REGISTER_SIZE_BYTES = MACRO_REGISTER_SIZE_BYTES;
+  static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
+  static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
+  static constexpr auto REQUIRED_ALIGNMENT = MACRO_REGISTER_SIZE_BYTES;
+
+  using floatty = CONCAT2(__m, MACRO_REGISTER_SIZE_BITS);
+  using intty = CONCAT3(__m, MACRO_REGISTER_SIZE_BITS, i);
+}
+
+#if defined(__AVX__)
+namespace simd {
   // comparisons
-  static inline __m256 cmplt_ps(__m256 a, __m256 b) {
+  static inline floatty cmplt_ps(floatty a, floatty b) {
     return _mm256_cmp_ps(a, b, _CMP_LT_OS);
   }
-  static inline __m256 cmple_ps(__m256 a, __m256 b) {
+  static inline floatty cmple_ps(floatty a, floatty b) {
     return _mm256_cmp_ps(a, b, _CMP_LT_OS);
   }
-  static inline __m256i cmpeq_epi32(__m256i a, __m256i b) {
+  static inline intty cmpeq_epi32(intty a, intty b) {
     return _mm256_castps_si256(_mm256_cmp_ps(_mm256_xor_ps(_mm256_castsi256_ps(a), _mm256_castsi256_ps(b)), _mm256_setzero_ps(), _CMP_EQ_OS));
   }
 
@@ -38,17 +58,11 @@ namespace simd {
 
 #elif defined(__SSE2__)
 
-#include <emmintrin.h>
-
-#define MACRO_REGISTER_SIZE_BYTES 16u
-#define MACRO_REGISTER_SIZE_BITS 128
-#define MACRO_INTRIN_PREFIX _mm_
-
 namespace simd {
   // comparisons
-  constexpr auto cmplt_ps = _mm_cmplt_ps;
-  constexpr auto cmple_ps = _mm_cmple_ps;
-  constexpr auto cmpeq_epi32 = _mm_cmpeq_epi32;
+  static inline floatty cmplt_ps(floatty a, floatty b) { return CONCAT2(MACRO_INTRIN_PREFIX, cmplt_ps)(a, b); }
+  static inline floatty cmple_ps(floatty a, floatty b) { return CONCAT2(MACRO_INTRIN_PREFIX, cmple_ps)(a, b); }
+  static inline intty cmpeq_epi32(intty a, intty b) { return CONCAT2(MACRO_INTRIN_PREFIX, cmpeq_epi32)(a, b); }
 
   static inline bool isAll(__m128i b) {
     return _mm_movemask_epi8(b) == 0xffff;
@@ -57,22 +71,9 @@ namespace simd {
     return _mm_movemask_epi8(b) != 0x0;
   }
 }
-
-#else
-
-#error instruction set not supported
-
 #endif
 
 namespace simd {
-  static constexpr auto REGISTER_SIZE_BYTES = MACRO_REGISTER_SIZE_BYTES;
-  static constexpr auto REGISTER_CAPACITY_FLOAT = (REGISTER_SIZE_BYTES/sizeof(float));
-  static constexpr auto REGISTER_CAPACITY_I32 = (REGISTER_SIZE_BYTES/sizeof(uint32_t));
-  static constexpr auto REQUIRED_ALIGNMENT = MACRO_REGISTER_SIZE_BYTES;
-
-  using floatty = CONCAT2(__m, MACRO_REGISTER_SIZE_BITS);
-  using intty = CONCAT3(__m, MACRO_REGISTER_SIZE_BITS, i);
-
   // casts
   static inline intty   castps_si(floatty arg) { return CONCAT3(MACRO_INTRIN_PREFIX, castps_si, MACRO_REGISTER_SIZE_BITS) (arg); }
   static inline floatty castsi_ps(intty   arg) { return CONCAT4(MACRO_INTRIN_PREFIX, castsi, MACRO_REGISTER_SIZE_BITS, _ps) (arg); }
@@ -107,4 +108,14 @@ namespace simd {
   static inline void store_ps(float *addr, floatty val) { CONCAT2(MACRO_INTRIN_PREFIX, store_ps)(addr, val); }
   static inline void store_si(intty *addr, intty val) { CONCAT3(MACRO_INTRIN_PREFIX, store_si, MACRO_REGISTER_SIZE_BITS)(addr, val); }
 }
+
+#undef _CONCAT2
+#undef _CONCAT3
+#undef _CONCAT4
+#undef CONCAT2
+#undef CONCAT3
+#undef CONCAT4
+#undef MACRO_REGISTER_SIZE_BYTES
+#undef MACRO_REGISTER_SIZE_BITS
+#undef MACRO_INTRIN_PREFIX
 #endif // PRAY_SIMD_DEBUG_HPP
