@@ -122,11 +122,11 @@ float difference(const Color &c1, const Color &c2) {
   return diff.r + diff.g + diff.b; // Returns sum of distances
 }
 
-template <class ray_t>
-static inline bool error(const typename ray_t::dim_t x,
-                         const typename ray_t::dim_t y,
-                         const typename ray_t::dim_t end_x,
-                         const typename ray_t::dim_t end_y, ImageView &image) {
+static inline bool error(const typename IntDimension2::dim_t x,
+                         const typename IntDimension2::dim_t y,
+                         const typename IntDimension2::dim_t end_x,
+                         const typename IntDimension2::dim_t end_y,
+                         ImageView &image) {
   // TODO this uses that rays are cast in a checkered pattern and x is always
   // even
   const float threshold = 0.8f;
@@ -226,10 +226,10 @@ struct interpolating_sampler {
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
     Vector3 left, right, bottom, top;
     const float aspect = (float)image.img.resolution.h / image.img.resolution.w;
-    auto w = image.img.resolution.w, h = image.img.resolution.h;
+    auto w = image.resolution.w, h = image.resolution.h;
     scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
     float max_x = (float)w;
-    float max_y = (float)h;
+    float max_y = (float)image.img.resolution.h;
     using sparse = sampler::sparse_dim<typename ray_t::dim>;
 #ifdef WITH_OMP
 #pragma omp parallel for schedule(dynamic, 30) collapse(2)
@@ -275,11 +275,11 @@ template <class scene_t, class tracer_t, class ray_t> struct adaptive_sampler {
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
     Vector3 left, right, bottom, top;
     const float aspect = (float)image.img.resolution.h / image.img.resolution.w;
-    auto w = image.img.resolution.w, h = image.img.resolution.h;
+    auto w = image.resolution.w, h = image.resolution.h;
     scene.camera.calculateFrustumVectors(aspect, &left, &right, &bottom, &top);
 
     float max_x = (float)w;
-    float max_y = (float)h;
+    float max_y = (float)image.img.resolution.h;
 
     using sparse = sampler::sparse_dim<typename ray_t::dim>;
 
@@ -301,7 +301,7 @@ template <class scene_t, class tracer_t, class ray_t> struct adaptive_sampler {
     for (long local_y = 0; local_y < h; local_y += sparse::h) {
       for (long x = 0; x < w; x += sparse::w) {
         auto y = image.getGlobalY(local_y);
-        if (!sampler::error<ray_t>(x, y, x + sparse::w, y + sparse::h, image)) {
+        if (!sampler::error(x, y, x + sparse::w, y + sparse::h, image)) {
           for (long i = y; i < (y + sparse::h) && i < h; ++i) {
             for (long j = x; j < (x + sparse::w) && j < w; ++j) {
               // This is a bit fragile since it relies on the duplicated pattern
