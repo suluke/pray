@@ -123,41 +123,14 @@ float difference(const Color &c1, const Color &c2) {
 }
 
 template <class ray_t>
-static inline std::enable_if_t<ray_t::dim::w != 1 || ray_t::dim::h != 1, bool>
-error(const typename ray_t::dim_t x, const typename ray_t::dim_t y,
-      const typename ray_t::dim_t end_x, const typename ray_t::dim_t end_y,
-      ImageView &image) {
+static inline bool error(const typename ray_t::dim_t x,
+                         const typename ray_t::dim_t y,
+                         const typename ray_t::dim_t end_x,
+                         const typename ray_t::dim_t end_y, ImageView &image) {
   // TODO this uses that rays are cast in a checkered pattern and x is always
   // even
   const float threshold = 0.8f;
-  Color color{};
-  for (long j = y; j < end_y; j += 1) {
-    for (long i = x; i < end_x; i += 1) {
-      color += image.getPixel(i, j);
-    }
-  }
-  color /= ((end_x - x) * (end_y - y) / 2);
-  for (long j = y; j < end_y; j += 1) {
-    for (long i = x; i < end_x; i += 1) {
-      if (!((i % 2 == 0 && j % 2 == 0) || (i % 2 == 1 && j % 2 == 1))) {
-        continue;
-      } else if (sampler::difference(image.getPixel(i, j), color) > threshold) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-template <class ray_t>
-static inline std::enable_if_t<ray_t::dim::w == 1 || ray_t::dim::h == 1, bool>
-error(const typename ray_t::dim_t x, const typename ray_t::dim_t y,
-      const typename ray_t::dim_t end_x, const typename ray_t::dim_t end_y,
-      ImageView &image) {
-  // TODO this uses that rays are cast in a checkered pattern and x is always
-  // even
-  const float threshold = 0.8f;
-  Color color{};
+  Color color{0, 0, 0};
   for (long j = y; j < end_y; j += 1) {
     for (long i = x; i < end_x; i += 1) {
       color += image.getPixel(i, j);
@@ -184,6 +157,8 @@ sparse_writeColorToImage(typename ray_t::color_t c, ImageView &image,
   if ((global_y % 2 == 1 && x % 2 == 0) ^ inverse) {
     ++x;
   }
+  if (x >= image.resolution.w)
+    return;
   image.setPixel(x, y, c);
 }
 
