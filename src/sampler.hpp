@@ -114,41 +114,6 @@ sparse_cast(const Camera &cam, const Vector3 &left, const Vector3 &top,
   return {origin, direction};
 }
 
-float difference(const Color &c1, const Color &c2) {
-  // std::cout << "Debug: " << " Color1(" << c1.r << "," << c1.g << "," << c1.b
-  // << ")" << " Color2(" << c2.r << "," << c2.g << "," << c2.b << ")\n";
-  auto diff = c1 - c2;
-  diff = diff.abs(diff);
-  return diff.r + diff.g + diff.b; // Returns sum of distances
-}
-
-static inline bool error(const typename IntDimension2::dim_t x,
-                         const typename IntDimension2::dim_t y,
-                         const typename IntDimension2::dim_t end_x,
-                         const typename IntDimension2::dim_t end_y,
-                         ImageView &image) {
-  // TODO this uses that rays are cast in a checkered pattern and x is always
-  // even
-  const float threshold = 0.8f;
-  Color color{0, 0, 0};
-  for (long j = y; j < end_y; j += 1) {
-    for (long i = x; i < end_x; i += 1) {
-      color += image.getPixel(i, j);
-    }
-  }
-  color /= ((end_x - x) * (end_y - y) / 2);
-  for (long j = y; j < end_y; j += 1) {
-    for (long i = x; i < end_x; i += 1) {
-      if (!((i % 2 == 0 && j % 2 == 0) || (i % 2 == 1 && j % 2 == 1))) {
-        continue;
-      } else if (sampler::difference(image.getPixel(i, j), color) > threshold) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 template <class ray_t>
 static inline std::enable_if_t<ray_t::dim::w == 1 && ray_t::dim::h == 1>
 sparse_writeColorToImage(typename ray_t::color_t c, ImageView &image,
@@ -259,7 +224,7 @@ struct interpolating_sampler {
           Color c{0.f, 0.f, 0.f};
           int n = 0;
           x > 0 ? c += image.getPixel(x - 1, y), ++n : 0;
-          y > 1 ? c += image.getPixel(x, y - 1), ++n : 0;
+          y > 0 ? c += image.getPixel(x, y - 1), ++n : 0;
           x < w - 1 ? c += image.getPixel(x + 1, y), ++n : 0;
           y < h - 1 ? c += image.getPixel(x, y + 1), ++n : 0;
           c /= n;
@@ -271,7 +236,71 @@ struct interpolating_sampler {
 };
 
 template <class scene_t, class tracer_t, class ray_t> struct adaptive_sampler {
+private:
+  static inline float difference(const Color &c1, const Color &c2) {
+    // std::cout << "Debug: " << " Color1(" << c1.r << "," << c1.g << "," << c1.b
+    // << ")" << " Color2(" << c2.r << "," << c2.g << "," << c2.b << ")\n";
+    auto diff = c1 - c2;
+    diff = diff.abs(diff);
+    return diff.r + diff.g + diff.b; // Returns sum of distances
+  }
 
+  static inline bool error(const typename IntDimension2::dim_t startx,
+			   const typename IntDimension2::dim_t starty,
+			   const typename IntDimension2::dim_t end_x,
+			   const typename IntDimension2::dim_t end_y,
+			   ImageView &image) {
+    auto w = image.resolution.w, h = image.resolution.h;
+    // TODO this uses that rays are cast in a checkered pattern and x is always
+    // even
+    const float threshold = 0.8f;
+    Color color{0, 0, 0};
+    for (long y = starty; y < end_y && y < h; y += 1) {
+      for (long x = startx; x < end_x && x < w; x += 1) {
+	color += image.getPixel(x, y);
+      }
+    }
+    color /= ((end_x - startx) * (end_y - starty) / 2);
+    for (long y = starty; y < end_y && y < h; y += 1) {
+      for (long x = startx; x < end_x && x < w; x += 1) {
+	if (!((x % 2 == 0 && y % 2 == 0) || (x % 2 == 1 && y % 2 == 1))) {
+	  continue;
+	} else if (difference(image.getPixel(x, y), color) > threshold) {
+	  return true;
+	}
+      }
+    }
+    return false;
+  }
+
+  static void interpolate(ImageView &image, long startx, long starty) {
+    using sparse = sampler::sparse_dim<typename ray_t::dim>;
+    auto w = image.resolution.w, h = image.resolution.h;
+    for (long y = starty; y < (starty + sparse::h) && y < h; ++y) {
+      auto glob_y = image.getGlobalY(y);
+      for (long x = startx; x < (startx + sparse::w) && x < w; ++x) {
+	// This is a bit fragile since it relies on the duplicated pattern
+	// from sparse_cast (i.e. checkers pattern where 0,0 is the first
+	// set pixel
+	if ((x % 2 == 0 && glob_y % 2 == 0) || (x % 2 == 1 && glob_y % 2 == 1)) {
+	  continue;
+	} else {
+	  // TODO maybe it's nicer (and faster) to have 5 different loops
+	  // for left/top/right/bottom edges plus inner pixels
+	  Color c{0.f, 0.f, 0.f};
+	  int n = 0;
+	  x > 0 ? c += image.getPixel(x - 1, y), ++n : 0;
+	  y > 0 ? c += image.getPixel(x, y - 1), ++n : 0;
+	  x < w - 1 ? c += image.getPixel(x + 1, y), ++n : 0;
+	  y < h - 1 ? c += image.getPixel(x, y + 1), ++n : 0;
+	  c /= n;
+	  image.setPixel(x, y, c);
+	}
+      }
+    }
+  }
+  
+public:
   static void render(const scene_t &scene, ImageView &image, tracer_t &tracer) {
     Vector3 left, right, bottom, top;
     const float aspect = (float)image.img.resolution.h / image.img.resolution.w;
@@ -301,28 +330,8 @@ template <class scene_t, class tracer_t, class ray_t> struct adaptive_sampler {
     for (long local_y = 0; local_y < h; local_y += sparse::h) {
       for (long x = 0; x < w; x += sparse::w) {
         auto y = image.getGlobalY(local_y);
-        if (!sampler::error(x, y, x + sparse::w, y + sparse::h, image)) {
-          for (long i = y; i < (y + sparse::h) && i < h; ++i) {
-            for (long j = x; j < (x + sparse::w) && j < w; ++j) {
-              // This is a bit fragile since it relies on the duplicated pattern
-              // from sparse_cast (i.e. checkers pattern where 0,0 is the first
-              // set pixel
-              if ((j % 2 == 0 && i % 2 == 0) || (j % 2 == 1 && i % 2 == 1)) {
-                continue;
-              } else {
-                // TODO maybe it's nicer (and faster) to have 5 different loops
-                // for left/top/right/bottom edges plus inner pixels
-                Color c{0.f, 0.f, 0.f};
-                int n = 0;
-                j > 0 ? c += image.getPixel(j - 1, i), ++n : 0;
-                i > 0 ? c += image.getPixel(j, i - 1), ++n : 0;
-                j < w - 1 ? c += image.getPixel(j + 1, i), ++n : 0;
-                i < h - 1 ? c += image.getPixel(j, i + 1), ++n : 0;
-                c /= n;
-                image.setPixel(j, i, c);
-              }
-            }
-          }
+        if (!error(x, y, x + sparse::w, y + sparse::h, image)) {
+          interpolate(image, x, local_y);
         } else {
           auto ray_inverse = sampler::sparse_cast<ray_t>(
               scene.camera, left, top, x, y, max_x, max_y, true);
