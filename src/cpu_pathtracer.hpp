@@ -23,6 +23,10 @@ private:
   // Relevant: https://github.com/s9w/articles/blob/master/perf%20cpp%20random.md
   std::function<float()> sampling_rand = std::bind(std::uniform_real_distribution<float>(0, 1), std::default_random_engine());
   typename ray_t::vec3_t sampleHemisphere(const typename ray_t::vec3_t &X, const typename ray_t::vec3_t &Y, const typename ray_t::vec3_t &Z) const;
+#ifndef WITH_CHEATS
+  typename Ray<PathScene>::vec3_t    sampleHemisphereImpl(const typename Ray<PathScene>::vec3_t &X, const typename Ray<PathScene>::vec3_t &Y, const typename Ray<PathScene>::vec3_t &Z) const;
+  typename SSERay<PathScene>::vec3_t sampleHemisphereImpl(const typename SSERay<PathScene>::vec3_t &X, const typename SSERay<PathScene>::vec3_t &Y, const typename SSERay<PathScene>::vec3_t &Z) const;
+#endif
 };
 
 #include "cpu_pathtracer.impl.hpp"

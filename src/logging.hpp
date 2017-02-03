@@ -125,6 +125,7 @@ struct StageLogger {
     print_opt(ACCELERATOR);
     print_opt(SAMPLER);
     print_opt(WITH_BIH_PARALLEL_BUILD);
+    print_opt(WITH_CHEATS);
     print_opt(WITH_TIMING);
     print_opt(WITH_CONFDUMP);
     print_opt(WITH_PROGRESS);

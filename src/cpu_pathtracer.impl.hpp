@@ -107,6 +107,14 @@ typename SSERay<PathScene>::color_t CpuPathTracer< rt, accel_t >::trace(const Pa
 
 template <class ray_t, class accel_t>
 typename ray_t::vec3_t CpuPathTracer<ray_t, accel_t>::sampleHemisphere(const typename ray_t::vec3_t &X, const typename ray_t::vec3_t &Y, const typename ray_t::vec3_t &Z) const {
+#ifndef WITH_CHEATS
+  return sampleHemisphereImpl(X, Y, Z);
+}
+
+template <class ray_t, class accel_t>
+typename Ray<PathScene>::vec3_t
+CpuPathTracer<ray_t, accel_t>::sampleHemisphereImpl(const typename Ray<PathScene>::vec3_t &X, const typename Ray<PathScene>::vec3_t &Y, const typename Ray<PathScene>::vec3_t &Z) const {
+#endif
   float u1 = sampling_rand();
   float u2 = sampling_rand();
   float r = std::sqrt(1.f - u1);
@@ -116,3 +124,31 @@ typename ray_t::vec3_t CpuPathTracer<ray_t, accel_t>::sampleHemisphere(const typ
   float z = std::sqrt(u1);
   return X * x + Y * y + Z * z;
 }
+
+#ifndef WITH_CHEATS
+template <class ray_t, class accel_t>
+typename SSERay<PathScene>::vec3_t
+CpuPathTracer<ray_t, accel_t>::sampleHemisphereImpl(const typename SSERay<PathScene>::vec3_t &X, const typename SSERay<PathScene>::vec3_t &Y, const typename SSERay<PathScene>::vec3_t &Z) const {
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> U1, U2;
+  for (unsigned i = 0; i < U1.size(); ++i) {
+    U1[i] = sampling_rand();
+    U2[i] = sampling_rand();
+  }
+  auto u1 = simd::load_ps(U1.data());
+  auto u2 = simd::load_ps(U2.data());
+  auto r = simd::sqrt_ps(simd::sub_ps(simd::set1_ps(1.f), u1));
+  auto PI = simd::set1_ps(std::acos(-1.f));
+  auto phi = simd::mul_ps(simd::set1_ps(2.f), simd::mul_ps(PI, u2));
+  // TODO implement vectorized trigonometric functions ourselves 
+  alignas(simd::REQUIRED_ALIGNMENT) std::array<float, simd::REGISTER_CAPACITY_FLOAT> PHI, SIN, COS;
+  simd::store_ps(PHI.data(), phi);
+  for (unsigned i = 0; i < SIN.size(); ++i) {
+    SIN[i] = std::sin(PHI[i]);
+    COS[i] = std::cos(PHI[i]);
+  }
+  auto x = simd::mul_ps(simd::load_ps(COS.data()), r);
+  auto y = simd::mul_ps(simd::load_ps(SIN.data()), r);
+  auto z = simd::sqrt_ps(u1);
+  return X * x + Y * y + Z * z;
+}
+#endif
