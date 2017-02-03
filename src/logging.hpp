@@ -127,6 +127,7 @@ struct StageLogger {
     print_opt(WITH_BIH_PARALLEL_BUILD);
     print_opt(WITH_TIMING);
     print_opt(WITH_CONFDUMP);
+    print_opt(WITH_PROGRESS);
     print_opt(DISABLE_RENDERING);
     print_opt(DISABLE_OUTPUT);
     std::cout << "##############################\n";
