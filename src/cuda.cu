@@ -11,6 +11,7 @@
 #include <cuda_runtime_api.h>
 #include <curand_kernel.h>
 
+using namespace std;
 
 /* device and global functions */
 
@@ -95,11 +96,11 @@ __device__ Vector3 CudaRenderer<accel_cuda_t>::sampleHemisphere(const Vector3 &X
 {
 	float u1 = sampling_rand(randomState);
 	float u2 = sampling_rand(randomState);
-	float r = std::sqrt(1.f - u1);
-	float phi = 2 * std::acos(-1.f) * u2;
-	float x = std::cos(phi) * r;
-	float y = std::sin(phi) * r;
-	float z = std::sqrt(u1);
+	float r = sqrt(1.f - u1);
+	float phi = 2 * acos(-1.f) * u2;
+	float x = cos(phi) * r;
+	float y = sin(phi) * r;
+	float z = sqrt(u1);
 	return X * x + Y * y + Z * z;
 }
 
@@ -392,13 +393,20 @@ __device__ typename CudaKdTree::ray_t::intersect_t CudaKdTree::intersect(const t
 
 
 /* host functions */
-
 template<class accel_cuda_t>
-CudaPathTracer<accel_cuda_t>::CudaPathTracer(const PathScene &scene, const RenderOptions::Path &opts, const accel_t &accel) : renderer(scene, accel, opts)
-{
-	d_renderer = cuda::create<CudaRenderer<accel_cuda_t>>(renderer);
-	
-	#ifdef DEBUG
+struct CudaPathTracerImpl : public CudaPathTracer {
+  using scene_t = PathScene;
+  using material_t = EmissionMaterial;
+        
+	const CudaRenderer<accel_cuda_t> renderer;  // struct with device pointers
+	CudaRenderer<accel_cuda_t>* d_renderer; // device pointer to struct
+
+	template<class accel_pod_t>
+  CudaPathTracerImpl(const PathScene &scene, const RenderOptions::Path &opts, const accel_pod_t &accel) : renderer(scene, accel, opts)
+	{
+		d_renderer = cuda::create<CudaRenderer<accel_cuda_t>>(renderer);
+		
+#ifdef DEBUG
 		// device information output
 		int nDevices;
 
@@ -423,17 +431,35 @@ CudaPathTracer<accel_cuda_t>::CudaPathTracer(const PathScene &scene, const Rende
 			printf("  Maximum memory pitch: %u\n", prop.memPitch);
 			printf("  Total amount of constant memory: %u\n\n", prop.totalConstMem);
 		}
-	#endif
+#endif
+	}
+  virtual ~CudaPathTracerImpl() override;
+
+  virtual void render(ImageView &image) override;
+};
+
+unique_ptr<CudaPathTracer> CudaPathTracer::Create(const PathScene &scene, const RenderOptions::Path &opts, const DummyAccelerationPOD<PathScene> &accel) {
+	using tracer_t = CudaPathTracerImpl<CudaDummyAcceleration>;
+	return unique_ptr<CudaPathTracer>(new tracer_t(scene, opts, accel));
+}
+unique_ptr<CudaPathTracer> CudaPathTracer::Create(const PathScene &scene, const RenderOptions::Path &opts, const BihPOD<PathScene> &accel) {
+	using tracer_t = CudaPathTracerImpl<CudaBih>;
+	return unique_ptr<CudaPathTracer>(new tracer_t(scene, opts, accel));
+}
+unique_ptr<CudaPathTracer> CudaPathTracer::Create(const PathScene &scene, const RenderOptions::Path &opts, const KdTreePOD<PathScene> &accel) {
+	using tracer_t = CudaPathTracerImpl<CudaKdTree>;
+	return unique_ptr<CudaPathTracer>(new tracer_t(scene, opts, accel));
 }
 
+
 template<class accel_cuda_t>
-CudaPathTracer<accel_cuda_t>::~CudaPathTracer()
+CudaPathTracerImpl<accel_cuda_t>::~CudaPathTracerImpl()
 {
 	cuda::destroy<CudaRenderer<accel_cuda_t>>(d_renderer);
 }
 
 template<class accel_cuda_t>
-void CudaPathTracer<accel_cuda_t>::render(ImageView &image)
+void CudaPathTracerImpl<accel_cuda_t>::render(ImageView &image)
 {
 	CudaImage cudaImage(image);
 	
@@ -445,7 +471,7 @@ void CudaPathTracer<accel_cuda_t>::render(ImageView &image)
 		size_t cuda_mem_free;
 		size_t cuda_mem_total;
 		cudaMemGetInfo(&cuda_mem_free, &cuda_mem_total);
-		std::cout << cuda_mem_free << "/" << cuda_mem_free << " Bytes currently free on device" << std::endl;
+		cout << cuda_mem_free << "/" << cuda_mem_free << " Bytes currently free on device" << endl;
 	#endif
 	
 	// adjust stack size limit according
@@ -463,7 +489,7 @@ void CudaPathTracer<accel_cuda_t>::render(ImageView &image)
 	cuda::checkForError(__FILE__, __func__, __LINE__);
 	
 	#ifdef DEBUG
-		std::cout << "cudaDeviceSetLimit set from " << stack_size_old << " to " << stack_size_new << " (wanted " << stack_size_wish << ")" << std::endl;
+		cout << "cudaDeviceSetLimit set from " << stack_size_old << " to " << stack_size_new << " (wanted " << stack_size_wish << ")" << endl;
 	#endif
 	
 	const unsigned int block_length = 8;
@@ -471,7 +497,7 @@ void CudaPathTracer<accel_cuda_t>::render(ImageView &image)
 	// configure execution
 	// max. 1024 Threads per Block (may ask API)
 	// Blocks are assigned to GPU processors -> if there are less GPUs than blocks, one GPU has to calculate several blocks
-	dim3 dimGrid(std::ceil(image.resolution.w / (float) block_length), std::ceil(image.resolution.h / (float) block_length)); // BLOCKS per grid (size of a grid)
+	dim3 dimGrid(ceil(image.resolution.w / (float) block_length), ceil(image.resolution.h / (float) block_length)); // BLOCKS per grid (size of a grid)
 	dim3 dimBlock(block_length, block_length); // THREADS per block
 	
 	// start kernel
@@ -485,11 +511,3 @@ void CudaPathTracer<accel_cuda_t>::render(ImageView &image)
 	// copy back resulting image
 	cudaImage.copyBack();
 }
-
-// tell NVCC explicit which template combinations to instantiate
-template class CudaRenderer<CudaBih>;
-template class CudaPathTracer<CudaBih>;
-template class CudaRenderer<CudaDummyAcceleration>;
-template class CudaPathTracer<CudaDummyAcceleration>;
-template class CudaRenderer<CudaKdTree>;
-template class CudaPathTracer<CudaKdTree>;

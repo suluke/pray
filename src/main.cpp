@@ -2,53 +2,17 @@
 #include "scene.hpp"
 #include "image.hpp"
 #include "parallel_worker.hpp"
-#include "dummy_acceleration.hpp"
-#include "bih.hpp"
-#include "kdtree.hpp"
 #include "cpu_tracer.hpp"
 #include "cpu_pathtracer.hpp"
-#include "ray.hpp"
-#include "sse_ray.hpp"
-#include "sampler.hpp"
+#include "types.hpp"
 
 #ifdef WITH_CUDA
 	#include "cuda_pathtracer.hpp"
-	#include "cuda_bih.hpp"
-	#include "cuda_dummy_acceleration.hpp"
-	#include "cuda_kdtree.hpp"
 #endif
-
-#include "logging.hpp" // This should always be last
-
 #include <thread>
 #include <atomic>
 
-template<class scene_t>
-struct PrayTypes {
-#ifdef WITH_SSE
-	using ray_t = SSERay<scene_t>;
-#else
-	using ray_t = Ray<scene_t>;
-#endif
-	using accel_t = ACCELERATOR<ray_t, scene_t>;
-	using dummy_accel_t = DummyAcceleration<ray_t, scene_t>;
-	template <class tracer_t>
-	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
-};
-#ifndef WITH_SSE_PT
-template<>
-struct PrayTypes<PathScene> {
-	using scene_t = PathScene;
-	using ray_t = Ray<scene_t>;
-	using accel_t = ACCELERATOR<ray_t, scene_t>;
-	using dummy_accel_t = DummyAcceleration<ray_t, scene_t>;
-	template <class tracer_t>
-	using sampler_t = SAMPLER<scene_t, tracer_t, ray_t>;
-};
-#endif // not WITH_SSE_PT
-
-using WhittedTypes = PrayTypes<WhittedScene>;
-using PathTypes = PrayTypes<PathScene>;
+#include "logging.hpp" // This should always be last
 
 template<class accel_t>
 static void traceScene(const WhittedScene &scene, Image &image, const accel_t &accel, const RenderOptions &opts) {
@@ -69,7 +33,7 @@ static void traceScene(const PathScene &scene, Image &image, const accel_t &acce
 	
 	auto cpuTracer = CpuPathTracer< PathTypes::ray_t, accel_t >(scene, opts.path_opts, accel);
 	using sampler = PathTypes::sampler_t<decltype(cpuTracer)>;
-	auto cudaTracer  = CudaPathTracer< typename accel_t::accel_cuda_t>(scene, opts.path_opts, accel.pod);
+	auto cudaTracer = CudaPathTracer::Create(scene, opts.path_opts, accel.pod);
 	
 	int cuda_num = 0;
 	int cpu_num = 0;
@@ -95,7 +59,7 @@ static void traceScene(const PathScene &scene, Image &image, const accel_t &acce
 				break;
 				
 			ImageView currentView = ImageView(image, y, std::min(y + cuda_block_size, image.resolution.h));
-			cudaTracer.render(currentView);
+			cudaTracer->render(currentView);
 			
 			cuda_num++;
 		}

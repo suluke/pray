@@ -5,10 +5,6 @@
 #include "cuda.hpp"
 #include "parallel_worker.hpp"
 
-#ifdef WITH_CUDA
-	struct CudaBih;
-#endif
-
 // http://ainc.de/Research/BIH.pdf
 
 template<class SCENE_T>
@@ -107,10 +103,6 @@ struct Bih
 	using scene_t = SCENE_T;
 	using pod_t = BihPOD<scene_t>;
 	using Node = typename pod_t::Node;
-	
-	#ifdef WITH_CUDA
-		using accel_cuda_t = CudaBih;
-	#endif
 	
 	pod_t pod; // created by auto default constructor
 	
