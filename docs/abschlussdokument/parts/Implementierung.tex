@@ -12,7 +12,7 @@ Wir haben von Anfang an beim Design sämtlicher Datenstrukturen (nicht nur Besch
 
 Dadurch können die Daten direkt mithilfe mehrerer Speicherkopieroperationen auf den Rechenbeschleuniger übertragen werden und es ist keine zusätzliche Konvertierung notwendig, solange die Repräsentation der Datentypen auf beiden Rechnerarchitekturen gleich ist (was bei CUDA und x86 der Fall ist).
 
-Ein weiterer Vorteil der Referenzierung über Indices ist der geringere Speicheraufwand. So genügen bei unseren Problemgrößen beispielsweise 31-Bit Indices um Dreiecke zu referenzieren (siehe BIH und KDTree Knoten). Dies halbiert den Speicheraufwand im Vergleich zu Pointern oder Referenzen, die 64-Bit groß gewesen wären.
+Ein weiterer Vorteil der Referenzierung über Indices ist der geringere Speicheraufwand. So genügen bei unseren Problemgrößen beispielsweise 30-Bit Indices um Dreiecke zu referenzieren (siehe \ref{ssec:bih} und \ref{ssec:kdtree}). Dies halbiert den Speicheraufwand im Vergleich zu Pointern oder Referenzen, die 64-Bit groß gewesen wären.
 
 \section{Szene}
 
@@ -20,7 +20,7 @@ Die Szene beschreibt die Dreiecke und deren Materialien, Lichter, die Kamera und
 
 Dreiecke und Materialien sind in getrennten Listen gespeichert. Dreiecken wird ein Material über den \code{MaterialIndex} zugewiesen. Die Trennung von Dreiecken und deren Material sollte uns vor einem starken Anstieg des Speicherverbrauchs schützen, falls in der damals unbekannten 2. Projektphase komplexere Materialen eingeführt würden. Da 3D-Szenen grundsätzlich die Eigenschaft haben, dass sich viele Dreiecke einige wenige Materialen teilen, wäre so der Speicherverbrauch für Materialen nicht mit $O(\text{Anzahl der Dreiecke})$ gestiegen.
 
-Tatsächlich ist das Rendering (auf CPU) mit getrennten Dreiecken und Materials schneller als wenn Materials in Dreiecken gespeichert würden. Das \code{pt\_cornell} Beispiel wurde dadurch um den Faktor ??? schneller berechnet. Dies ist auf die größere Cache-Effizienz zurückzuführen, da zuerst der Schnitttest für alle Dreiecke durchgeführt wird (es wird linear über alle Dreiecke iteriert, das Material nicht ausgelesen) und anschließend das Material nur für das nächste Dreieck gebraucht wird.
+Tatsächlich ist das Rendering (auf CPU) mit getrennten Dreiecken und Materials schneller als wenn Materials in Dreiecken gespeichert würden. Das \code{pt\_cornell} Beispiel wurde dadurch um den Faktor TODO ??? schneller berechnet. Dies ist auf die größere Cache-Effizienz zurückzuführen, da zuerst der Schnitttest für alle Dreiecke durchgeführt wird (es wird linear über alle Dreiecke iteriert, das Material nicht ausgelesen) und anschließend das Material nur für das nächste Dreieck gebraucht wird.
 
 Die Idee, einen neuen Szenen Typ für das Path-Tracing zu erstellen (über das \code{material\_t} Template), fußt mehr auf der idellen Überlegung, dass wir in der Implementierung von Phase 1 keinen zusätzlichen Speicher verschwenden wollten, hätte aber wahrscheinlich keine großen Auswirkungen gehabt. :)
 
@@ -35,8 +35,25 @@ Ein Ziel userer Implementierung war es, jederzeit die Möglichkeit zu haben, ver
 Die \code{DummyAcceleration} beinhaltet, wie der Name schon andeutet, keinen Algorithmus zur Beschleunigung. Sie implementiert lediglich die Schnittstelle und führt eine einfache lineare Iteration über alle Dreiecke durch, um den korrekten Schnittpunkt zu finden.
 
 \subsection{BIH}
+\label{ssec:bih}
 
-Die BIH ist die erste Datenstruktur, die wir für unseren Renderer implementiert haben. Sie zeichnet sich durch eine einfache Implementierung aus und hat ähnliche Eigenschaften wie ein KD-Baum. Außerdem ist sie, verglichen mit einer BVH, sehr speichereffizient.
+Die Binary Interval Hierarchy (BIH) ist die erste Datenstruktur, die wir für unseren Renderer implementiert haben. Sie zeichnet sich durch eine einfache Implementierung aus und kombiniert Eigenschaften von KD-Bäumen und Bounding Volume Hierarchies (BVH). Außerdem ist sie, verglichen mit einer BVH, sehr speichereffizient und der maximale Speicherverbrauch lässt sich aus der Anzahl der Dreiecke berechnen.
+
+Die BIH unterteilt die Menge aller Dreiecke rekursiv in einen binären Baum. Ein innerer Knoten teilt die Menge seiner Kind-Dreiecke in eine negative (links) und positive (rechts) Seite entlang einer der drei Raumachsen. Durch zwei Ebenen (die jeweils orthogonal zur entsprechenden Unterteilungsachse liegen, deshalb genügt ein je \code{float} Wert um sie zu definieren) wird angegeben, wo sich der maximale bzw. minimale Eckpunkt aller Dreiecke der linken bzw. rechten Hälfte befindet. Anders gesagt wird jeweils eine Intervallgrenze angegeben, innerhalb derer sich die Kind-Dreiecke befinden.
+
+Durch rekursives Absteigen durch die BIH kann ein achsenausgerichteter Hüllwürfel für je eine der Dreiecksmengen angegeben werden, indem sukzessiv das Maximum bzw. Minimun des Hüllwürfels mit den entsprechenden Koordinaten der Ebenen ersetzt werden. Dies ist eine Annäherung an eine BVH mit achsenausgerichteten Hüllwürfeln.
+
+Im ursprünglichen Paper benutzt der Unterteilungsalgorithmus keine Surface Area Heuristic (SAH), sondern baut darauf, dass durch die Intervallangabe geometreifreier Raum als solcher erkannt wird. Stattdessen wird die nächste Schnittebene aus dem bis hierhin akkumulierten Hüllwürfel berechnet: Es wird entlang der längsten Ache in der Mitte geschnitten. Dann werden die Kind-Dreiecke anhand der Schnittebene und ihres Schwerpunkts in eine linke und rechte Hälfte unterteilt. Gleichzeitig werden die Koordinaten der linken und rechten Ebene für den Knoten berechnet. Dieser Schritt wird rekursiv für die linke und rechte Teilmenge durchgeführt bis eine bestimmte Anzahl von Dreiecken unterschritten wird oder der Unterteilungsschritt eine bestimmte Zahl oft fehlgeschlagen ist. Dann wird ein Blattknoten erstellt, der eine variable Anzahl von Kind-Dreiecken haben kann.
+
+Der Unterteilungsalgorithmus muss keine die Unterteilungsebene überlappenden Dreiecke behandeln und berechnet den Unterteilungspunkt in konstanter Zeit. Dadurch liegt die Komplexität in $O(n \log n)$, was das theoretische Minimum ist (vgl. mit Quicksort). Da weiterhin während der Berechnung kein Speicher dynamisch erzeugt werden muss (die maximale Anzahl der Knoten lässt sich im vornherein bestimmen), ist der Algorithmus sehr effizient und eine Paralellisierung lohnt sich nur bei großen Szenen. Tatsächlich trägt der Vorbereitungsschritt, wo der Hüllwürfel aller Dreiecke und Schwerpunkt und Hüllwürfel jedes Dreieck vorberechnet werden, einen großen Teil zur Gesamtlaufzeit bei (auf einer Maschine waren es 1/3 der Ausführungszeit). TODO Wollen wir mal gucken wie viel schneller das wird mit OpenMP?
+
+Die kompakte Speicherung der Knoten und Blätter der BIH sind erwähnenswert. Beide werden in einem \code{union} zusammengefasst, damit sie in einen \code{std::vector} gespeichert werden können. Wie im Ursprungspaper vorgeschlagen, wird der Typ des Knoten (Blatt, Unterteilung in X/Y/Z) und die Referenz auf die Kinder in einer 32-Bit Zahl gespeichert. Für Unterteilungsknoten (innere Knoten), gibt die Kindreferenz ein Element im selben Vektor an, Blattknoten zeigen in die Liste der Dreiecke. Dadurch beiben 30 Bit für die Referenzierung von Dreiecken übrig, also werden maximal $2^{30}$ Dreiecke unterstützt, was aber ausreichend ist für die gegebenen Problemgrößen.
+
+Die Traversierung der BIH ist grunsätzlich gleich der Traversierung einer BVH: Für jeden inneren Knoten wird ein Schnittest des Strahls mit beiden Kindknoten berechnet. Im Fall der BIH wird der akkumulierte Hüllwürfel benutzt. Da sich beide Kinder grundsätzlich überlappen können, müssen immer beide Kinder betrachtet werden. Dadurch wird nur "`culling"' berechnet, also konservativ alle Dreiecke verworfen, die den Strahl in keinem Fall schneiden. Da die BIH aber achsenausgerichtete Hüllwürfel als konservative Annäherung an die Geometrie hat, kann folgende Optimierung durchgeführt werden: Die beiden Kind-Knoten werden in der Reihenfolge verglichen, in die sich der Strahl für die entsprechende Koordinate fortbewegt. Wird ein Schnittpunkt gefunden muss das zweite Kind nur dann betreten werden, wenn der Schnittpunkt des Strahls mit dem Hüllwürfel näher ist als der gefundene Dreiecksschnitt.
+
+Die Traversierungsalgorithmus ist iterativ implementiert. Der notwendige Stack liegt im Stack der Programmausführung. Das hat die Effizienz der Implementierung verbessert.
 
 \subsection{KD-Baum}
+\label{ssec:kdtree}
 
+Der KD-Baum entstand aus der Erkenntniss, dass Path-Tracing deutlich mehr Schnitttests pro Pixel berechnet und sich deshalb eine effizientere Datenstruktur auf Kosten eines größeren Aufwands beim Bauen lohnt.
