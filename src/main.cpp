@@ -79,7 +79,7 @@ static void traceScene(const PathScene &scene, Image &image, const accel_t &acce
 }
 
 template<class scene_t>
-static int trace(const char *outpath, RenderOptions &opts, StageLogger &logger) {
+static int trace(const char *outpath, const RenderOptions &opts, StageLogger &logger) {
 	Image image(opts.resolution);
 #ifdef WITH_PROGRESS
 	logger.image = &image;
@@ -136,6 +136,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	RenderOptions opts;
+	opts.filename = argv[1];
 	StageLogger logger(opts);
 	logger.dump_config();
 	logger.start();
