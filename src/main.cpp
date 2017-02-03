@@ -11,6 +11,7 @@
 #endif
 #include <thread>
 #include <atomic>
+#include <csignal>
 
 #include "logging.hpp" // This should always be last
 
@@ -135,9 +136,17 @@ static int trace(const char *outpath, const RenderOptions &opts, StageLogger &lo
 	return 0;
 }
 
+void sigsegv_handler(int signal)
+{
+	std::cerr << "signal " << signal << " occured, terminating.\n";
+	std::abort;
+}
+
 using namespace std;
 int main(int argc, char *argv[])
 {
+	std::signal(SIGSEGV, sigsegv_handler);
+	
 	if (argc != 3) {
 		cerr << "usage: " << argv[0] << " <input.json> <output.bmp>\n";
 		return 1;
