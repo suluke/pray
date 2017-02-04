@@ -1,7 +1,7 @@
 template <class ray_t, class accel_t>
 typename Ray<PathScene>::color_t CpuPathTracer<ray_t, accel_t>::trace(const PathScene &scene, const Ray<PathScene> &ray, unsigned depth) const {
   typename ray_t::distance_t intersection_distance;
-  const auto intersected_triangle = acceleration_structure.intersect(scene, ray, &intersection_distance);
+  const auto intersected_triangle = acceleration_structure.intersect(scene, ray, true, &intersection_distance);
 
   if (ray_t::isAll(ray_t::isNoIntersection(intersected_triangle)))
     return scene.background_color;
@@ -36,7 +36,7 @@ typename SSERay<PathScene>::color_t CpuPathTracer< rt, accel_t >::trace(const Pa
   using ray_t = SSERay<PathScene>;
 
   typename ray_t::distance_t intersection_distance;
-  const auto intersect = acceleration_structure.intersect(scene, ray, &intersection_distance);
+  const auto intersect = acceleration_structure.intersect(scene, ray, mask, &intersection_distance);
 
   alignas(simd::REQUIRED_ALIGNMENT) std::array<TriangleIndex, simd::REGISTER_CAPACITY_I32> triangles;
   simd::store_si((simd::intty *) triangles.data(), intersect);

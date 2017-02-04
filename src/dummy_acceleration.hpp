@@ -10,7 +10,7 @@ struct DummyAcceleration
 {
 	void build(const scene_t &, ThreadPool &) {}
 
-	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
+	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::bool_t active_mask, typename ray_t::distance_t *out_distance) const
 	{
 		typename ray_t::intersect_t intersected_triangle = ray_t::getNoIntersection();
 		auto minimum_distance = ray_t::max_distance();

@@ -105,8 +105,8 @@ struct KdTree
 
 	pod_t pod; // created by auto default constructor
 
-	void build(scene_t &scene);
-	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const;
+	void build(scene_t &scene, ThreadPool &thread_pool);
+	typename ray_t::intersect_t intersect(const scene_t &scene, const ray_t &ray, typename ray_t::bool_t active_mask,typename ray_t::distance_t *out_distance) const;
 
 	void printAnalysis() const;
 	size_t hash() const;

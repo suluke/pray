@@ -173,7 +173,11 @@ struct Ray {
   }
 
   static inline bool_t booleanNot(bool_t a) {
-	  return !a;
+    return !a;
+  }
+
+  static inline bool_t getTrue() {
+    return true;
   }
 
   /**

@@ -256,7 +256,11 @@ public:
   }
 
   static inline bool_t booleanNot(bool_t a) {
-	  return simd::castps_si(simd::not_ps(simd::castsi_ps(a)));
+    return simd::castps_si(simd::not_ps(simd::castsi_ps(a)));
+  }
+
+  static inline bool_t getTrue() {
+    return simd::set1_epi32(-1u);
   }
 
   static inline bool_t isOppositeDirection(const vec3_t v1, const vec3_t v2) {

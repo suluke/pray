@@ -267,13 +267,13 @@ extern std::vector<size_t> bih_intersected_nodes;
 #endif
 
 template<class ray_t, class scene_t>
-typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene, const ray_t &ray, typename ray_t::distance_t *out_distance) const
+typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene, const ray_t &ray, const typename ray_t::bool_t ray_active_mask, typename ray_t::distance_t *out_distance) const
 {
 #ifdef DEBUG_TOOL
 	bih_intersected_nodes.clear();
 #endif
 
-	const auto active_mask = ray.intersectAABB(pod.scene_aabb);
+	const auto active_mask = ray_t::booleanAnd(ray_active_mask, ray.intersectAABB(pod.scene_aabb));
 	if(!ray_t::isAny(active_mask)) return ray_t::getNoIntersection();
 
 	const Vector3 direction_sign = ray.getSubrayDirection(ray_t::subrays_count / 2).sign();
