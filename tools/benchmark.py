@@ -10,6 +10,8 @@ import StringIO
 import subprocess
 import sys
 import tempfile
+import numpy
+from operator import add
 
 class Pray(object):
   def __init__(self, pray):
@@ -114,18 +116,21 @@ class Report(object):
     self.render_times = render_times
     self.total_times = [a + b for (a, b) in zip(preprocess_times, render_times)]
     self.avg_preprocess_time = sum(preprocess_times) / len(preprocess_times)
+    self.stddev_preprocess_time = numpy.std(preprocess_times)
     self.avg_render_time = sum(render_times) / len(render_times)
+    self.stddev_render_time = numpy.std(render_times)
     self.avg_total_time = (self.avg_preprocess_time + self.avg_render_time)
+    self.stddev_total_time = numpy.std(map(add, preprocess_times, render_times))
   
   def __json__(self):
     return self.__dict__
 
   def __str__(self):
     return ("""%s:
-  preprocess avg: %d
-  render avg:     %d
-  total avg:      %d
-    """ % (self.scene, self.avg_preprocess_time, self.avg_render_time, self.avg_total_time))
+  preprocess avg: %d (%f)
+  render avg:     %d (%f)
+  total avg:      %d (%f)
+    """ % (self.scene, self.avg_preprocess_time, self.stddev_preprocess_time, self.avg_render_time, self.stddev_render_time, self.avg_total_time, self.stddev_total_time))
 
 def run_benchmarks(options):
   pray = Pray(options.pray)
