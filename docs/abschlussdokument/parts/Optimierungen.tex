@@ -35,3 +35,9 @@ Obwohl weniger Arbeit verrichten, also Subsampling im Allgemeinen, wie bereits e
 Unsere Raytracer haben nicht den Anspruch, Pixel-perfekte Ergebnisse zu liefern.
 Insbesondere sorgen Fließkommaungenauigkeiten immer wieder dafür, dass Strahlen fälschlicherweise durch den (theoretisch nicht existenten) Spalt zwischen zwei Dreiecken durchschießen und die Szene so verlassen.
 Unserer Ansicht nach ist es also legitim, bestimmte Sichtstrahlen zu überspringen, solange aktiv versucht wird zu vermeiden, dass relevante Bildinformation durch Unterabtastung verloren geht.
+Genau hier setzt unsere Implementierung des "`adaptiven Subsamplers"' an:
+Ähnlich wie im interpolierenden Sampler wird zunächst nur jeder zweite Strahl in einem Schachbrettmuster verschossen.
+Doch statt anschließend lediglich zu interpolieren wird mithilfe einer Fehlerfunktion überprüft, ob die generelle Farbdiskrepanz in einem Fenster von gesampleten Pixeln oberhalb eines Schwellwerts liegt.
+Sollte dies der Fall sein werden für alle bisher fehlenden Pixel noch einmal explizit Strahlen verschossen.
+Wenn nicht, so wird im adaptiven Sampler genauso wie im interpolierenden Sampler für die fehlenden Bildpunkte ein Farbwert aus den umliegenden, abgetatsteten Pixeln berechnet.
+Insbesondere an Kanten oder anderen hochfrequenten Bildbereichen, wo die Farbdiskrepanz zwischen Pixeln groß ist, sorgt dies dafür, dass die Bildinformation auch wirklich abgetastet wird.
