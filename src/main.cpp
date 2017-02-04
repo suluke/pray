@@ -139,7 +139,7 @@ static int trace(const char *outpath, const RenderOptions &opts, StageLogger &lo
 void sigsegv_handler(int signal)
 {
 	std::cerr << "signal " << signal << " occured, terminating.\n";
-	std::abort;
+	std::abort();
 }
 
 using namespace std;
