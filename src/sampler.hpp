@@ -259,7 +259,7 @@ private:
 	auto regionSizeY = end_y - starty;
 
 	//Make a threshold for pixel comparison
-	const int regionSize = 5;
+	const int regionSize = 4;
 
 	auto startx2 = startx;
 	auto starty2 = starty;
