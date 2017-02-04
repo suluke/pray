@@ -328,7 +328,7 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 	kdtree_intersected_nodes.clear();
 #endif
 
-	auto active_mask = ray_t::booleanAnd(ray_active_mask, ray.intersectAABB(pod.scene_aabb));
+	auto active_mask = ray_t::booleanAnd(ray.intersectAABB(pod.scene_aabb), ray_active_mask);
 	if(!ray_t::isAny(active_mask)) return ray_t::getNoIntersection();
 
 	const Vector3 direction_sign = ray.getSubrayDirection(ray_t::subrays_count / 2).sign();
@@ -429,7 +429,7 @@ typename ray_t::intersect_t KdTree<ray_t, scene_t>::intersect(const scene_t &sce
 					//TODO: what to do about that?
 					if(direction_sign_equal[0] && direction_sign_equal[1] && direction_sign_equal[2] && i < current.node->getLeafData().non_overlap_count)
 					{
-						active_mask = ray_t::booleanAnd(active_mask, ray_t::booleanNot(intersected));
+						active_mask = ray_t::booleanAnd(ray_t::booleanNot(intersected), active_mask);
 					}
 				}
 			}

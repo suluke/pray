@@ -273,7 +273,7 @@ typename ray_t::intersect_t Bih<ray_t, scene_t>::intersect(const scene_t &scene,
 	bih_intersected_nodes.clear();
 #endif
 
-	const auto active_mask = ray_t::booleanAnd(ray_active_mask, ray.intersectAABB(pod.scene_aabb));
+	const auto active_mask = ray_t::booleanAnd(ray.intersectAABB(pod.scene_aabb), ray_active_mask);
 	if(!ray_t::isAny(active_mask)) return ray_t::getNoIntersection();
 
 	const Vector3 direction_sign = ray.getSubrayDirection(ray_t::subrays_count / 2).sign();
