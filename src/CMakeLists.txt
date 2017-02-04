@@ -44,6 +44,10 @@ add_executable(pray ${PRAY_SOURCES})
 
 set_target_properties(pray PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
+if(UNIX)
+  target_link_libraries(pray "-pthread")
+endif()
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   find_library(LIBCXX_EXPERIMENTAL NAMES "c++experimental" "libc++experimental" HAS_LIBCXX11)
   if(${LIBCXX_EXPERIMENTAL} STREQUAL "LIBCXX_EXPERIMENTAL-NOTFOUND")
