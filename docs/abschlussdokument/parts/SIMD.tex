@@ -1,2 +1,36 @@
 \subsection{Explizite Vektorisierung}
-SIMD, SSE, AVX
+Die beiden Testrechner, auf denen unser Programm lauffähig sein sollte, bieten spezielle Befehlssatzerweiterungen an, um das Rechnen mit Vektoren zu beschleunigen.
+Jeweils eine feste Anzahl von Ganzzahlen oder Gleitkommawerten kann dabei mit Instruktionen aus diesen Erweiterungen gemeinsam verarbeitet werden.
+Wie groß diese Anzahl ist, hängt von der genauen Erweiterung ab.
+Testrechner 189 beispielsweise beherrscht AVX, worin Vektoren 256 Bit breit sind und sich somit acht 32-Bit Gleitkommawerte gleichzeitig verarbeiten lassen.
+PC 205 hingegen bietet nur SSE3 (bzw. SSE4A), mit einer Vektorbreite von 128 Bit, was vier 32-Bit Gleitkommawerten entspricht.
+Durch geschickte Ausnutzung der Vektoreinheiten - den Schaltkreisen auf der CPU, die für das Ausführen der speziellen Befehle zuständig sind - lässt sich somit theoretisch ein Speedup von Faktor vier respektive Faktor acht erreichen.
+Das Schreiben von vektorisiertem Code mittels Intrinsics ist jedoch komplizierter und der entstehende Code schwerer zu warten.
+Um uns die Entwicklung zu erleichtern haben wir daher sehr früh eine einfache Abstraktionsschicht entwickelt.
+Diese diente hauptsächlich zur Vereinheitlichung der beiden Befehlssätze SSE und AVX und nutzt deren starke Ähnlichkeit aus.
+Mit der Abstraktionsschicht konnten wir sehr einfach Code schreiben, der generisch auf beiden Befehlssätzen läuft, aber stets die komplette vorhandene Vektorbreite ausnutzt.
+Ein weiterer Vorteil dieser Schicht ist, dass wir uns bis auf wenige Ausnahmen auf eine Untermenge von Befehlen beschränkten, die ohne Einbußen bei der Geschwindigkeit in beiden Welten vorhanden war.
+Beispielsweise vermieden wir dadurch, Integer-basierten Code zu schreiben, der von SSE3 zwar gut, von AVX aber nur mangelhaft unterstützt wird.
+
+\subsection{Konkrete Anwendungsfälle}
+In unserem Code lässt sich die Verwendung von Vektorinstruktionen in zwei Kategorien einteilen:
+Einerseits die Nutzung in an sich skalarem Code, wo es sich lediglich gerade anbietet, eine bestimmte Operation durch SIMD-Instruktionen zu beschleunigen.
+So haben wir beispielsweise eine SSE-beschleunigte Variante des 3D-Vektor-Skalarprodukts implementiert.
+
+Andererseits haben wir auch explizit auf Vektorrechnung ausgelegten Bestandteile in unserem Softwaredesign.
+Hierbei handelt es sich um die Klasse \code{SSERay}.
+Die zugrundeliegende Idee hierbei ist, Strahlen nicht einzeln durch die Szene zu verschießen, sondern in Bündeln.
+Ein \code{SSERay} enthält also nicht einen einzigen Strahl, sondern vier (SSE) bzw. acht (AVX).
+In der Praxis hat sich herausgestellt, dass dies sehr gut funktioniert und wir sogar nah an den theoretischen maximalen Speedup heranreichen (Faktor 5 bei AVX von theoretisch Faktor 8).
+Dies ist unter anderem darauf zurückzuführen, dass Vektoren nur selten entpackt werden müssen und durch unsere Implementierung praktisch nie horizontale Operationen nötig werden.
+Horizontale Operationen sind jene, bei denen mehrere Werte aus dem selben Vektor miteinander verrechnet werden, beispielsweise wenn geschaut werden soll, ob alle Einträge in einem Vektor gleich null sind.
+Unser \code{SSERay}-Ansatz hat allerdings ein theoretisches Problem in Kombination mit Beschleunigungsstrukturen:
+Diese sind zumeist Hüllkörper-basiert.
+Eine solche Datenstruktur muss für jeden Strahl in einem Bündel alle Hüllkörper besuchen, die vom Strahl geschnitten werden.
+Theoretisch ist es also denkbar, dass bei einem stark divergierenden Strahlenbündel für jeden Strahl ein komplett unterschiedlicher Satz an Hüllköpern besucht werden muss.
+Somit wächst der Aufwand beim Traversieren der Szene mit der Datenstruktur unter Umständen auf das selbe Niveau wie mit skalaren Strahlen.
+Bedenkt man zusätzlich, dass einige Operationen mit SSE/AVX teurer sind als ihre skalaren Äquivalente, könnte dies einen Slowdown zur Folge haben.
+Bei Whitted-Style-Raytracing ist diese Sorge allerdings unbegründet:
+Primärstrahlen haben den selben Ursprung und divergieren je nach Auflösung und Field of View sehr langsam.
+Schattenstrahlen wiederum konvergieren in der Lichtquelle, die nach Schatten überprüft wird.
+Bei Pathtracing hingegen bleibt eine berechtigte Sorge, dass dieser Ansatz einmal nicht funktioniert, wenngleich uns noch keine Szene begegnet ist, wo dieser Effekt auftritt. 
