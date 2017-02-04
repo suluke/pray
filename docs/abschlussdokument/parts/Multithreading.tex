@@ -1,2 +1,4 @@
 \subsection{Multithreading}
-OpenMP
+Multithreading haben wir zuerst mithilfe von OpenMP umgesetzt wobei wir dabei ein \code{parallel for} mit einem \code{collapse} über die Anzahl der Rays gemacht haben.
+Beim Scheduling haben wir uns für die finale Lösung für ein dynamic Schedule der größe 30 entschieden.
+Bei der Einführung von CUDA sind wir dann auch Teilweise auf C++-Threads umgestiegen um explizite Kontrolle über die Parallelisierung zu haben.
