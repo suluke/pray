@@ -253,9 +253,35 @@ private:
     auto w = image.resolution.w, h = image.resolution.h;
     // TODO this uses that rays are cast in a checkered pattern and x is always
 	// even
-    Color color{0, 0, 0};
-    for (long y = starty; y < end_y && y < h; y += 1) {
-      for (long x = startx; x < end_x && x < w; x += 1) {
+	Color color{0, 0, 0};
+
+	auto regionSizeX = end_x - startx;
+	auto regionSizeY = end_y - starty;
+
+	//Make a threshold for pixel comparison
+	const int regionSize = 5;
+
+	auto startx2 = startx;
+	auto starty2 = starty;
+	auto end_x2 = end_x;
+	auto end_y2 = end_y;
+
+	if (regionSizeX < regionSize) {
+		startx2 = startx - (regionSize - regionSizeX) / 2;
+		if (startx2 < 0) startx2 = 0;
+		end_x2 = end_x + (regionSize - regionSizeX) / 2;
+		if (end_x2 > w) end_x2 = w;
+	}
+
+	if (regionSizeY < regionSize) {
+		starty2 = starty - (regionSize - regionSizeY) / 2;
+		if (starty2 < 0) starty2 = 0;
+		end_y2 = end_y + (regionSize - regionSizeY) / 2;
+		if (end_y2 > h) end_y2 = h;
+	}
+
+	for (long y = starty2; y < end_y2 && y < h; y += 1) {
+	  for (long x = startx2; x < end_x2 && x < w; x += 1) {
 		color += image.getPixel(x, y);
       }
     }
@@ -329,7 +355,7 @@ public:
     for (long local_y = 0; local_y < h; local_y += sparse::h) {
       for (long x = 0; x < w; x += sparse::w) {
         auto y = image.getGlobalY(local_y);
-        if (!error(x, y, x + sparse::w, y + sparse::h, image)) {
+		if (!error(x, y, x + sparse::w, y + sparse::h, image)) {
           interpolate(image, x, local_y);
         } else {
           auto ray_inverse = sampler::sparse_cast<ray_t>(
