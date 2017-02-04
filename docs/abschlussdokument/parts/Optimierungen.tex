@@ -41,3 +41,5 @@ Doch statt anschließend lediglich zu interpolieren wird mithilfe einer Fehlerfu
 Sollte dies der Fall sein werden für alle bisher fehlenden Pixel noch einmal explizit Strahlen verschossen.
 Wenn nicht, so wird im adaptiven Sampler genauso wie im interpolierenden Sampler für die fehlenden Bildpunkte ein Farbwert aus den umliegenden, abgetatsteten Pixeln berechnet.
 Insbesondere an Kanten oder anderen hochfrequenten Bildbereichen, wo die Farbdiskrepanz zwischen Pixeln groß ist, sorgt dies dafür, dass die Bildinformation auch wirklich abgetastet wird.
+Etwas besonderes ist, dass dies bei uns unter SSE auch mit SSE-Rays passiert, also Raypaketen.
+Für diese gibt es unter dem adaptiven sampling nun einfach die Möglichkeit ein Raypaket mit doppelter größe sparse (also ohne jedes zweite Pixel) zu verschießen und dann im Falle eines zu hohen Error-Wertes durch ein inverses Cast den Rest zu berechnen.
