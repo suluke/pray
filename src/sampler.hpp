@@ -237,9 +237,9 @@ struct interpolating_sampler {
 
 template <class scene_t, class tracer_t, class ray_t> struct adaptive_sampler {
 private:
+  constexpr static float threshold = 0.5;
+
   static inline float difference(const Color &c1, const Color &c2) {
-    // std::cout << "Debug: " << " Color1(" << c1.r << "," << c1.g << "," << c1.b
-    // << ")" << " Color2(" << c2.r << "," << c2.g << "," << c2.b << ")\n";
     auto diff = c1 - c2;
     diff = diff.abs(diff);
     return diff.r + diff.g + diff.b; // Returns sum of distances
@@ -252,12 +252,11 @@ private:
 			   ImageView &image) {
     auto w = image.resolution.w, h = image.resolution.h;
     // TODO this uses that rays are cast in a checkered pattern and x is always
-    // even
-    const float threshold = 0.8f;
+	// even
     Color color{0, 0, 0};
     for (long y = starty; y < end_y && y < h; y += 1) {
       for (long x = startx; x < end_x && x < w; x += 1) {
-	color += image.getPixel(x, y);
+		color += image.getPixel(x, y);
       }
     }
     color /= ((end_x - startx) * (end_y - starty) / 2);
