@@ -20,12 +20,6 @@
 %\renewcommand{\baselinestretch}{2.0}
 %\usepackage{indentfirst}
 
-\usepackage[sf]{titlesec}
-\titleformat{\section}
-  {\normalfont\sffamily\Large\bfseries}
-  {\thesection}{1em}{}
-
-
 \usepackage{microtype}
 \usepackage[raiselinks=true,
 bookmarks=true,
@@ -86,16 +80,16 @@ citebordercolor={0 0.61 0.50},]{hyperref}  %{0.57 0.74 0.57}
 \clearpage
 \pagenumbering{arabic}
 
-\include{parts/Einleitung}
-\include{parts/Datenhaltung}
-\include{parts/Beschleunigungstechniken}
-\include{parts/Multithreading}
-\include{parts/SIMD}
-\include{parts/GPGPU}
-\include{parts/Beschleunigungsstrukturen}
-\include{parts/Optimierungen}
-\include{parts/Evaluation}
-\include{parts/Fazit}
+\input{parts/Einleitung}
+\input{parts/Datenhaltung}
+\input{parts/Beschleunigungstechniken}
+\input{parts/Multithreading}
+\input{parts/SIMD}
+\input{parts/GPGPU}
+\input{parts/Beschleunigungsstrukturen}
+\input{parts/Optimierungen}
+\input{parts/Evaluation}
+\input{parts/Fazit}
 
 %Citation Page
 \clearpage %Starts a new page to start new double page \cleardoublepage
