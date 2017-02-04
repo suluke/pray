@@ -2,14 +2,17 @@
 
 %TODO z.B. Ziele der Implementierung: Compile-Time Flexbilität
 
-Dieses Jahr bestand die Aufgabe des Praktikums darin einen Renderer zu schreiben der gegebene Szenen rendert und als Bitmap-Bild ausgibt.
-Damit diese Aufgabe machbar bleibt wurde einige Einschränkungen getätigt.
-In der ersten Phase des Praktikums ging es lediglich darum einen Witted-Style Raytracer mit nur diffusem Lichtanteil zu implementieren.
-Auch die geometrischen Strukturen wurden auf nur Dreiecke begrenzt.
+Dieses Jahr bestand die Aufgabe des Multikern-Praktikums darin einen Raytracer zu entwickeln, der gegebene Szenen rendert und als Bitmap-Bild ausgibt.
+Damit diese Aufgabe vom Umfang innerhalb der zeitlichen Grenzen des Praktikums bleibt wurden einige Einschränkungen vorgenommen.
+In der ersten Phase des Praktikums ging es lediglich darum einen Whitted-Style-Raytracer für Szenen mit komplett-diffusen Materialien zu implementieren.
+Auch die Menge an geometrischen Primitiven wurde auf Dreiecke reduziert.
 
-Anhand dieser Aufgabenstellung haben wir entschieden, dass wir eine möglichst flexible und erweiterbare Lösung schreiben wollen, da wir uns bewusst waren, dass im zweiten Teil der Aufgabe noch etwas dazukommen würde.
-Eine bewusste Entscheidung war auch, dass wir für alle Features die wir implementieren die Möglichkeiten haben wollten sie zur Compilezeit an- und ausszuchalten. Diese Idee würde dann auch eine (fast) beliebige Kombination der Features zum testen zulassen.
+Da uns bewusst war, dass in einem späteren zweiten Teil die Aufgabenstellung erweitert würde, achteten wir darauf, dass unsere Implementierung möglichst flexibel und erweiterbar ist.
+Eine bewusste Entscheidung war auch, jede Technik zur Beschleunigung so zu integrieren, dass wir sie optional zur Compilezeit zu- bzw abschalten konnten.
+Dies ermöglichte uns, die Auswirkungen von konkreten Techniken und deren Zusammenspiel bezogen auf die Ausführungsgeschwindigkeit jederzeit zu überprüfen, um schlussendlich eine möglichst optimale Konfiguration zu erzielen.
 
-Der Zweite Teil der Implementierungsphase war den Renderer um einen eingeschränkten Pathtracer zu ergänzen.
-In dem ersten Teil der Implementierung hatten wir noch keinen CUDA-Tracer implementiert, da unsere CPU-Lösung schon sehr gute Ergebnisse erziehlte, jedoch wurde uns bewusst, dass dieser für den zweiten Teil von großer Wichtigkeit war.
-Deshalb wurde im zweiten Teil der Pathtracer sowohl für die CPU als auch mit CUDA für die GPU geschrieben.
+Der Zweite Teil der Implementierungsphase war den Raytracer um ein weiteres Tracing-Verfahren, nämlich Pathtracing, zu ergänzen.
+Im ersten Abschnitt der Implementierungsphase hatten wir zunächst darauf verzichtet, die GPU als Beschleuniger einzusetzen, da unsere CPU-Lösung bereits sehr gute Ergebnisse erziehlte.
+Unter anderem lag dies daran, dass wir unseren Code bereits manuell parallelisiert und vektorisiert, d.h. mittels Instruktionen aus den Befehlssatzerweiterungen SSE bzw. AVX ausgedrückt hatten.
+Jedoch wurde uns in Phase zwei bewusst, dass die zusätzliche Rechenleistung hinsichtlich des exponentiell wachsenden Rechenaufwands, der beim Pathtracing entsteht, unverzichtbar ist. 
+Deshalb wurde im zweiten Abschnitt die Pathtracing-Komponente sowohl für die CPU als auch mit CUDA für die GPU umgesetzt.
