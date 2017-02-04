@@ -1,0 +1,110 @@
+{
+  "pray": {
+    "WITH_OMP": false, 
+    "WITH_CHEATS": false, 
+    "WITH_TIMING": true, 
+    "ACCELERATOR": "Bih", 
+    "WITH_SSE_PT": false, 
+    "WITH_BIH_PARALLEL_BUILD": true, 
+    "DISABLE_OUTPUT": true, 
+    "WITH_CONFDUMP": true, 
+    "SAMPLER": "standard_sampler", 
+    "DISABLE_RENDERING": false, 
+    "WITH_CUDA": false, 
+    "WITH_SSE": false, 
+    "WITH_PROGRESS": false
+  }, 
+  "date": "2017-02-04 20:37:27.407622", 
+  "reports": [
+    {
+      "render_times": [
+        1255, 
+        1259, 
+        1269, 
+        1257, 
+        1262
+      ], 
+      "total_times": [
+        1255, 
+        1259, 
+        1269, 
+        1257, 
+        1262
+      ], 
+      "stddev_preprocess_time": 0.0, 
+      "avg_total_time": 1260, 
+      "avg_preprocess_time": 0, 
+      "scene": "../examples/monkey.json", 
+      "stddev_render_time": 4.8826222462934812, 
+      "preprocess_times": [
+        0, 
+        0, 
+        0, 
+        0, 
+        0
+      ], 
+      "avg_render_time": 1260, 
+      "stddev_total_time": 4.8826222462934812
+    }, 
+    {
+      "render_times": [
+        673, 
+        672, 
+        673, 
+        673, 
+        673
+      ], 
+      "total_times": [
+        679, 
+        677, 
+        679, 
+        678, 
+        680
+      ], 
+      "stddev_preprocess_time": 0.74833147735478822, 
+      "avg_total_time": 677, 
+      "avg_preprocess_time": 5, 
+      "scene": "../examples/plant.json", 
+      "stddev_render_time": 0.40000000000000008, 
+      "preprocess_times": [
+        6, 
+        5, 
+        6, 
+        5, 
+        7
+      ], 
+      "avg_render_time": 672, 
+      "stddev_total_time": 1.019803902718557
+    }, 
+    {
+      "render_times": [
+        659775, 
+        665521, 
+        660029, 
+        659662, 
+        664957
+      ], 
+      "total_times": [
+        659775, 
+        665521, 
+        660029, 
+        659662, 
+        664957
+      ], 
+      "stddev_preprocess_time": 0.0, 
+      "avg_total_time": 661988, 
+      "avg_preprocess_time": 0, 
+      "scene": "../examples/pt_cornell/pt_cornell.json", 
+      "stddev_render_time": 2662.4189302211626, 
+      "preprocess_times": [
+        0, 
+        0, 
+        0, 
+        0, 
+        0
+      ], 
+      "avg_render_time": 661988, 
+      "stddev_total_time": 2662.4189302211626
+    }
+  ]
+}
