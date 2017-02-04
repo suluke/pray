@@ -100,8 +100,6 @@ static int trace(const char *outpath, const RenderOptions &opts, StageLogger &lo
 		return 0;
 	}
 
-	std::cout << scene.triangles.size() << "\n";
-
 	if (scene.triangles.size() <= 256u) {
 		typename PrayTypes<scene_t>::dummy_accel_t accel;
 		logger.startPreprocessing();
