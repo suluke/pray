@@ -1,13 +1,37 @@
 \section{Optimierungen}
 Zusätzlich zu den großen Parallelisierungsmöglichkeiten (OpenMP/C++Threads, CUDA, SSE/AVX, Datenstrukturen), haben wir uns überlegt wo es noch möglich wäre einen eventuell auch kleinen Zeitgewinn hinauszuholen.
-Hierfür haben wir durch Analyse erst einmal versucht kritische Abschnitte in unserer Pipeline zu finden. Dies wurde zum Teil durch Benchmarking verschiedener Komponenten via Zeitmessung der Laufzeit intern oder durch unser Benchmarking-Tool und auch durch eine Call-Analyse mit Callgrind.
+Hierfür haben wir durch Analyse erst einmal versucht kritische Abschnitte in unserer Pipeline zu finden.
+Dies wurde zum Teil durch Benchmarking verschiedener Komponenten via Zeitmessung der Laufzeit intern oder durch unser Benchmarking-Tool und auch durch eine Call-Analyse mit Callgrind.
+Kleinere Optimierungen umfassen beispielsweise das Cachen des Inversen der Richtung eines Strahls, da Divisionen insbesondere bei SSE/AVX sehr zeitaufwändig sind.
 
 \subsection{Identifikation kritischer Abschnitte}
 \subsubsection{Profiler}
 
 \subsection{Heuristiken}
+Wenige Dreiecke -> DummyAcceleration
+Stackgröße Cuda, BIH...
 
 \subsection{Subsampling}
+Bei der Suche nach leistungssteigernden Maßnahmen haben wir uns unter anderem auch mit dem Thema Subsampling beschäftigt.
+Das Cube-Beispiel bietet hierfür eine ideale Motivation, da über sehr große Bereiche nur der Hintergrund zu sehen ist, und man lediglich am Würfel selber alle Details abtasten möchte.
+In unserem Raytracer stehen daher zur Compilezeit drei verschiedene Abtaststrategien zur Auswahl, die im folgenden näher beschrieben werden.
+
 \subsubsection{Normales Sampling}
+Zunächst haben wir nur das normale Abtasten der Szene mit je einem Strahl pro Ausgabebildpixel implementiert.
+Hierzu gibt es abgesehen von der Parallelisierung des Ray-Castings mit OpenMP und dem Umgang mit verschiedenen Strahlengrößen nichts weiteres zu erwähnen.
+
 \subsubsection{Interpolierendes Sampling}
+Ein erstes naives Vorgehen um die Menge an verschossenen Strahlen bei gleicher Bildgröße zu verringern haben wir im "`interpolierenden Sampler"' implementiert.
+Hierbei wird die Szene in einem Schachbrettmuster abgetastet, d.h. nur jeder zweite Strahl wird verschossen.
+Anschließend werden die Lücken durch Interpolation aus den bis zu vier verschossenen Nachbarpixeln gefüllt.
+Die Ränder stellen hierbei ein Problem dar, da ihnen (insbesondere bei Ecken) bis zu zwei tatsächlich abgetastete Nachbarpixel fehlen.
+Die Interpolation wird außerdem naiv durchgeführt, also lediglich ein Mittelwert aus den angrenzenden Pixeln berechnet, um den interpolierten Farbwert zu erhalten.
+Gerade an Kanten führt dies zu sägezahmusterartigen Artefakten.
+Der interpolierende Sampler sorgt in der Praxis praktisch für eine Verdoppelung der Geschwindigkeit, was natürlich dadurch zustandekommt, dass nur die Hälfte der Arbeit auch wirklich vollbracht wird.
+Dies ist durchaus als Schummelei zu werten, weswegen wir den interpolierenden Sampler auch niemals während der Benchmarks aktiviert hatten.
+
 \subsubsection{Adaptives Sampling}
+Obwohl weniger Arbeit verrichten, also Subsampling im Allgemeinen, wie bereits erwähnt definitiv nicht pauschal legal sein sollte, so kann man aus unserer Sicht aber argumentieren, dass es unter bestimmten Umständen doch legitim sein kann.
+Unsere Raytracer haben nicht den Anspruch, Pixel-perfekte Ergebnisse zu liefern.
+Insbesondere sorgen Fließkommaungenauigkeiten immer wieder dafür, dass Strahlen fälschlicherweise durch den (theoretisch nicht existenten) Spalt zwischen zwei Dreiecken durchschießen und die Szene so verlassen.
+Unserer Ansicht nach ist es also legitim, bestimmte Sichtstrahlen zu überspringen, solange aktiv versucht wird zu vermeiden, dass relevante Bildinformation durch Unterabtastung verloren geht.
