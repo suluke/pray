@@ -237,7 +237,7 @@ struct interpolating_sampler {
 
 template <class scene_t, class tracer_t, class ray_t> struct adaptive_sampler {
 private:
-  constexpr static float threshold = 0.5;
+  constexpr static float threshold = 0.7;
 
   static inline float difference(const Color &c1, const Color &c2) {
     auto diff = c1 - c2;
