@@ -1,0 +1,7 @@
+\section{Beschleunigungstechniken}
+Um die bestmöglichste Leistung mit der vorhandenen Hardware zu erzielen ist es notwendig, deren spezielle Eigenschaften so weit es geht auszuschöpfen.
+Somit wird beispielsweise durch das Vorhandensein mehrerer CPU-Kerne eine mehrfädige Ausführung unabdingbar.
+Befehlssatzerweiterungen für das Rechnen mit Vektoren, z.B. SSE bzw. AVX können mit speziellen Funktionen, sogenannten Intrinsics, explizit verwendet werden.
+Falls exterene Rechenbeschleuniger, wie z.B. Cuda-fähige Grafikkarten zur Verfügung stehen, können auch diese von der Implementierung miteinbezogen werden, um den Durchsatz des eigenen Programms zu steigern.
+Alle genannten Aspekte haben wir in unserem Raytracer beachtet.
+Im Folgenden soll daher näher auf Details bei der Umsetzung eingegangen werden.
