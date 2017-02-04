@@ -12,7 +12,8 @@ struct KdTreeBuilder
 	kdtree_t &kdtree;
 	ThreadPool &thread_pool;
 
-	std::mutex kdtree_nodes_mutex;
+	std::mutex nodes_mutex;
+	std::list<typename kdtree_t::Node> nodes;
 
 	struct TriangleData
 	{
@@ -58,17 +59,24 @@ struct KdTreeBuilder
 		std::list<TriangleIndex> triangles;
 		for(TriangleIndex i=0u; i<scene.triangles.size(); ++i) triangles.push_back(i);
 
-		kdtree.pod.nodes.reserve(2 * (scene.triangles.size() + scene.triangles.size() - 1)); //TODO: find a good number here, we MUST NOT reallocate in buildNode!!!
-
 		out_triangles.reserve(2 * scene.triangles.size()); // just so that we are not constantly reallocating in buildLeaf (wouldn't be a problem thought)
 
-		kdtree.pod.nodes.emplace_back();
+		nodes.emplace_back();
 #ifdef DEBUG
 		kdtree.pod.nodes.back().parent = nullptr;
 #endif
 
 		BuildWorker worker(thread_pool);
-		worker.run(buildNode, BuildNodeArgs(this, &kdtree.pod.nodes.back(), kdtree.pod.scene_aabb, triangles, triangles.size()));
+		worker.run(buildNode, BuildNodeArgs(this, &nodes.back(), kdtree.pod.scene_aabb, triangles, triangles.size()));
+
+		/*
+		Creating the nodes directly in a std::vector is impossible since we can't estimate the maximum memory usage beforehand and reallocation breaks
+		all references (especially in other worker threads!). Alternatively, we would have to add locks to all accesses to nodes (and use indices
+		instead of references). Using std::list requires only the single critical section and is actually not much slower in practice.
+		*/
+		static_assert(std::is_trivial<typename kdtree_t::Node>::value, "Node should be trivial");
+		kdtree.pod.nodes.reserve(nodes.size());
+		std::copy(nodes.cbegin(), nodes.cend(), std::back_inserter(kdtree.pod.nodes));
 
 		static_assert(std::is_trivial<Triangle>::value, "Triangle should be trivial");
 		std::vector<Triangle> reordered_triangles(out_triangles.size());
@@ -270,20 +278,19 @@ struct KdTreeBuilder
 				return;
 			}
 
+			typename kdtree_t::Node *child1, *child2;
+
 			size_t children_index;
 			{
-				std::lock_guard<std::mutex> lock(args.builder->kdtree_nodes_mutex);
+				std::lock_guard<std::mutex> lock(args.builder->nodes_mutex);
 
-				children_index = args.builder->kdtree.pod.nodes.size();
-				//ASSERT(kdtree.pod.nodes.capacity() - args.builder->kdtree.pod.nodes.size() >= 2u); // we don't want relocation (breaks references)
+				children_index = args.builder->nodes.size();
 				static_assert(std::is_trivial<typename kdtree_t::Node>::value, "KdTree::Node should be trivial, otherwise the critical section is not as small as it could be");
-				args.builder->kdtree.pod.nodes.emplace_back(); args.builder->kdtree.pod.nodes.emplace_back();
+				child1 = &args.builder->nodes.emplace_back();
+				child2 = &args.builder->nodes.emplace_back();
 			}
 
 			args.current_node->makeSplitNode(split_axis, children_index, split_plane);
-
-			auto &child1 = args.builder->kdtree.pod.nodes[children_index+0];
-			auto &child2 = args.builder->kdtree.pod.nodes[children_index+1];
 
 #ifdef DEBUG
 			//args.current_node.index = node_index;
@@ -297,8 +304,8 @@ struct KdTreeBuilder
 			child2_initial_aabb.min[split_axis] = split_plane;
 
 			// recursion
-			worker.recurse(buildNode, BuildNodeArgs(args.builder, &child1, child1_initial_aabb, left, left_non_overlap_count));
-			buildNode(BuildNodeArgs(args.builder, &child2, child2_initial_aabb, right, right_non_overlap_count), worker);
+			worker.recurse(buildNode, BuildNodeArgs(args.builder, child1, child1_initial_aabb, left, left_non_overlap_count));
+			buildNode(BuildNodeArgs(args.builder, child2, child2_initial_aabb, right, right_non_overlap_count), worker);
 		}
 	}
 };
