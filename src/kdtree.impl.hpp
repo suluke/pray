@@ -286,8 +286,8 @@ struct KdTreeBuilder
 
 				children_index = args.builder->nodes.size();
 				static_assert(std::is_trivial<typename kdtree_t::Node>::value, "KdTree::Node should be trivial, otherwise the critical section is not as small as it could be");
-				child1 = &args.builder->nodes.emplace_back();
-				child2 = &args.builder->nodes.emplace_back();
+				args.builder->nodes.emplace_back(); child1 = &args.builder->nodes.back();
+				args.builder->nodes.emplace_back(); child2 = &args.builder->nodes.back();
 			}
 
 			args.current_node->makeSplitNode(split_axis, children_index, split_plane);
