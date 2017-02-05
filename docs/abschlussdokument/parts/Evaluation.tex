@@ -1,20 +1,39 @@
 \section{Auswertung}
+Während der Implementierung haben wir immer beachtet, die Effekte jeder implementierten Beschleunigungstechnik überprüfen zu können.
+Zur Compilezeit ist es uns daher u.a. möglich, die genutzte Beschleunigungsstruktur festzulegen und verschiedene andere Techniken an- bzw. abzuschalten.
+\begin{figure}
+  \center
+  \includegraphics[width=.6\textwidth]{images/configuration.png}
+  \caption{Konfigurationsübersicht unseres Raytracers}
+  \label{fig:pray_config}
+\end{figure}
+In Abbildung \ref{fig:pray_config} illustriert eine mögliche Konfiguration, mit der unser Programm gebaut werden kann.
+Diese Eigenschaft hat es uns ermöglicht, den genauen Einfluss auf die Ausführungsgeschwindigkeit nachmessen zu können.
+Gemessen wurde dabei mit den in C++11 eigeführten Mitteln aus dem \code{std::chrono} Namespace.
+Im folgenden möchten wir aufzeigen, wie die verschiedenen von uns implementierten Features die Leistung unseres Raytracers im einzelnen beeinflussen.
+
 \subsection{Getestete Szenen}
 \begin{figure}
   \center
   \includegraphics[width=.6\textwidth]{images/monkey.png}
   \caption{Monkey Szene}
+  \label{fig:monkey}
 \end{figure}
 \begin{figure}
   \center
   \includegraphics[width=.6\textwidth]{images/plant.png}
- \caption{Plant Szene}
+  \caption{Plant Szene}
+  \label{fig:plant}
 \end{figure}
 \begin{figure}
   \center
   \includegraphics[width=.6\textwidth]{images/pt_cornell.png}
   \caption{PT/Cornell Szene}
+  \label{fig:pt_cornell}
 \end{figure}
+\ref{fig:monkey}
+\ref{fig:plant}
+\ref{fig:pt_cornell}
   
 \subsection{Getestete Konfigurationen}
 \subsection{Ergebnisse}
