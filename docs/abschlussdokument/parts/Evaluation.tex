@@ -13,7 +13,6 @@
     %~ ymode=log,
     scaled y ticks = false,
     ylabel={Laufzeit (ms)},
-    ytick distance=1000,
     xtick=data,
     x tick label style={rotate=45,anchor=east},
   ]
@@ -21,6 +20,28 @@
       \addplot [box plot box] table {evaluation/monkey.dat};
       \addplot [box plot top whisker] table {evaluation/monkey.dat};
       \addplot [box plot bottom whisker] table {evaluation/monkey.dat};
+  \end{axis}
+  \end{tikzpicture}
+\end{figure}
+
+\begin{figure}
+  \caption{Plant Szene}
+  \label{fig:runtime_plant}
+  \begin{tikzpicture}
+  \begin{axis} [
+    symbolic x coords={Baseline,Adaptive-Sampling,OpenMP,SSERay,BIH,KdTree},
+    table/header=false,
+    enlargelimits=0.15,
+    %~ ymode=log,
+    scaled y ticks = false,
+    ylabel={Laufzeit (ms)},
+    xtick=data,
+    x tick label style={rotate=45,anchor=east},
+  ]
+      \addplot [box plot median] table {evaluation/plant.dat};
+      \addplot [box plot box] table {evaluation/plant.dat};
+      \addplot [box plot top whisker] table {evaluation/plant.dat};
+      \addplot [box plot bottom whisker] table {evaluation/plant.dat};
   \end{axis}
   \end{tikzpicture}
 \end{figure}
