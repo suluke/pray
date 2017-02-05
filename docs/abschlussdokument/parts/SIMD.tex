@@ -15,22 +15,16 @@ Beispielsweise vermieden wir dadurch, Integer-basierten Code zu schreiben, der v
 \subsection{Konkrete Anwendungsfälle}
 In unserem Code lässt sich die Verwendung von Vektorinstruktionen in zwei Kategorien einteilen:
 Einerseits die Nutzung in an sich skalarem Code, wo es sich lediglich gerade anbietet, eine bestimmte Operation durch SIMD-Instruktionen zu beschleunigen.
-So haben wir beispielsweise eine SSE-beschleunigte Variante des 3D-Vektor-Skalarprodukts implementiert.
+So haben wir eine SSE-beschleunigte Variante des 3D-Vektor-Skalar- und Kreuzprodukts implementiert.
+Die Idee hier war, die Gesamtzahl an Instruktionen zu verringen, da die skalaren Rechnungen in einem Profile einen Heißen Pfad darstellten (siehe \ref{ssec:crit-profiler}).
+Darauf aufbauend versuchten wir, die 3D-Vektor Klasse, die in den CPU Berechnungen des Tracing-Schritts benutzt wird, komplett mit SSE-Instruktion auszudrücken (ein Vektor belegt genau ein SSE-Register, dadurch können viele Vektor-Operationen mit genau einer Instruktion ausgedrückt werden und es können mehr Daten in Registern gehalten werden).
+Es stellte sich heraus, dass dadurch die Ausführung wieder langsamer wurde und immer noch weit von der Geschwindigkeit der unten erwähnten \code{SSERay} entfernt war.
 
-Andererseits haben wir auch explizit auf Vektorrechnung ausgelegten Bestandteile in unserem Softwaredesign.
-Hierbei handelt es sich um die Klasse \code{SSERay}.
+Der andere Ansatz setzt auf eine durchgehende explizite Vektorisierung durch alle Berechnungen hindurch.
+Die Implementierung findet sich in der Klasse \code{SSERay}.
 Die zugrundeliegende Idee hierbei ist, Strahlen nicht einzeln durch die Szene zu verschießen, sondern in Bündeln.
 Ein \code{SSERay} enthält also nicht einen einzigen Strahl, sondern vier (SSE) bzw. acht (AVX).
 In der Praxis hat sich herausgestellt, dass dies sehr gut funktioniert und wir sogar nah an den theoretischen maximalen Speedup heranreichen (Faktor 5 bei AVX von theoretisch Faktor 8).
 Dies ist unter anderem darauf zurückzuführen, dass Vektoren nur selten entpackt werden müssen und durch unsere Implementierung praktisch nie horizontale Operationen nötig werden.
 Horizontale Operationen sind jene, bei denen mehrere Werte aus dem selben Vektor miteinander verrechnet werden, beispielsweise wenn geschaut werden soll, ob alle Einträge in einem Vektor gleich null sind.
-Unser \code{SSERay}-Ansatz hat allerdings ein theoretisches Problem in Kombination mit Beschleunigungsstrukturen:
-Diese sind zumeist Hüllkörper-basiert.
-Eine solche Datenstruktur muss für jeden Strahl in einem Bündel alle Hüllkörper besuchen, die vom Strahl geschnitten werden.
-Theoretisch ist es also denkbar, dass bei einem stark divergierenden Strahlenbündel für jeden Strahl ein komplett unterschiedlicher Satz an Hüllköpern besucht werden muss.
-Somit wächst der Aufwand beim Traversieren der Szene mit der Datenstruktur unter Umständen auf das selbe Niveau wie mit skalaren Strahlen.
-Bedenkt man zusätzlich, dass einige Operationen mit SSE/AVX teurer sind als ihre skalaren Äquivalente, könnte dies einen Slowdown zur Folge haben.
-Bei Whitted-Style-Raytracing ist diese Sorge allerdings unbegründet:
-Primärstrahlen haben den selben Ursprung und divergieren je nach Auflösung und Field of View sehr langsam.
-Schattenstrahlen wiederum konvergieren in der Lichtquelle, die nach Schatten überprüft wird.
-Bei Pathtracing hingegen bleibt eine berechtigte Sorge, dass dieser Ansatz einmal nicht funktioniert, wenngleich uns noch keine Szene begegnet ist, wo dieser Effekt auftritt. 
+Durch die Berechnung von Strahlenbündeln wird die Schnittberechnung mit Beschleunigungsstrukturen aufwendiger, darauf soll in Kapitel \ref{ssec:accel-intersect-sseray} näher eingegangen werden.
