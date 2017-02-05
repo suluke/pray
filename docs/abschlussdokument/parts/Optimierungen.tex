@@ -15,11 +15,19 @@ Wir benutzen den Samping-Profiler mit folgendem Aufruf:
 
 Dadurch wird das Programm in einer Frequenz von $10000$ Hz unterbrochen und untersucht, an welcher Instruktion sich die Programmausfühtung gerade befindet. Die Häufigkeit, wie oft eine Instruktion angetroffen wurde gibt Aufschluss darüber, wie schnell sie ausgeführt wird. Allerdings können auch andere Effekte wie Pipeline-Stalls die Ursache sein, dass eine Instruktion länger dauert, daher muss auch immer die Menge der vorherigen Instruktionen mit in die Betrachtung einfließen.
 
-Da es nichtsaussagend ist, die Geschwindigkeit der Debug-Version zu messen, haben wir immer unseren Release-Build getestet. Da unser Code (gewollt) so strukturiert ist, dass viele Methoden ge-"`inlined"' werden, fällt es schwer zu idendifizieren, zu welchem Teil des Codes ein gefundener heißer Pfad gehört. Manche Algorithmen lassen sich in der disassembly erkennen (z.B. das Skalarprodukt, die SSE-Variante außerdem durch die einzigartige Verwendung der \code{haddps} Instruktion). Andere Teile lassen sich idendifizieren durch Kompilierung mit \code{-S -g} Optionen und Vergleich von auffälligen Instruktionen.
+Da es nichtsaussagend ist, die Geschwindigkeit der Debug-Version zu messen, haben wir immer unseren Release-Build getestet. Da unser Code (gewollt) so strukturiert ist, dass viele Methoden ge-"`inlined"' werden, fällt es schwer zu idendifizieren, zu welchem Teil des Codes ein gefundener Heißer Pfad gehört. Manche Algorithmen lassen sich in der disassembly erkennen (z.B. das Skalarprodukt, die SSE-Variante außerdem durch die einzigartige Verwendung der \code{haddps} Instruktion). Andere Teile lassen sich durch Kompilierung mit \code{-S -g} Optionen und Vergleich von auffälligen Instruktionen idendifizieren.
 
 \subsection{Heuristiken}
-Wenige Dreiecke -> DummyAcceleration
-Stackgröße Cuda, BIH...
+
+Beim Vergleich der Rechenzeit mit verschiedenen Beschleunigungsstrukturen ist uns aufgefallen, dass kleine Szenen ohne Struktur am schnellsten berechnet werden (auch ohne Miteinbeziehung des Aufbaus). Es scheint sich der Aufwand, rekursiv durch die Struktur zu traversieren, nicht zu lohnen verglichen mit einer einfachen Iteration über wenige Dreiecke. Daher haben wir eine Heuristik eingebaut, die kleine Szenen ohne Beschleunigungsstruktur direkt zeichnet. Als Schwellwert haben wir $256$ Dreiecke festgesetzt, allerdings ist der Wert abhängig von der Größe der \code{SSERay} (bzw. der Größe der Vektorregister der verwendeten Rechnerarchitektur) und der CUDA-Implementierung.
+
+Weitere Heuristiken in userem Code sind:
+
+\begin{itemize}
+\item Die Stack-Größe für die Traversierung von BIH und KD-Baum sind zur Kompile-Zeit festgesetzt um effiziente und Faden-lokale Speicherzugriffe zu garantieren. Die Größe $128$ ist abnhängig von der Szenengröße und -struktur, reicht aber für alle gegebenen Testfälle aus.
+\item Der KD-Baum benutzt zwei Kosten-Parameter um die Unterteilung zu berechnen. Da Dreieck-Schnitte mit der \code{SSERay} Implementierung sehr effizient sind, haben wir eine große Zahl für die Kosten der Traversierung angegeben.
+\item Das Adaptive Sampling in \ref{ssec:adaptive-sampling} hat einen Parameter der angibt, ab welcher Abweichung ein Block vollständig gesampled werden soll.
+\end{itemize}
 
 \subsection{Subsampling}
 Bei der Suche nach leistungssteigernden Maßnahmen haben wir uns unter anderem auch mit dem Thema Subsampling beschäftigt.
@@ -41,6 +49,7 @@ Der interpolierende Sampler sorgt in der Praxis praktisch für eine Verdoppelung
 Dies ist durchaus als Schummelei zu werten, weswegen wir den interpolierenden Sampler auch niemals während der Benchmarks aktiviert hatten.
 
 \subsubsection{Adaptives Sampling}
+\label{ssec:adaptive-sampling}
 Obwohl weniger Arbeit verrichten, also Subsampling im Allgemeinen, wie bereits erwähnt definitiv nicht pauschal legal sein sollte, so kann man aus unserer Sicht aber argumentieren, dass es unter bestimmten Umständen doch legitim sein kann.
 Unsere Raytracer haben nicht den Anspruch, Pixel-perfekte Ergebnisse zu liefern.
 Insbesondere sorgen Fließkommaungenauigkeiten immer wieder dafür, dass Strahlen fälschlicherweise durch den (theoretisch nicht existenten) Spalt zwischen zwei Dreiecken durchschießen und die Szene so verlassen.
