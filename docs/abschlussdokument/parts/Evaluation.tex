@@ -45,3 +45,25 @@
   \end{axis}
   \end{tikzpicture}
 \end{figure}
+
+\begin{figure}
+  \caption{PT/Cornell Szene}
+  \label{fig:runtime_pt_cornell}
+  \begin{tikzpicture}
+  \begin{axis} [
+    symbolic x coords={Baseline,Adaptive-Sampling,OpenMP,SSERay,Cuda,BIH,KdTree},
+    table/header=false,
+    enlargelimits=0.15,
+    %~ ymode=log,
+    scaled y ticks = false,
+    ylabel={Laufzeit (ms)},
+    xtick=data,
+    x tick label style={rotate=45,anchor=east},
+  ]
+      \addplot [box plot median] table {evaluation/pt_cornell.dat};
+      \addplot [box plot box] table {evaluation/pt_cornell.dat};
+      \addplot [box plot top whisker] table {evaluation/pt_cornell.dat};
+      \addplot [box plot bottom whisker] table {evaluation/pt_cornell.dat};
+  \end{axis}
+  \end{tikzpicture}
+\end{figure}
