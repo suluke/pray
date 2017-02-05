@@ -1,2 +1,72 @@
 \subsection{GPGPU}
-Cuda
+
+Grafikkarten sind in vielen Systemen verbaut und es besteht die Möglichkeit, diese nicht nur für das klassische Rendering zu benutzen, sondern als Beschleunigungsstruktur für beliebige Anwendungen, auch General Purpose Computation on Graphics Processing Units (GPGPU) genannt. 
+Für Grafikkarten der Firma Nvidia nennt sich die Programmiertechnik für GPGPU Cuda. 
+
+Eine GPU unterscheidet sich von einer CPU in einigen Punkten:
+\begin{enumerate}
+\item Im Gegensatz zu einer CPU ist eine GPU nicht zwingend vorhanden. 
+\item Eine GPU besitzt sehr viele aber sehr kleine (schwache) Rechenkerne, auf denen dementsprechend viele Threads gleichzeitig ausgeführt werden können. 
+\item Kommunikation und Synchronisation zwischen den Threads auf der GPU ist nur teilweise möglich. 
+\item Die GPU benutzt einen eigenen vom Hauptspeicher getrennten Speicher mit komplexer Speicher- und Cachehierarchie. 
+\end{enumerate}
+
+Prinzipiell ist eine GPU für das Raytracing gut geeignet, da alle Pixel unabhängig voneinander berechnet werden können und die Arbeit damit gut in viele Teile aufgeteilt werden kann. 
+In unserem Projekt haben wir Cuda nur für Path-Tracing umgesetzt, da beim Whitted-Style-Raytracing der Aufwand der Initialisierung und des Kopierens den der eigentlichen Strahlenberechnung übersteigt. 
+Beim Path-Tracing dagegen werden um ein Vielfaches mehr Strahlen berechnet, sodass sich der benötigte Mehraufwand lohnt. 
+
+
+\subsubsection{Struktur und Aufteilung}
+
+Der für die GPU bestimmte Code muss mit einem speziellen Compiler (nvcc) aus der Cuda-Bibliothek kompiliert werden. Intern basiert der Compiler zwar auf gcc, dennoch gibt es Unterschiede zu CPU Code:
+
+\begin{enumerate}
+\item Funktionen, die auf der GPU laufen sollen, müssen mit \code{\_\_device\_\_} annotiert werden. 
+\item nvcc unterstützt keine STL (zu CPU-spezifisch) und momentan nur C++11. 
+\item Pointer und Refernzen sind nur auf dem jeweiligen System gültig und können nicht übertragen werden. 
+\end{enumerate}
+
+Dadurch wird eine gewisse Trennung des CPU- und des GPU-Codes notwendig. Zum Glück lassen sich Teile des Codes mit beiden Compilern verwenden, sodass nicht aller Code dupliziert werden muss. 
+Um Funkionen sowohl auf der CPU als auch auf der GPU verwenden zu können haben wir ein simples Macro \code{\_\_cuda\_\_} eingeführt, welches sich unter nvcc in die entsprechenden Annotationen umwandelt und unter gcc verschwindet. 
+Zwar machen dies die Cuda-Runtime-Header auch selbst, doch stehen diese auf Systemem ohne Cuda ja nicht zur Verfügung. 
+
+Der Code der komplett auf CPU oder GPU ausgeführt wird, unterscheidet sich kaum. 
+Der Übergang zwischen CPU und GPU (der Kernel-Start) allerdings ist kompliziert, da dort Code aus beiden Teilen eingebunden werden muss und alle benötigten Daten vorher auf den Speicher der GPU kopiert werden müssen. 
+
+Die Klassen \code{CudaTracer} und \code{CpuTracer} lassen sich gleich bedienen mit dem Unterschied, dass im \code{CudaTracer} aus Zeitgründen kein Sampler implementiert wurde. 
+
+
+\subsubsection{Separater Speicher}
+
+Alle Daten, auf die der GPU-Code zugreifen soll, müssen vor dem Kernel-Start mit Hilfe der Cuda-Runtime-API in den globalen Speicher der GPU kopiert werden. Der Speicher dafür muss manuell mit \code{cudaMalloc} und \code{cudaFree} allokiert und wieder freigegeben werden. 
+
+Dafür haben wir eine kleine Reihe an Wrapper-Funktionen erstellt, die den Kopiervorgang erleichtern. 
+Um Speicherlecks im GPU-Speicher zu vermeiden gibt es Wrapper-Klassen für Objekte, die auf der GPU benötigt werden, die ihren Inhalt beim Erstellen automatisch auf den GPU Speicher kopieren und beim Zerstören (verlassen der CPU-Funktion) wieder freigeben. 
+Für \code{std::vector} ist ebenfalls eine selbstverwaltende Version \code{cuda::vector} entstanden. 
+Bis auf die berechneten Pixelwerte müssen keine Daten vom GPU Speicher zurück kopiert werden. 
+
+Der \code{CudaTracer} kümmert sich beim Instanziieren um das Kopieren der Szene und der Beschleunigungsstruktur, sodass diese nicht bei jedem \code{trace}-Aufruf mit einer Workload erneut kopiert werden müssen. 
+
+Zu Beginn stürzten unsere Kernel wegen Stackoverflows ab, sodass wir manuell die Größe des Stacks der Threads vor der Ausführung festlegen. 
+Die Größe wird errechnet durch den von der Beschleunigungsstruktur für die Traversierung und den pro Rekursionsstufe beim Path-Tracing benötigten Speicher. 
+
+
+\subsubsection{Arbeitsaufteilung}
+
+Um die Berechnung zwischen CPU und GPU dynamisch aufzuteilen wurde ein einfach Scheduler erstellt. 
+Für CPU und GPU gibt es jeweils einen Worker-Thread, der bei Bedarf eine der Platform entsprechend große Workload abholt und dann abarbeitet. 
+Dazu wird das zu berechnenden Bild in Workloads als Vielfaches von ganzen Bildzeilen zerteilt. 
+Da die SSE-Implementierung immer mindestens 2 und die Cuda-Implementierung immer mindestens 8 Zeilen benötigt, macht es Sinn hier ein Vielfaches von 8 zu nehmen. 
+Bei der Größe der Workloads muss man einen Mittelweg finden zwischen viel Overhead bei kleinen Workloads und einer eventuell schlechten Verteilung bei großen Workloads. 
+Unsere Workloads sind daher 4 * 8 = 32 Bildzeilen groß. 
+
+Auf der GPU wird ein Workload in mehrere Blocke unterteilt, die wiederum aus einer Anzahl an Threads bestehen. 
+Jeder Block wird einem Streaming-Prozessor (SM) auf der GPU zugeteilt. 
+Das mache einen Kernel skalierbar, denn pro Grafikkartenmodell gibt es mehr oder weniger davon. Blöcke untereinander können nicht kommunizieren oder sich synchronisieren. 
+In einem Block werden immer 32 (bei neueren Grafikkarten 16) als ein Warp gestartet, d.h. sie benutzen die gleichen Ressourcen und dementsprechend ist die Performance höher wenn diese Threads in etwas gleiche Speicherzugriffe durchführen und gleich lange brauchen. 
+Da beim Path-Tracing aber nur die Primärstrahlen in die gleiche Richtung gehen und die vielen folgenden Strahlen zufällig verschossen werden, braucht darauf keine Rücksicht genommen zu werden. 
+Unser Raytracer benutzt einen GPU-Thread pro Pixel und erstellt Blöcke mit einer Größe von 8x8 Pixeln (ein quadratischer Bildausschnitt). Je nach Größe der Workload werden dann dementsprechend viele Blöcke erstellt und als ein Kernel gestartet. 
+
+Die Größen der Arbeitsaufteilung sind ausschlaggebend für eine effiziente Abarbeitung der Aufgaben. 
+Dabei können entweder die Werte für eine bestimmte Maschine kalibriert werden oder es wird versucht gute Werte dynamisch auf der jeweiligen Maschine zu berechnen. 
+Unsere Werte sind kaum getestet, wodurch hier wahrscheinlich noch sehr Optimierungspotetial besteht. 

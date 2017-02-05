@@ -12,7 +12,7 @@ Mit der Abstraktionsschicht konnten wir sehr einfach Code schreiben, der generis
 Ein weiterer Vorteil dieser Schicht ist, dass wir uns bis auf wenige Ausnahmen auf eine Untermenge von Befehlen beschränkten, die ohne Einbußen bei der Geschwindigkeit in beiden Welten vorhanden war.
 Beispielsweise vermieden wir dadurch, Integer-basierten Code zu schreiben, der von SSE3 zwar gut, von AVX aber nur mangelhaft unterstützt wird.
 
-\subsection{Konkrete Anwendungsfälle}
+\subsubsection{Konkrete Anwendungsfälle}
 In unserem Code lässt sich die Verwendung von Vektorinstruktionen in zwei Kategorien einteilen:
 Einerseits die Nutzung in an sich skalarem Code, wo es sich lediglich gerade anbietet, eine bestimmte Operation durch SIMD-Instruktionen zu beschleunigen.
 So haben wir eine SSE-beschleunigte Variante des 3D-Vektor-Skalar- und Kreuzprodukts implementiert.
