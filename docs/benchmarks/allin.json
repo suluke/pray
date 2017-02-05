@@ -1,6 +1,6 @@
 {
   "pray": {
-    "WITH_OMP": false, 
+    "WITH_OMP": true, 
     "WITH_CHEATS": true, 
     "WITH_TIMING": true, 
     "ACCELERATOR": "Bih", 
@@ -14,88 +14,88 @@
     "WITH_SSE": true, 
     "WITH_PROGRESS": false
   }, 
-  "date": "2017-02-05 10:34:24.157430", 
+  "date": "2017-02-05 14:31:30.866566", 
   "reports": [
     {
       "render_times": [
-        347, 
-        346, 
-        351, 
-        345, 
-        346
+        133, 
+        137, 
+        110, 
+        117, 
+        129
       ], 
       "total_times": [
-        347, 
-        346, 
-        351, 
-        345, 
-        346
+        133, 
+        137, 
+        110, 
+        117, 
+        130
       ], 
-      "stddev_preprocess_time": 0.0, 
-      "avg_total_time": 347, 
+      "stddev_preprocess_time": 0.40000000000000002, 
+      "avg_total_time": 125, 
       "avg_preprocess_time": 0, 
       "scene": "../examples/monkey.json", 
-      "stddev_render_time": 2.0976176963403033, 
+      "stddev_render_time": 10.127191120937729, 
       "preprocess_times": [
         0, 
         0, 
         0, 
         0, 
-        0
+        1
       ], 
-      "avg_render_time": 347, 
-      "stddev_total_time": 2.0976176963403033
+      "avg_render_time": 125, 
+      "stddev_total_time": 10.209799214480174
     }, 
     {
       "render_times": [
-        230, 
-        227, 
-        232, 
-        233, 
-        228
+        78, 
+        92, 
+        117, 
+        121, 
+        111
       ], 
       "total_times": [
-        234, 
-        232, 
-        238, 
-        239, 
-        233
+        81, 
+        94, 
+        119, 
+        123, 
+        113
       ], 
-      "stddev_preprocess_time": 0.74833147735478822, 
-      "avg_total_time": 235, 
-      "avg_preprocess_time": 5, 
+      "stddev_preprocess_time": 0.39999999999999997, 
+      "avg_total_time": 105, 
+      "avg_preprocess_time": 2, 
       "scene": "../examples/plant.json", 
-      "stddev_render_time": 2.2803508501982761, 
+      "stddev_render_time": 16.28987415543779, 
       "preprocess_times": [
-        4, 
-        5, 
-        6, 
-        6, 
-        5
+        3, 
+        2, 
+        2, 
+        2, 
+        2
       ], 
-      "avg_render_time": 230, 
-      "stddev_total_time": 2.7856776554368237
+      "avg_render_time": 103, 
+      "stddev_total_time": 15.974980438172686
     }, 
     {
       "render_times": [
-        19350, 
-        19165, 
-        14108, 
-        19290, 
-        19344
+        13270, 
+        10460, 
+        10435, 
+        10436, 
+        13046
       ], 
       "total_times": [
-        19350, 
-        19165, 
-        14108, 
-        19290, 
-        19344
+        13270, 
+        10460, 
+        10435, 
+        10436, 
+        13046
       ], 
       "stddev_preprocess_time": 0.0, 
-      "avg_total_time": 18251, 
+      "avg_total_time": 11529, 
       "avg_preprocess_time": 0, 
       "scene": "../examples/pt_cornell/pt_cornell.json", 
-      "stddev_render_time": 2072.7670008951804, 
+      "stddev_render_time": 1331.6617588562044, 
       "preprocess_times": [
         0, 
         0, 
@@ -103,8 +103,8 @@
         0, 
         0
       ], 
-      "avg_render_time": 18251, 
-      "stddev_total_time": 2072.7670008951804
+      "avg_render_time": 11529, 
+      "stddev_total_time": 1331.6617588562044
     }
   ]
 }
