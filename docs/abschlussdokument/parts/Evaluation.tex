@@ -3,6 +3,7 @@
 \subsection{Getestete Konfigurationen}
 \subsection{Ergebnisse}
 \begin{figure}
+  \center
   \caption{Monkey Szene}
   \label{fig:runtime_monkey}
   \begin{tikzpicture}
@@ -10,7 +11,7 @@
     symbolic x coords={Baseline,Adaptive-Sampling,OpenMP,SSERay,BIH,KdTree,Kombiniert},
     table/header=false,
     enlargelimits=0.15,
-    %~ ymode=log,
+    ymode=log,
     scaled y ticks = false,
     ylabel={Laufzeit (ms)},
     xtick=data,
@@ -25,6 +26,7 @@
 \end{figure}
 
 \begin{figure}
+  \center
   \caption{Plant Szene}
   \label{fig:runtime_plant}
   \begin{tikzpicture}
@@ -32,7 +34,7 @@
     symbolic x coords={Baseline,Adaptive-Sampling,OpenMP,SSERay,BIH,KdTree,Kombiniert},
     table/header=false,
     enlargelimits=0.15,
-    %~ ymode=log,
+    ymode=log,
     scaled y ticks = false,
     ylabel={Laufzeit (ms)},
     xtick=data,
@@ -47,6 +49,7 @@
 \end{figure}
 
 \begin{figure}
+  \center
   \caption{PT/Cornell Szene}
   \label{fig:runtime_pt_cornell}
   \begin{tikzpicture}
@@ -54,7 +57,7 @@
     symbolic x coords={Baseline,Adaptive-Sampling,OpenMP,SSERay,Cuda,BIH,KdTree,Kombiniert},
     table/header=false,
     enlargelimits=0.15,
-    %~ ymode=log,
+    ymode=log,
     scaled y ticks = false,
     ylabel={Laufzeit (ms)},
     xtick=data,
