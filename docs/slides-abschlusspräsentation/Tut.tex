@@ -1,7 +1,6 @@
 \include{header}
 \setbeamertemplate{caption}{\raggedright\insertcaption\par}
 
-
 \title[LLNM]{LLNM - Abschlusspräsentation}
 \subtitle{}
 \date{\today}
@@ -15,6 +14,27 @@
 	\begin{frame}{Cuda}
 	\end{frame}
 	\begin{frame}{Verbesserung Datenstrukturen}
+		\begin{itemize}
+		\pause
+		\item Early Traversion-Termination für BIH
+		\pause
+		\item Iterative Implementierung der Traversierung mit Stack-lokalem Stack
+		\pause
+		\item KDTree
+		\begin{itemize}
+			\item Basiert auf BIH
+			\item SAH in $O(n \log^2 n)$
+			\item Ineffizienter Aufbau (\texttt{std::list} ...)
+			\item Kein Clipping!
+			\item Schnelleres Rendering :)
+			\item funktioniert nicht mit \texttt{bvh\_worst\_case} :(
+		\end{itemize}
+		\pause
+		\item Parallelisierter Aufbau mit eigenem, effizienten Thread-Pool und Scheduling
+		\begin{itemize}
+			\item Skaliert \textbf{sehr} schlecht mit vielen Prozessoren
+		\end{itemize}
+		\end{itemize}
 	\end{frame}
 
 	\begin{frame}{SSE Verbesserungen}
@@ -22,9 +42,23 @@
 	\begin{frame}{Sampler}
 	\end{frame}
 	\begin{frame}{Heuristik}
+		\begin{itemize}
+		\pause
+		\item Benutze keine Beschleunigungsstruktur für kleine Szenen
+		\pause
+		\item KDTree: Intersection-Kosten sind \textbf{sehr} billig für \texttt{SSERay}
+		\end{itemize}
 	\end{frame}
 
 	\begin{frame}{Hot Code Paths}
+		\begin{itemize}
+		\pause
+		\item Indirektionen bei Dreieck-Zugriff ⇒ Datenstruktur sortiert Szene um
+		\pause
+		\item Skalar- und Kreuzprodukt für einfache \texttt{float}-Vektoren ⇒ SSE
+		\pause
+		\item Schneiden der Szene ⇒ Keine Datenstruktur, KDTree
+		\end{itemize}
 	\end{frame}
 
 	\begin{frame}{Zusammenfassung/Ausblick}
