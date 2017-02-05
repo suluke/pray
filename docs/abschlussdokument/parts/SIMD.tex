@@ -16,7 +16,7 @@ Beispielsweise vermieden wir dadurch, Integer-basierten Code zu schreiben, der v
 In unserem Code lässt sich die Verwendung von Vektorinstruktionen in zwei Kategorien einteilen:
 Einerseits die Nutzung in an sich skalarem Code, wo es sich lediglich gerade anbietet, eine bestimmte Operation durch SIMD-Instruktionen zu beschleunigen.
 So haben wir eine SSE-beschleunigte Variante des 3D-Vektor-Skalar- und Kreuzprodukts implementiert.
-Die Idee hier war, die Gesamtzahl an Instruktionen zu verringen, da die skalaren Rechnungen in einem Profile einen Heißen Pfad darstellten (siehe \ref{ssec:crit-profiler}).
+Die Idee hier war, die Gesamtzahl an Instruktionen zu verringen, da die skalaren Rechnungen in einem Profile einen Heißen Pfad darstellten (siehe \ref{ssec:crit-section}).
 Darauf aufbauend versuchten wir, die 3D-Vektor Klasse, die in den CPU Berechnungen des Tracing-Schritts benutzt wird, komplett mit SSE-Instruktion auszudrücken (ein Vektor belegt genau ein SSE-Register, dadurch können viele Vektor-Operationen mit genau einer Instruktion ausgedrückt werden und es können mehr Daten in Registern gehalten werden).
 Es stellte sich heraus, dass dadurch die Ausführung wieder langsamer wurde und immer noch weit von der Geschwindigkeit der unten erwähnten \code{SSERay} entfernt war.
 
@@ -27,4 +27,4 @@ Ein \code{SSERay} enthält also nicht einen einzigen Strahl, sondern vier (SSE) 
 In der Praxis hat sich herausgestellt, dass dies sehr gut funktioniert und wir sogar nah an den theoretischen maximalen Speedup heranreichen (Faktor 5 bei AVX von theoretisch Faktor 8).
 Dies ist unter anderem darauf zurückzuführen, dass Vektoren nur selten entpackt werden müssen und durch unsere Implementierung praktisch nie horizontale Operationen nötig werden.
 Horizontale Operationen sind jene, bei denen mehrere Werte aus dem selben Vektor miteinander verrechnet werden, beispielsweise wenn geschaut werden soll, ob alle Einträge in einem Vektor gleich null sind.
-Durch die Berechnung von Strahlenbündeln wird die Schnittberechnung mit Beschleunigungsstrukturen aufwendiger, darauf soll in Kapitel \ref{ssec:accel-intersect-sseray} näher eingegangen werden.
+Durch die Berechnung von Strahlenbündeln wird die Schnittberechnung mit Beschleunigungsstrukturen aufwendiger, darauf soll in Kapitel \ref{ssec:crit-section} näher eingegangen werden.

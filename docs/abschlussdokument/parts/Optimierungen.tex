@@ -1,12 +1,21 @@
 \section{Optimierungen}
-Zusätzlich zu den großen Parallelisierungsmöglichkeiten (OpenMP/C++Threads, CUDA, SSE/AVX, Datenstrukturen), haben wir uns überlegt wo es noch möglich wäre einen eventuell auch kleinen Zeitgewinn hinauszuholen.
-Hierfür haben wir durch Analyse erst einmal versucht kritische Abschnitte in unserer Pipeline zu finden.
-Dies wurde zum Teil durch Benchmarking verschiedener Komponenten via Zeitmessung der Laufzeit intern oder durch unser Benchmarking-Tool und auch durch eine Call-Analyse mit Callgrind.
+Zusätzlich zu den algorithmischen Optimierungen und Parallelisierungsmöglichkeiten (OpenMP/C++Threads, CUDA, SSE/AVX, Datenstrukturen), haben wir untersucht, wo noch kleine Zeitgewinne herauszuholen sind.
+Hierfür haben wir durch Analyse versucht, kritische Abschnitte in unserer Pipeline zu finden.
+Dies haben wir zum Teil durch Benchmarking verschiedener Komponenten via Zeitmessung der Laufzeit intern oder durch unser Benchmarking-Tool und durch Benutzung von Profiling-Tools durchgeführt.
 Kleinere Optimierungen umfassen beispielsweise das Cachen des Inversen der Richtung eines Strahls, da Divisionen insbesondere bei SSE/AVX sehr zeitaufwändig sind.
 
 \subsection{Identifikation kritischer Abschnitte}
-\subsubsection{Profiler}
-\label{ssec:crit-profiler}
+\label{ssec:crit-section}
+
+Für die Identifikation kritischer Abschnitte haben wir zwei Werkzeuge verwendet. Am Anfang des Projektes benutzen wir Callgrind. Da dies aber bei großen Problemen eine sehr lange Laufzeit hat, haben wir im späteren Verlauf den \code{perf} Sampling-Profiler von Linux verwendet.
+
+Wir benutzen den Samping-Profiler mit folgendem Aufruf:
+
+\code{perf -e instructions:u -F 10000 ./pray ...}
+
+Dadurch wird das Programm in einer Frequenz von $10000$ Hz unterbrochen und untersucht, an welcher Instruktion sich die Programmausfühtung gerade befindet. Die Häufigkeit, wie oft eine Instruktion angetroffen wurde gibt Aufschluss darüber, wie schnell sie ausgeführt wird. Allerdings können auch andere Effekte wie Pipeline-Stalls die Ursache sein, dass eine Instruktion länger dauert, daher muss auch immer die Menge der vorherigen Instruktionen mit in die Betrachtung einfließen.
+
+Da es nichtsaussagend ist, die Geschwindigkeit der Debug-Version zu messen, haben wir immer unseren Release-Build getestet. Da unser Code (gewollt) so strukturiert ist, dass viele Methoden ge-"`inlined"' werden, fällt es schwer zu idendifizieren, zu welchem Teil des Codes ein gefundener heißer Pfad gehört. Manche Algorithmen lassen sich in der disassembly erkennen (z.B. das Skalarprodukt, die SSE-Variante außerdem durch die einzigartige Verwendung der \code{haddps} Instruktion). Andere Teile lassen sich idendifizieren durch Kompilierung mit \code{-S -g} Optionen und Vergleich von auffälligen Instruktionen.
 
 \subsection{Heuristiken}
 Wenige Dreiecke -> DummyAcceleration
