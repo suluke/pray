@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <atomic>
 #include <stack>
+#include <functional>
 
 struct ThreadPool
 {
