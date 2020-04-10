@@ -14,7 +14,7 @@
 #include <cuda_runtime_api.h>
 #include <curand_kernel.h>
 
-template<class accel_t, class accel_cuda_t>
+template<class accel_cuda_t>
 struct CudaRenderer {
 	using scene_cuda_t = CudaScene;
 	using scene_t = PathScene;
